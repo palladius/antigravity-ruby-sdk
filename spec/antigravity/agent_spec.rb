@@ -15,7 +15,7 @@ RSpec.describe Antigravity::Agent do
   end
 
   it "registers dynamic block tools" do
-    tool = agent.register_tool("calculator", description: "Performs math") do |params|
+    tool = agent.register_tool("calculator", description: "Performs math") do |_params|
       "Result: 42"
     end
 
@@ -32,6 +32,6 @@ RSpec.describe Antigravity::Agent do
     expect(chunks.any?).to be true
     expect(chunks.first).to be_a(Antigravity::Chunk)
     expect(final_message).to be_a(Antigravity::Message)
-    expect(final_message.content).to include("Hello!")
+    expect(final_message.content).to include("gemini-2.5-flash")
   end
 end

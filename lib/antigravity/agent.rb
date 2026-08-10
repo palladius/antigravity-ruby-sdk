@@ -3,7 +3,7 @@
 module Antigravity
   class Agent
     attr_accessor :model, :system_instruction, :api_key
-    attr_reader :tools, :skills, :hooks, :client
+    attr_reader :tools, :skills, :hooks, :sidecars, :client
 
     def initialize(model: nil, &block)
       @model = model || Antigravity.config.default_model
@@ -11,10 +11,21 @@ module Antigravity
       @system_instruction = nil
       @tools = []
       @skills = []
+      @sidecars = []
       @hooks = Hooks.new
       @client = Client.new
 
+      # Auto-attach default safety guardrails
+      use_safety_defaults!
+
       yield(self) if block_given?
+    end
+
+    def use_safety_defaults!
+      # Pre-tool guard against editing protected files (.env, Gemfile, etc.)
+      before_tool_call(&Safety::ProtectedFilesGuard.new)
+      # Post-tool secret masking
+      after_tool_call(&Safety::SecretMasker.new)
     end
 
     def register_tool(tool_or_name = nil, description: "", &block)
@@ -27,6 +38,11 @@ module Antigravity
       end
       @tools << tool
       tool
+    end
+
+    def attach_sidecar(sidecar)
+      @sidecars << sidecar
+      sidecar
     end
 
     def load_skill(skill_path)
@@ -43,14 +59,27 @@ module Antigravity
       hooks.after_response(&block)
     end
 
-    def on_tool_call(&block)
-      hooks.on_tool_call(&block)
+    def before_tool_call(&block)
+      hooks.before_tool_call(&block)
+    end
+
+    def after_tool_call(&block)
+      hooks.after_tool_call(&block)
+    end
+
+    def emit_sidecar_event(event_type, payload = {})
+      @sidecars.each { |sidecar| sidecar.emit(event_type, payload) }
     end
 
     def prompt(message, &block)
-      hooks.run_pre_hooks(message)
+      emit_sidecar_event(:prompt_started, prompt: message)
+      hooks.run_pre_prompt(message)
+
       response = client.send_turn(self, message, &block)
-      hooks.run_post_hooks(response)
+
+      hooks.run_post_response(response)
+      emit_sidecar_event(:turn_completed, response: response.content, model: model)
+
       response
     end
     alias ask prompt
