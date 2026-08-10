@@ -2,8 +2,7 @@
 
 require "spec_helper"
 
-class WeatherTool
-  include Antigravity::Tool
+class WeatherTool < Antigravity::Tool
   name "get_weather", desc: "Retrieves weather for a city"
   param :city, type: :string, description: "Target city", required: true
 
@@ -13,7 +12,7 @@ class WeatherTool
 end
 
 RSpec.describe Antigravity::Tool do
-  it "auto-generates JSON schema for declarative tools using concise name and desc" do
+  it "auto-generates JSON schema for subclassed tools using concise name and desc" do
     schema = WeatherTool.to_json_schema
 
     expect(schema[:name]).to eq("get_weather")

@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 module Antigravity
-  module Tool
-    def self.included(base)
-      base.extend(ClassMethods)
+  class Tool
+    def self.inherited(subclass)
+      subclass.extend(ClassMethods)
     end
 
     module ClassMethods
@@ -68,17 +68,18 @@ module Antigravity
     end
 
     # Factory for dynamic Proc-based tools
-    class Dynamic
-      attr_reader :name, :description, :block
+    class Dynamic < Tool
+      attr_reader :block
 
       def initialize(name, description: "", &block)
-        @name = name.to_s
-        @description = description
+        super()
+        @dynamic_name = name.to_s
+        @dynamic_description = description
         @block = block
       end
 
       def tool_name
-        @name
+        @dynamic_name
       end
 
       def call(params)
@@ -87,8 +88,8 @@ module Antigravity
 
       def to_json_schema
         {
-          name: @name,
-          description: @description,
+          name: @dynamic_name,
+          description: @dynamic_description,
           parameters: {
             type: "object",
             properties: {}

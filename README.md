@@ -47,8 +47,8 @@ end
 ## 🛡️ Declarative Tools & Safety Guardrails
 
 ```ruby
-class WeatherTool
-  include Antigravity::Tool
+# Subclass Antigravity::Tool (or `include Antigravity::Tool` for mixins)
+class WeatherTool < Antigravity::Tool
   name "get_weather", desc: "Retrieves weather report"
   param :city, type: :string, description: "City name"
 

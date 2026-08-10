@@ -6,9 +6,8 @@ require "antigravity"
 puts "💎 Antigravity Ruby SDK — Advanced E2E Showcase"
 puts "================================================"
 
-# Define a declarative tool using concise DSL
-class WeatherTool
-  include Antigravity::Tool
+# Define a declarative tool by subclassing Antigravity::Tool
+class WeatherTool < Antigravity::Tool
   name "get_weather", desc: "Fetches live weather reports"
   param :location, type: :string, description: "City or region", required: true
 
