@@ -31,8 +31,8 @@ gem install antigravity-sdk
 ```ruby
 require "antigravity"
 
-# Create an agent with reflective block configuration
-agent = Antigravity::Agent.new(model: "gemini-2.5-flash") do |a|
+# Create an agent with sensible defaults (model defaults to "gemini-flash-latest")
+agent = Antigravity::Agent.new do |a|
   a.system_instruction = "You are a helpful Ruby assistant."
 end
 
@@ -86,15 +86,13 @@ end
 Run the full RSpec test suite:
 
 ```bash
-bundle exec rake spec
+just test
 ```
 
 Run example scripts:
 
 ```bash
-bundle exec ruby examples/01_hello_world.rb
-bundle exec ruby examples/02_e2e_advanced_agent.rb
-bundle exec ruby examples/03_e2e_safety_and_sidecar.rb
+just examples
 ```
 
 ---

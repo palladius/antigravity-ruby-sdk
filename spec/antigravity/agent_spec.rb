@@ -4,13 +4,13 @@ require "spec_helper"
 
 RSpec.describe Antigravity::Agent do
   subject(:agent) do
-    described_class.new(model: "gemini-2.5-flash") do |a|
+    described_class.new do |a|
       a.system_instruction = "You are a helpful test agent"
     end
   end
 
-  it "initializes with model and system instruction" do
-    expect(agent.model).to eq("gemini-2.5-flash")
+  it "initializes with sensible default model gemini-flash-latest and system instruction" do
+    expect(agent.model).to eq("gemini-flash-latest")
     expect(agent.system_instruction).to eq("You are a helpful test agent")
   end
 
@@ -32,6 +32,6 @@ RSpec.describe Antigravity::Agent do
     expect(chunks.any?).to be true
     expect(chunks.first).to be_a(Antigravity::Chunk)
     expect(final_message).to be_a(Antigravity::Message)
-    expect(final_message.content).to include("gemini-2.5-flash")
+    expect(final_message.content).to include("gemini-flash-latest")
   end
 end

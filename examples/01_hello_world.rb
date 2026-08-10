@@ -6,7 +6,8 @@ require "antigravity"
 puts "🚀 Antigravity Ruby SDK — Hello World Example"
 puts "==============================================="
 
-agent = Antigravity::Agent.new(model: "gemini-2.5-flash") do |a|
+# Uses sensible defaults (model: gemini-flash-latest)
+agent = Antigravity::Agent.new do |a|
   a.system_instruction = "You are a helpful and concise Ruby AI assistant."
 end
 

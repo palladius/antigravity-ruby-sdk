@@ -9,8 +9,8 @@ puts "==================================================================="
 # 1. Instantiate AuditLogger Sidecar
 audit_logger = Antigravity::Sidecar::AuditLogger.new("log/safety_demo_audit.jsonl")
 
-# 2. Build Agent with Safety Guards & Sidecar
-agent = Antigravity::Agent.new(model: "gemini-2.5-flash") do |a|
+# 2. Build Agent with Safety Guards & Sidecar (default model: gemini-flash-latest)
+agent = Antigravity::Agent.new do |a|
   a.system_instruction = "You are an agent with strict security policies."
 
   # Attach sidecar for async background log streaming
