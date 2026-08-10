@@ -1,8 +1,12 @@
 # 💎 Antigravity Ruby SDK (`antigravity-sdk`)
 
+<p align="center">
+  <img src="docs/images/logo.jpg" alt="Ruby Antigravity Logo" width="350"/>
+</p>
+
 An elegant, expressive, and human-friendly Ruby SDK for building autonomous AI agents with **Google Antigravity**.
 
-Inspired by the Ruby community's philosophy of developer happiness and standard conventions (such as `RubyLLM`), `antigravity-sdk` lets you configure agents, stream thoughts & token deltas, invoke declarative/dynamic tools, and chain pre/post lifecycle hooks with minimal boilerplate.
+Inspired by the Ruby community's philosophy of developer happiness and standard conventions (such as `RubyLLM`), `antigravity-sdk` lets you configure agents, stream thoughts & token deltas, invoke declarative/dynamic tools, manage async sidecars, and enforce safety guardrails with minimal boilerplate.
 
 ---
 
@@ -40,7 +44,7 @@ end
 
 ---
 
-## 🪝 Lifecycle Hooks & Tools
+## 🛡️ Safety Guardrails & Sidecars
 
 ```ruby
 class WeatherTool
@@ -54,14 +58,19 @@ class WeatherTool
   end
 end
 
+# Attach Audit Logger Sidecar
+audit_logger = Antigravity::Sidecar::AuditLogger.new("log/agent_audit.jsonl")
+
 agent = Antigravity::Agent.new do |a|
   # Register declarative & dynamic tools
   a.register_tool(WeatherTool.new)
-  a.register_tool("calculator", description: "Evaluates expressions") { |params| 42 }
+  a.attach_sidecar(audit_logger)
 
-  # Pre-prompt and post-response hooks
-  a.before_prompt { |prompt| puts "Sending: #{prompt}" }
-  a.after_response { |msg| puts "Finished turn with #{msg.model_id}" }
+  # Pre-tool safety policy against modifying .env or Gemfile
+  a.before_tool_call(&Antigravity::Safety::ProtectedFilesGuard.new)
+
+  # Post-tool secret masker
+  a.after_tool_call(&Antigravity::Safety::SecretMasker.new)
 end
 
 # Ask agent
@@ -86,6 +95,7 @@ Run example scripts:
 ```bash
 bundle exec ruby examples/01_hello_world.rb
 bundle exec ruby examples/02_e2e_advanced_agent.rb
+bundle exec ruby examples/03_e2e_safety_and_sidecar.rb
 ```
 
 ---
