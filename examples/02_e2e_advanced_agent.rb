@@ -6,11 +6,10 @@ require "antigravity"
 puts "💎 Antigravity Ruby SDK — Advanced E2E Showcase"
 puts "================================================"
 
-# Define a declarative tool
+# Define a declarative tool using concise DSL
 class WeatherTool
   include Antigravity::Tool
-  tool_name "get_weather"
-  tool_description "Fetches live weather reports"
+  name "get_weather", desc: "Fetches live weather reports"
   param :location, type: :string, description: "City or region", required: true
 
   def call(location:)
@@ -24,7 +23,7 @@ agent = Antigravity::Agent.new(model: "gemini-2.5-pro") do |a|
 
   # Register declarative and dynamic tools
   a.register_tool(WeatherTool.new)
-  a.register_tool("fetch_metrics", description: "Fetch system CPU/Memory metrics") do |params|
+  a.register_tool("fetch_metrics", description: "Fetch system CPU/Memory metrics") do |_params|
     { cpu: "12%", memory: "1.4GB / 16GB" }
   end
 

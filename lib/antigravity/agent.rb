@@ -66,6 +66,7 @@ module Antigravity
     def after_tool_call(&block)
       hooks.after_tool_call(&block)
     end
+    alias on_tool_call after_tool_call
 
     def emit_sidecar_event(event_type, payload = {})
       @sidecars.each { |sidecar| sidecar.emit(event_type, payload) }

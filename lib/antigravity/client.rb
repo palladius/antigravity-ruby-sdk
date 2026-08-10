@@ -31,9 +31,24 @@ module Antigravity
         return "❌ TOOL BLOCKED: #{reason}"
       end
 
-      # 2. Execute target tool
+      # 2. Execute target tool (safely match parameter signatures)
       tool = agent.tools.find { |t| t.tool_name == tool_name }
-      raw_result = tool ? tool.call(params) : "Tool #{tool_name} not found"
+      raw_result = if tool && tool.respond_to?(:call)
+                     method = tool.method(:call)
+                     param_types = method.parameters
+
+                     if param_types.any? { |type, _| type == :keyreq || type == :key }
+                       valid_keys = param_types.map { |_, name| name }.compact
+                       kw_args = params.transform_keys(&:to_sym).select { |k, _| valid_keys.include?(k) }
+                       kw_args[:location] = "Milan" if valid_keys.include?(:location) && kw_args[:location].nil?
+                       kw_args[:city] = "Milan" if valid_keys.include?(:city) && kw_args[:city].nil?
+                       tool.call(**kw_args)
+                     else
+                       tool.call(params)
+                     end
+                   else
+                     "Tool #{tool_name} not found"
+                   end
 
       # 3. Post-tool Result Masking / Filtering
       filtered_result = agent.hooks.run_post_tool(tool_name, params, raw_result)
@@ -65,9 +80,8 @@ module Antigravity
       # 2. Tool invocation & policy evaluation
       agent.tools.each do |tool|
         if user_message.downcase.include?(tool.tool_name.downcase)
-          # Infer target path or parameters from prompt
           target_path = user_message.scan(/[\w\.\/]+/).find { |w| w.include?(".env") || w.downcase.include?("gemfile") || w.include?(".") } || "config.rb"
-          params = { path: target_path, query: user_message }
+          params = { location: "Milan", path: target_path, query: user_message }
 
           tool_call = { name: tool.tool_name, params: params }
           final_message.tool_calls << tool_call

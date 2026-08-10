@@ -44,13 +44,12 @@ end
 
 ---
 
-## 🛡️ Safety Guardrails & Sidecars
+## 🛡️ Declarative Tools & Safety Guardrails
 
 ```ruby
 class WeatherTool
   include Antigravity::Tool
-  tool_name "get_weather"
-  tool_description "Retrieves weather report"
+  name "get_weather", desc: "Retrieves weather report"
   param :city, type: :string, description: "City name"
 
   def call(city:)

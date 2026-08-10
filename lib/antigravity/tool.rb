@@ -7,15 +7,20 @@ module Antigravity
     end
 
     module ClassMethods
-      def tool_name(name = nil)
-        @tool_name = name if name
-        @tool_name || self.name.split("::").last.gsub(/(.)([A-Z])/, '\1_\2').downcase
+      def name(val = nil, desc: nil)
+        if val
+          @tool_name = val.to_s
+          @tool_description = desc if desc
+        end
+        @tool_name || self.name&.split("::")&.last&.gsub(/(.)([A-Z])/, '\1_\2')&.downcase || "custom_tool"
       end
+      alias tool_name name
 
-      def tool_description(desc = nil)
-        @tool_description = desc if desc
+      def desc(val = nil)
+        @tool_description = val if val
         @tool_description || ""
       end
+      alias tool_description desc
 
       def param(name, type: :string, description: "", required: true)
         @parameters ||= {}
@@ -43,8 +48,8 @@ module Antigravity
         end
 
         {
-          name: tool_name,
-          description: tool_description,
+          name: name,
+          description: desc,
           parameters: {
             type: "object",
             properties: properties,
@@ -55,7 +60,7 @@ module Antigravity
     end
 
     def tool_name
-      self.class.tool_name
+      self.class.name
     end
 
     def to_json_schema
