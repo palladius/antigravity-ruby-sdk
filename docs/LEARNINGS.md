@@ -17,11 +17,13 @@ These learnings were discovered 2026-08-10/11 while building the unofficial Ruby
 ### Stdio Handshake (Phase 1)
 1. Spawn `localharness` with subcommand: just the binary path, no args needed.
 2. Send `InputConfig` as length-prefixed protobuf over stdin:
-   - 4-byte **little-endian** length prefix
-   - Protobuf-encoded `InputConfig` message (field 1 = api_key string)
+   - 4-byte **little-endian** length prefix (uint32 — the byte count of the following payload)
+   - Protobuf-encoded `InputConfig` message (field 1 = storage_directory string, field 2 = bind_address string)
 3. Read `OutputConfig` as length-prefixed protobuf from stdout:
-   - 4-byte little-endian length prefix
-   - Contains `ws_url` (field 1) — the WebSocket endpoint
+   - 4-byte little-endian length prefix (same framing)
+   - `OutputConfig` fields: **port** (field 1, varint — localhost port number) + **api_key** (field 2, string — session token)
+   - The 4 bytes are NOT the endpoint — they're the length prefix. The actual data follows.
+4. WebSocket URL is then constructed: `ws://localhost:{port}/session`
 
 ### WebSocket Protocol (Phase 2)
 - Connect to the `ws_url` from the handshake.
@@ -52,12 +54,20 @@ The Python SDK wraps non-dict results in `{"result": value}` via `tool_result_to
 ### 3. System Instructions Format
 System instructions must use the `custom` format with `part` array:
 ```ruby
-# WRONG
+# WRONG (bare array — harness ignores it)
 {instructions: ["You are a pirate"]}
 
 # CORRECT (matches protobuf SystemInstruction.custom.part schema)
 {custom: {part: [{text: "You are a pirate"}]}}
 ```
+
+### Thinking / Reasoning Tokens
+The model's "thinking" (extended reasoning) is NOT a separate out-of-band message.
+It arrives **inline** within `stepUpdate` messages as `thinkingContent` parts,
+interleaved with the regular `textContent`. The harness passes them through as-is.
+The Python SDK exposes them via the step's `content_parts`. Our Ruby SDK currently
+does not surface thinking content separately — it only captures the final text.
+TODO: Parse `thinkingContent` parts from `stepUpdate` for transparency.
 
 ### 4. Tool Parameter Schema: camelCase
 Tool definitions in `HarnessConfig` use camelCase for the schema field:
@@ -75,6 +85,8 @@ and the model uses built-in tools (list_dir, view_file) to explore it. This make
 even simple "Say OK" prompts take 120+ seconds.
 
 **Fix**: Default workspace to `nil`. Only set when explicitly provided.
+The workspace is NOT CWD/PWD — it's sent in `harnessConfig.config.workspaces[].filesystemWorkspace.directory`.
+The harness indexes whatever path you send, regardless of your process's working directory.
 
 ### 6. Turn Completion: Use `trajectoryStateUpdate.STATE_FULLY_IDLE`
 The authoritative "turn is done" signal is `trajectoryStateUpdate` with
