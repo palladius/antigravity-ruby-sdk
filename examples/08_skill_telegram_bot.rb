@@ -517,8 +517,16 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
           text: full_response.empty? ? "🤔 No response generated." : full_response,
           parse_mode: 'Markdown'
         ) rescue bot.api.send_message(chat_id: chat_id, text: full_response) # Fallback without Markdown if parsing fails
+      rescue Antigravity::ProtocolError, IOError, Errno::EPIPE => e
+        # Connection-level errors: auto-reset the session
+        bot.api.send_message(chat_id: chat_id, text: "⚡ Connection lost, resetting session...\n`#{e.message[0,80]}`", parse_mode: 'Markdown') rescue nil
+        log_error('agent_error', e.message, chat_id: chat_id)
+        puts "[#{chat_id}] 🔄 Auto-resetting session after connection error".to_yellow
+        sessions[chat_id]&.close!
+        sessions[chat_id] = ChatSession.new(chat_id, skills: SKILLS, tools: FILE_TOOLS, workspace: WORKSPACE_PATH)
+        bot.api.send_message(chat_id: chat_id, text: "🔄 Session reset! Send your message again.") rescue nil
       rescue StandardError => e
-        bot.api.send_message(chat_id: chat_id, text: "❌ Agent error: #{e.message}")
+        bot.api.send_message(chat_id: chat_id, text: "❌ Agent error: #{e.message[0,200]}")
         log_error('agent_error', e.message, chat_id: chat_id)
       end
     end
