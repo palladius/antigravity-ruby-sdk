@@ -136,6 +136,12 @@ module Antigravity
           end
         end
 
+        # Top-level tool call (custom tools are sent as separate messages, not in stepUpdate)
+        if (tool_call = msg[:toolCall])
+          tool_calls_count += 1
+          handle_tool_call(tool_call)
+        end
+
         # Usage update
         if (usage = msg[:usageUpdate])
           update_usage(usage)
@@ -167,8 +173,25 @@ module Antigravity
 
     def handle_custom_tool(step)
       tool_data = step[:customTool]
-      tool_name = tool_data[:name] || tool_data[:toolName]
-      args = tool_data[:args] || tool_data[:arguments] || {}
+      tool_call = tool_data[:toolCall] || tool_data
+      handle_tool_call(tool_call)
+    end
+
+    # Handle a top-level toolCall message from the harness
+    # Format: {id: "...", name: "tool_name", argumentsJson: "{...}"}
+    def handle_tool_call(tool_call)
+      tool_id = tool_call[:id]
+      tool_name = tool_call[:name]
+
+      # Parse arguments from JSON string
+      args_json = tool_call[:argumentsJson] || tool_call[:arguments_json]
+      args = if args_json.is_a?(String) && !args_json.empty?
+               JSON.parse(args_json, symbolize_names: true)
+             elsif tool_call[:arguments].is_a?(Hash)
+               tool_call[:arguments]
+             else
+               {}
+             end
 
       # Symbolize keys for Ruby kwargs
       kwargs = args.transform_keys(&:to_sym)
@@ -179,14 +202,14 @@ module Antigravity
         result = { error: e.message }
       end
 
-      # Send tool response back
+      # Send tool response back (protobuf InputEvent.tool_response format)
+      # The harness expects responseJson to be a JSON object (Python SDK wraps in {"result": ...})
+      result_dict = result.is_a?(Hash) ? result : { result: result.to_s }
       tool_response = {
         toolResponse: {
-          id: tool_data[:id],
-          name: tool_name,
-          result: result.is_a?(Hash) ? JSON.generate(result) : result.to_s
-        },
-        seqNum: next_seq
+          id: tool_id,
+          responseJson: JSON.generate(result_dict)
+        }
       }
       @ws.send_json(tool_response)
     end
