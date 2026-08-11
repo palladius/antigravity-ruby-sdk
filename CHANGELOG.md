@@ -2,8 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.7] - 2026-08-11 🧪
+* 🧪 Added comprehensive RSpec unit tests covering all automagic logging behaviors: `Rails.logger` auto-attachment, `ANTIGRAVITY_LOGGER` env var suppression (`false`, `0`, `none`, `no`), `RAILS_ENV` / `RACK_ENV` log path resolution, and startup notice printing.
+
 ## [0.1.6] - 2026-08-11 🔑
-* 🔑 Added automatic `dotenv/load` requiring if `.env` file exists and `dotenv` gem is present. Allows setting `ANTIGRAVITY_LOGGER=false` directly inside `.env`.
+* 🔑 Added automatic `dotenv/load` requiring if `.env` file exists and `dotenv` gem is present.
 
 ## [0.1.5] - 2026-08-11 🪵✨
 * 🪄 Added automagic Rails & ENV-aware logger initialization (Closes #2).

@@ -11,6 +11,7 @@ RSpec.describe Antigravity::Guards do
       FileUtils.rm_rf(tmp_dir)
       ENV.delete("ANTIGRAVITY_LOGGER")
       ENV.delete("RAILS_ENV")
+      ENV.delete("RACK_ENV")
     end
 
     it "automagically logs agent prompts, responses, and tool calls to specified log file" do
@@ -32,23 +33,76 @@ RSpec.describe Antigravity::Guards do
       }.to output(/🪵 Logging to tmp\/test_logs\/custom_agent\.log/).to_stdout
     end
 
-    it "suppresses automagic logger when ENV['ANTIGRAVITY_LOGGER'] is false" do
-      ENV["ANTIGRAVITY_LOGGER"] = "false"
-      expect {
-        agent = Antigravity::Agent.new
-        expect(agent.logger_guard).to be_nil
-      }.not_to output(/🪵 Logging to/).to_stdout
+    context "when Rails.logger is defined" do
+      before do
+        fake_rails = Class.new do
+          def self.logger
+            @logger ||= ::Logger.new(IO::NULL)
+          end
+        end
+        stub_const("Rails", fake_rails)
+      end
+
+      it "automatically attaches Rails.logger and prints notice" do
+        expect {
+          agent = Antigravity::Agent.new
+          expect(agent.logger_guard.target_description).to eq("Rails.logger")
+          expect(agent.logger_guard.logger).to eq(Rails.logger)
+        }.to output(/🪵 Logging to Rails\.logger/).to_stdout
+      end
     end
 
-    it "uses log/RAILS_ENV.log when ENV['RAILS_ENV'] is set" do
-      ENV["RAILS_ENV"] = "test_environment"
-      expect {
-        agent = Antigravity::Agent.new(auto_logger: false)
-        guard = agent.attach_logger
-        expect(guard.target_description).to eq("log/test_environment.log")
-      }.to output(/🪵 Logging to log\/test_environment\.log/).to_stdout
+    context "when ANTIGRAVITY_LOGGER is set" do
+      %w[false 0 none no].each do |env_val|
+        it "suppresses automagic logger when ANTIGRAVITY_LOGGER='#{env_val}'" do
+          ENV["ANTIGRAVITY_LOGGER"] = env_val
+          expect {
+            agent = Antigravity::Agent.new
+            expect(agent.logger_guard).to be_nil
+          }.not_to output(/🪵 Logging to/).to_stdout
+        end
+      end
 
-      FileUtils.rm_f("log/test_environment.log")
+      it "enables automagic logger when ANTIGRAVITY_LOGGER='true'" do
+        ENV["ANTIGRAVITY_LOGGER"] = "true"
+        expect {
+          agent = Antigravity::Agent.new
+          expect(agent.logger_guard).not_to be_nil
+        }.to output(/🪵 Logging to log\/antigravity\.log/).to_stdout
+
+        FileUtils.rm_f("log/antigravity.log")
+      end
+    end
+
+    context "when environment variables dictate log path" do
+      it "uses log/production.log when RAILS_ENV='production'" do
+        ENV["RAILS_ENV"] = "production"
+        expect {
+          agent = Antigravity::Agent.new
+          expect(agent.logger_guard.target_description).to eq("log/production.log")
+        }.to output(/🪵 Logging to log\/production\.log/).to_stdout
+
+        FileUtils.rm_f("log/production.log")
+      end
+
+      it "uses log/staging.log when RACK_ENV='staging'" do
+        ENV["RACK_ENV"] = "staging"
+        expect {
+          agent = Antigravity::Agent.new
+          expect(agent.logger_guard.target_description).to eq("log/staging.log")
+        }.to output(/🪵 Logging to log\/staging\.log/).to_stdout
+
+        FileUtils.rm_f("log/staging.log")
+      end
+
+      it "defaults to log/antigravity.log when no environment variables are set" do
+        expect {
+          agent = Antigravity::Agent.new
+          expect(agent.logger_guard.target_description).to eq("log/antigravity.log")
+        }.to output(/🪵 Logging to log\/antigravity\.log/).to_stdout
+
+        FileUtils.rm_f("log/antigravity.log")
+      end
     end
   end
 
