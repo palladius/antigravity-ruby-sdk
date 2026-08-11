@@ -6,7 +6,7 @@
 
 An elegant, expressive, and human-friendly Ruby SDK for building autonomous AI agents with **Google Antigravity**.
 
-Inspired by the Ruby community's philosophy of developer happiness and standard conventions (such as `RubyLLM`), `antigravity-sdk` lets you configure agents, stream thoughts & token deltas, invoke declarative/dynamic tools, manage async sidecars, and attach opt-in safety guards with minimal boilerplate.
+Inspired by the Ruby community's philosophy of developer happiness and standard conventions (such as `RubyLLM`), `antigravity-sdk` lets you configure agents, stream thoughts & token deltas, invoke declarative/dynamic tools, manage async sidecars, and attach opt-in safety guards & Rails-compatible loggers with minimal boilerplate.
 
 ---
 
@@ -39,6 +39,22 @@ end
 # Stream responses cleanly with block semantics
 agent.ask("Why do developers love Ruby?") do |chunk|
   print chunk.content if chunk.content
+end
+```
+
+---
+
+## 🪵 Rails & Standard File Logging
+
+Attach structured logging in default Rails positions (`log/development.log`, `log/antigravity.log`, or `Rails.logger`):
+
+```ruby
+agent = Antigravity::Agent.new do |a|
+  # Option 1: Log to standard Rails/Ruby log file
+  a.attach_logger("log/antigravity.log")
+
+  # Option 2: Pass Rails.logger directly inside a Rails app
+  # a.attach_logger(Rails.logger)
 end
 ```
 

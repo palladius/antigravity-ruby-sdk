@@ -1,7 +1,52 @@
 # frozen_string_literal: true
 
+require "logger"
+require "fileutils"
+
 module Antigravity
   module Guards
+    # Configurable opt-in logger guard supporting file loggers and Rails.logger
+    class AgentLogger
+      attr_reader :logger
+
+      def initialize(log_target = "log/antigravity.log", level: Logger::INFO)
+        if log_target.is_a?(String)
+          FileUtils.mkdir_p(File.dirname(log_target)) rescue nil
+          @logger = ::Logger.new(log_target)
+        elsif log_target.respond_to?(:info)
+          @logger = log_target
+        else
+          @logger = ::Logger.new($stdout)
+        end
+        @logger.level = level if @logger.respond_to?(:level=)
+      end
+
+      def before_prompt(prompt_text)
+        @logger.info("[Antigravity::Prompt] User: '#{prompt_text}'")
+      end
+
+      def after_response(response)
+        @logger.info("[Antigravity::Response] Assistant (#{response.model_id}): #{response.content.strip}")
+      end
+
+      def before_tool_call(tool_name, params)
+        @logger.info("[Antigravity::Tool] Executing '#{tool_name}' with params: #{params.inspect}")
+      end
+
+      def after_tool_call(tool_name, params, result)
+        @logger.info("[Antigravity::Tool] Result for '#{tool_name}': #{result}")
+        result
+      end
+
+      def attach_to(agent)
+        logger_guard = self
+        agent.before_prompt { |p| logger_guard.before_prompt(p) }
+        agent.after_response { |r| logger_guard.after_response(r) }
+        agent.before_tool_call { |t, p| logger_guard.before_tool_call(t, p) }
+        agent.after_tool_call { |t, p, r| logger_guard.after_tool_call(t, p, r) }
+      end
+    end
+
     # Configurable opt-in file protection guard
     class FileProtection
       DEFAULT_FILES = [

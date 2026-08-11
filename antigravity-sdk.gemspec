@@ -25,4 +25,5 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "faye-websocket", "~> 0.11"
   spec.add_dependency "json", ">= 2.6"
+  spec.add_dependency "logger", ">= 1.5"
 end

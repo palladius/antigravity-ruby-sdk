@@ -35,6 +35,12 @@ module Antigravity
       sidecar
     end
 
+    def attach_logger(log_target = "log/antigravity.log", level: ::Logger::INFO)
+      logger_guard = Guards::AgentLogger.new(log_target, level: level)
+      logger_guard.attach_to(self)
+      logger_guard
+    end
+
     def load_skill(skill_path)
       skill = Skill.load(skill_path)
       @skills << skill
