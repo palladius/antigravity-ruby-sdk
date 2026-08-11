@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 module Antigravity
-  class Message
-    include Emojifiable
+  class Message < Base
 
     attr_accessor :role, :content, :thinking, :tool_calls, :model_id, :tokens
 

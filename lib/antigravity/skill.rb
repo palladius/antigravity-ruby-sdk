@@ -3,8 +3,7 @@
 require "yaml"
 
 module Antigravity
-  class Skill
-    include Emojifiable
+  class Skill < Base
 
     attr_reader :name, :description, :instructions, :path
 

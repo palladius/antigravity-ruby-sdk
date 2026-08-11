@@ -6,9 +6,9 @@ require "fileutils"
 
 module Antigravity
   module Sidecar
-    # Base class for non-blocking agent sidecars
-    class Base
-      include Emojifiable
+    # Abstract runner for non-blocking agent sidecars.
+    # Subclass and implement #process_event.
+    class Runner < Antigravity::Base
 
       attr_reader :name, :queue, :worker_thread
 
@@ -52,7 +52,7 @@ module Antigravity
     end
 
     # Async Audit Logger Sidecar
-    class AuditLogger < Base
+    class AuditLogger < Runner
       attr_reader :log_file
 
       def initialize(log_file = "log/agent_audit.jsonl")
@@ -72,7 +72,7 @@ module Antigravity
     end
 
     # Async Vulnerability & Code Quality Scanner Sidecar
-    class VulnerabilityScanner < Base
+    class VulnerabilityScanner < Runner
       attr_reader :scanned_events
 
       def initialize
@@ -90,5 +90,7 @@ module Antigravity
         @scanned_events << { tool: tool_name, params: params, verified: true }
       end
     end
+    # Backward-compatible alias
+    Base = Runner
   end
 end
