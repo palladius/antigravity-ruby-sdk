@@ -196,10 +196,12 @@ module Antigravity
 
       # Add workspaces if specified
       if @workspace
+        expanded = File.expand_path(@workspace)
+        $stderr.puts "\u231B Indexing workspace: #{expanded} — this may take a moment..."
         config[:config][:workspaces] = [
           {
             filesystemWorkspace: {
-              directory: File.expand_path(@workspace)
+              directory: expanded
             }
           }
         ]

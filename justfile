@@ -39,3 +39,16 @@ harness-fetch:
 # Force re-download localharness binary
 harness-update:
     bundle exec rake harness:update
+
+# --- rv tasks (no gem install needed, like 'uv' for Python) ---
+
+# Simple LLM chat — no workspace, fast
+rv-chat:
+    rv run ruby -Ilib examples/04_simple_llm_chat.rb
+
+# Workspace analysis — indexes a directory, asks about it
+rv-workspace DIR=".":
+    rv run ruby -Ilib examples/05_workspace_analysis.rb {{DIR}}
+
+# Run all rv examples
+rv-examples: rv-chat rv-workspace
