@@ -51,6 +51,7 @@ String.include(TermColor)
 BOT_TOKEN   = ENV.fetch('TELEGRAM_BOT_TOKEN') { abort '❌ Missing TELEGRAM_BOT_TOKEN in .env' }
 GEMINI_KEY  = ENV.fetch('GEMINI_API_KEY')      { abort '❌ Missing GEMINI_API_KEY in .env' }
 SKILLS      = ENV.fetch('TELEGRAM_SKILLS', '').split(',').map(&:strip).reject(&:empty?)
+                .map { |s| s.start_with?('http') ? s : File.expand_path(s) }
 AGENT_MODEL = ENV.fetch('GEMINI_MODEL', 'gemini-2.5-flash-lite')
 TRANSCRIPTION_MODEL = ENV.fetch('GEMINI_TRANSCRIPTION_MODEL', AGENT_MODEL)
 
