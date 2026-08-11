@@ -159,19 +159,146 @@ module GeminiAudio
   end
 end
 
+# --- File Tools (SCARY MODE 🔥 — no sandbox!) ---
+WORKSPACE = ENV['TELEGRAM_WORKSPACE']
+WORKSPACE_PATH = WORKSPACE ? File.expand_path(WORKSPACE) : nil
+
+if WORKSPACE_PATH
+  puts "🔥 Workspace: #{WORKSPACE_PATH}".to_red
+  puts "   ⚠️  SCARY MODE: Agent can read/write/delete files!".to_red
+else
+  puts "📂 Workspace: (none — set TELEGRAM_WORKSPACE in .env)".to_gray
+end
+
+FILE_TOOLS = []
+
+if WORKSPACE_PATH
+  # Guard: refuse to operate outside workspace
+  workspace_guard = ->(path) {
+    expanded = File.expand_path(path, WORKSPACE_PATH)
+    unless expanded.start_with?(WORKSPACE_PATH)
+      raise "🚫 Access denied: #{path} is outside workspace #{WORKSPACE_PATH}"
+    end
+    expanded
+  }
+
+  FILE_TOOLS << Antigravity::Tool.define(:read_file,
+    desc: 'Read the contents of a file in the workspace',
+    params: { path: { type: :string, desc: 'Relative path within workspace' } }
+  ) { |path:|
+    full = workspace_guard.call(path)
+    File.exist?(full) ? File.read(full) : "File not found: #{path}"
+  }
+
+  FILE_TOOLS << Antigravity::Tool.define(:write_file,
+    desc: 'Write content to a file (creates or overwrites). Use for creating new files or full replacements.',
+    params: {
+      path: { type: :string, desc: 'Relative path within workspace' },
+      content: { type: :string, desc: 'File content to write' }
+    }
+  ) { |path:, content:|
+    full = workspace_guard.call(path)
+    FileUtils.mkdir_p(File.dirname(full))
+    File.write(full, content)
+    "Written #{content.length} bytes to #{path}"
+  }
+
+  FILE_TOOLS << Antigravity::Tool.define(:append_file,
+    desc: 'Append content to an existing file',
+    params: {
+      path: { type: :string, desc: 'Relative path within workspace' },
+      content: { type: :string, desc: 'Content to append' }
+    }
+  ) { |path:, content:|
+    full = workspace_guard.call(path)
+    File.open(full, 'a') { |f| f.write(content) }
+    "Appended #{content.length} bytes to #{path}"
+  }
+
+  FILE_TOOLS << Antigravity::Tool.define(:list_files,
+    desc: 'List files and directories in a workspace path',
+    params: { path: { type: :string, desc: 'Relative path (default: root)', required: false } }
+  ) { |path: '.'|
+    full = workspace_guard.call(path)
+    if Dir.exist?(full)
+      entries = Dir.children(full).sort.map { |e|
+        stat = File.stat(File.join(full, e)) rescue nil
+        type = stat&.directory? ? '📁' : '📄'
+        size = stat&.file? ? " (#{stat.size}b)" : ''
+        "#{type} #{e}#{size}"
+      }
+      entries.empty? ? '(empty directory)' : entries.join("\n")
+    else
+      "Not a directory: #{path}"
+    end
+  }
+
+  FILE_TOOLS << Antigravity::Tool.define(:delete_file,
+    desc: 'Delete a file from the workspace (DANGEROUS)',
+    params: { path: { type: :string, desc: 'Relative path within workspace' } }
+  ) { |path:|
+    full = workspace_guard.call(path)
+    if File.exist?(full)
+      File.delete(full)
+      "Deleted: #{path}"
+    else
+      "File not found: #{path}"
+    end
+  }
+end
+
+# --- Dynamic Skill Discovery Tool ---
+SKILL_SEARCH_DIRS = [
+  File.expand_path('~/.gemini/config/skills'),
+  File.expand_path('~/.gemini/config/plugins'),
+  File.expand_path('~/git/skillume/skills'),
+  File.expand_path('~/git/pvt-skillume/gemini-cli-palladius-private-goodies/skills'),
+  File.expand_path('~/git/pvt-skillume/gemini-cli-palladius-public-goodies/skills'),
+].select { |d| Dir.exist?(d) }
+
+FILE_TOOLS << Antigravity::Tool.define(:find_skills,
+  desc: 'Search for available skills by name/keyword across known directories. Returns names, paths, descriptions.',
+  params: { query: { type: :string, desc: 'Search keyword (matched against skill names and SKILL.md content)', required: false } }
+) { |query: ''|
+  results = []
+  SKILL_SEARCH_DIRS.each do |dir|
+    Dir.glob(File.join(dir, '**/SKILL.md')).each do |skill_file|
+      skill_dir = File.dirname(skill_file)
+      skill_name = File.basename(skill_dir)
+      if query.empty? || skill_name.downcase.include?(query.downcase)
+        content = File.read(skill_file) rescue ''
+        desc = content.match(/^description:\s*(.+)$/i)&.[](1)&.strip || '(no description)'
+        results << "#{skill_name}: #{desc[0, 80]}\n  path: #{skill_dir}"
+      end
+    end
+  end
+  if results.empty?
+    query.empty? ? 'No skills found.' : "No skills matching '#{query}'."
+  else
+    "Found #{results.size} skills:\n\n#{results.join("\n\n")}"
+  end
+}
+
+puts "🔍 Skill discovery: #{SKILL_SEARCH_DIRS.size} directories indexed".to_cyan
+
 # --- Per-Chat Agent Sessions ---
 class ChatSession
   attr_reader :chat_id, :agent, :history
 
-  def initialize(chat_id, skills: [])
+  def initialize(chat_id, skills: [], tools: [], workspace: nil)
     @chat_id = chat_id
     @history = []
+    workspace_hint = workspace ? "\nYou have file tools to manage the workspace at #{workspace}. " \
+                                 "Use list_files, read_file, write_file, append_file, delete_file." : ''
     @agent = Antigravity::Agent.new(
       skills: skills,
+      tools: tools,
+      workspace: workspace,
       log_file: 'log/telegram.jsonl',
       system_instruction: "You are a helpful assistant on Telegram. Be concise and use emojis. " \
                           "Keep responses under 4000 characters (Telegram limit). " \
-                          "When replying to transcribed voice messages, acknowledge the language."
+                          "When replying to transcribed voice messages, acknowledge the language." \
+                          "#{workspace_hint}"
     )
     @agent.connect!
   end
@@ -224,7 +351,7 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
         case message.text.split.first
         when '/reset'
           sessions[chat_id]&.close!
-          sessions[chat_id] = ChatSession.new(chat_id, skills: SKILLS)
+          sessions[chat_id] = ChatSession.new(chat_id, skills: SKILLS, tools: FILE_TOOLS, workspace: WORKSPACE_PATH)
           bot.api.send_message(
             chat_id: chat_id,
             text: "🔄 *Session reset!* Fresh agent, clean slate.\n\n" \
@@ -250,12 +377,19 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
           next
 
         when '/skills'
-          session = sessions[chat_id]
-          if session && !session.agent.skills.empty?
-            skill_list = session.agent.skills.map { |s| "- `#{s.name}`: #{s.description.to_s[0, 60]}" }.join("\n")
-            bot.api.send_message(chat_id: chat_id, text: "📚 *Loaded Skills:*\n#{skill_list}", parse_mode: 'Markdown')
+          if SKILLS.empty? && FILE_TOOLS.empty?
+            bot.api.send_message(chat_id: chat_id, text: "📚 No skills or tools loaded.")
           else
-            bot.api.send_message(chat_id: chat_id, text: "📚 No skills loaded. Set TELEGRAM\\_SKILLS in .env")
+            lines = []
+            unless SKILLS.empty?
+              lines << "📚 *Skills:*"
+              SKILLS.each { |s| lines << "- `#{File.basename(s)}`" }
+            end
+            unless FILE_TOOLS.empty?
+              lines << "\n🛠️ *File Tools:*"
+              FILE_TOOLS.each { |t| lines << "- `#{t.tool_name}`: #{t.to_json_schema[:description].to_s[0, 50]}" }
+            end
+            bot.api.send_message(chat_id: chat_id, text: lines.join("\n"), parse_mode: 'Markdown')
           end
           next
 
@@ -281,7 +415,7 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
       end
 
       # --- Ensure session exists ---
-      sessions[chat_id] ||= ChatSession.new(chat_id, skills: SKILLS)
+      sessions[chat_id] ||= ChatSession.new(chat_id, skills: SKILLS, tools: FILE_TOOLS, workspace: WORKSPACE_PATH)
       session = sessions[chat_id]
 
       # --- Voice / Audio Messages ---
