@@ -1,15 +1,15 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Example 06: Skills — Security Audit
-# =====================================
+# Example 06: Skills — Code Quality Review
+# ==========================================
 # Demonstrates Agent Skills support:
 #   - Local skill loaded at construction time
 #   - Inline skill added at runtime
 #   - Skills auto-wired to harness via skillsPaths
 #
 # Usage:
-#   rv run ruby examples/06_skill_security_audit.rb [path_to_audit]
+#   rv run ruby examples/06_skill_security_audit.rb [path_to_review]
 #
 # Example:
 #   just rv-skill-audit
@@ -19,23 +19,23 @@ require_relative 'rv/rv_init'
 
 workspace = ARGV[0] || File.expand_path('..', __dir__)
 
-puts "#{Antigravity.emoji(:magnifying)} Antigravity Ruby SDK — Skills: Security Audit"
+puts "#{Antigravity.emoji(:magnifying)} Antigravity Ruby SDK — Skills: Code Quality Review"
 puts '=' * 56
 puts
 
 # --- Skill loading demo ---
 
-# 1. Local skill: bundled security-audit skill
-local_skill_path = File.expand_path('../skills/security-audit', __dir__)
+# 1. Local skill: bundled code-quality-review skill
+local_skill_path = File.expand_path('../skills/code-quality-review', __dir__)
 
 puts "#{Antigravity.emoji(:skill)} Loading skills..."
 
 agent = Antigravity::Agent.new(
   skills: [local_skill_path],       # Local path in constructor
   workspace: workspace,
-  system_instruction: "You are a security auditor with access to the workspace at #{File.expand_path(workspace)}. " \
-                      "Use the available tools (list_dir, view_file, grep_search) to inspect files. " \
-                      "Focus on security issues. Be concise: max 10 findings."
+  system_instruction: "You are a senior Ruby engineer reviewing the codebase at #{File.expand_path(workspace)}. " \
+                      "Use the available tools (list_dir, view_file, grep_search) to inspect source files. " \
+                      "Focus on code quality, best practices, and potential improvements. Be concise."
 )
 
 # 2. Add an inline skill at runtime (progressive disclosure)
@@ -66,22 +66,24 @@ puts
 puts "#{Antigravity.emoji(:workspace)} Workspace: #{workspace}"
 puts
 
-# --- Connect and audit ---
+# --- Connect and review ---
 agent.connect!
 puts
 
 question = <<~Q
-  Perform a quick security audit of this codebase. Check for:
-  1. Hardcoded secrets or API keys
-  2. Unsafe file operations or eval usage
-  3. Dependency vulnerabilities (check Gemfile)
-  4. Injection risks
+  Review this Ruby codebase for code quality and best practices.
+  Use the code-quality-review skill checklist. Check:
+  1. Are there proper frozen_string_literal pragmas?
+  2. Are dependencies properly pinned in Gemfile?
+  3. Is error handling robust?
+  4. Any code patterns that could be improved?
+  5. Are there any hardcoded values that should be configurable?
 
-  Use the security-audit skill checklist and severity-emoji formatting.
-  Keep it to max 10 findings. End with a severity summary.
+  Use severity-emoji formatting. Max 10 findings.
+  End with a severity summary.
 Q
 
-puts "#{Antigravity.emoji(:prompt)} Audit question submitted..."
+puts "#{Antigravity.emoji(:prompt)} Review question submitted..."
 puts
 puts "\e[36m#{'─' * 60}\e[0m"
 
@@ -93,17 +95,12 @@ puts "\e[36m#{'─' * 60}\e[0m"
 puts
 
 # Show metadata
-puts '--- Audit Metadata ---'
+puts '--- Review Metadata ---'
 puts "  Model:        #{response.model_id}"
 puts "  Tokens used:  #{response.usage[:total_token_count] || 'N/A'}"
 puts "  Tool calls:   #{response.tool_calls_count}"
 puts "  Steps:        #{response.steps&.length || 0}"
 puts "  Skills:       #{agent.skills.map(&:name).join(', ')}"
-puts
-puts "  skillsPaths sent to harness:"
-agent.skills.each do |s|
-  puts "    #{s.path || '(inline)'}"
-end
 puts
 
 agent.close!
