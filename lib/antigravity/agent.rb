@@ -8,7 +8,7 @@ module Antigravity
                 :workspace, :connection, :conversation
 
     def initialize(model: nil, system_instruction: nil, tools: [],
-                   skills: [], workspace: nil, auto_logger: true, &block)
+                   skills: [], workspace: nil, auto_logger: true, log_file: nil, &block)
       @model = model || Antigravity.config.default_model
       @api_key = Antigravity.config.api_key
       @system_instruction = system_instruction
@@ -32,7 +32,7 @@ module Antigravity
 
       # Automagic Logger attachment unless disabled via ENV["ANTIGRAVITY_LOGGER"]=false or auto_logger: false
       if auto_logger && logger_enabled?
-        attach_logger
+        attach_logger(log_file)
       end
 
       yield(self) if block_given?

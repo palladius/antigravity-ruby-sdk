@@ -23,6 +23,7 @@ gemfile(true) do
   gem 'websocket', '~> 1.2'
   gem 'telegram-bot-ruby', '~> 2.0'
   gem 'dotenv', '~> 3.0'
+  gem 'base64'  # No longer in Ruby 3.4 default gems
 end
 
 # Load .env if present
@@ -85,13 +86,27 @@ module GeminiAudio
     req.body = JSON.generate(payload)
 
     resp = http.request(req)
-    body = JSON.parse(resp.body)
+    resp_body = resp.body
+    $stderr.puts "[DEBUG] Gemini transcription HTTP #{resp.code}" 
 
+    unless resp.is_a?(Net::HTTPSuccess)
+      return { text: nil, language: nil, flag: nil, error: "Gemini API returned #{resp.code}: #{resp_body[0, 200]}" }
+    end
+
+    body = JSON.parse(resp_body)
     raw = body.dig('candidates', 0, 'content', 'parts', 0, 'text')
+
+    unless raw
+      # Could be a safety block or empty response
+      block_reason = body.dig('candidates', 0, 'finishReason') || body.dig('promptFeedback', 'blockReason')
+      return { text: nil, language: nil, flag: nil, error: "Empty transcription (reason: #{block_reason || 'unknown'})" }
+    end
+
     result = JSON.parse(raw)
     flag = LANG_FLAGS[result['language']] || "\u{1F310}"
     { text: result['text'], language: result['language'], flag: flag }
   rescue StandardError => e
+    $stderr.puts "[DEBUG] Transcription error: #{e.class}: #{e.message}"
     { text: nil, language: nil, flag: nil, error: e.message }
   end
 
@@ -128,6 +143,7 @@ class ChatSession
     @history = []
     @agent = Antigravity::Agent.new(
       skills: skills,
+      log_file: 'log/telegram.jsonl',
       system_instruction: "You are a helpful assistant on Telegram. Be concise and use emojis. " \
                           "Keep responses under 4000 characters (Telegram limit). " \
                           "When replying to transcribed voice messages, acknowledge the language."
@@ -238,6 +254,9 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
 
       next unless user_text && !user_text.empty?
 
+      # --- CLI: show user message in cyan ---
+      puts "\e[36m[#{chat_id}] 👤 #{user_text}\e[0m"
+
       # --- Send to Agent ---
       bot.api.send_chat_action(chat_id: chat_id, action: 'typing')
 
@@ -251,6 +270,9 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
         if full_response.length > 4000
           full_response = full_response[0, 3990] + "\n\n_(truncated)_"
         end
+
+        # --- CLI: show bot response in green ---
+        puts "\e[32m[#{chat_id}] 🤖 #{full_response.empty? ? '(empty)' : full_response[0, 200]}#{'...' if full_response.length > 200}\e[0m"
 
         bot.api.send_message(
           chat_id: chat_id,
