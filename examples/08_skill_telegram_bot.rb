@@ -279,6 +279,44 @@ FILE_TOOLS << Antigravity::Tool.define(:find_skills,
   end
 }
 
+# Global sessions hash — tools need access to add skills dynamically
+SESSIONS = {}
+
+FILE_TOOLS << Antigravity::Tool.define(:load_skill,
+  desc: 'Dynamically load a skill into the current agent session by path. Use after find_skills to activate a discovered skill.',
+  params: {
+    skill_path: { type: :string, desc: 'Full path to the skill directory (containing SKILL.md)' },
+    chat_id: { type: :string, desc: 'Current chat ID (pass your chat_id)', required: false }
+  }
+) { |skill_path:, chat_id: nil|
+  expanded = File.expand_path(skill_path)
+  skill_md = File.join(expanded, 'SKILL.md')
+
+  unless File.exist?(skill_md)
+    next "Skill not found at #{expanded} (no SKILL.md)"
+  end
+
+  # Find session and add skill
+  session = SESSIONS.values.last # fallback: most recent session
+  if chat_id
+    cid = chat_id.to_i
+    session = SESSIONS[cid] if SESSIONS[cid]
+  end
+
+  unless session
+    next "No active session to load skill into."
+  end
+
+  begin
+    session.agent.add_skills([expanded])
+    loaded = session.agent.skills.find { |s| s.path&.include?(File.basename(expanded)) }
+    name = loaded ? loaded.name : File.basename(expanded)
+    "Skill '#{name}' loaded from #{expanded}"
+  rescue => e
+    "Failed to load skill: #{e.message}"
+  end
+}
+
 puts "🔍 Skill discovery: #{SKILL_SEARCH_DIRS.size} directories indexed".to_cyan
 
 # --- Per-Chat Agent Sessions ---
@@ -316,7 +354,7 @@ class ChatSession
 end
 
 # --- Main Bot Loop ---
-sessions = {}
+sessions = SESSIONS
 CHAT_ID = ENV['TELEGRAM_CHAT_ID']&.to_i
 VERSION = File.read(File.expand_path('../VERSION', __dir__)).strip rescue '?'
 
