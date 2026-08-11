@@ -175,13 +175,24 @@ end
 
 # --- Main Bot Loop ---
 sessions = {}
+CHAT_ID = ENV['TELEGRAM_CHAT_ID']&.to_i
+VERSION = File.read(File.expand_path('../VERSION', __dir__)).strip rescue '?'
 
-puts "🚀 Starting Telegram long-polling loop..."
-puts "   Send /start to the bot to begin!"
-puts "   Press Ctrl+C to stop."
+puts "🚀 Starting Telegram long-polling loop...".to_bold
+puts "   Press Ctrl+C to stop.".to_gray
 puts
 
 Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
+  # Proactive greeting on startup!
+  if CHAT_ID && CHAT_ID > 0
+    greeting = "💎 *Ruby Antigravity SDK — Telegram Bot* v#{VERSION}\n\n" \
+               "🤗 Ciao, come butta? Sono il tuo agente Ruby, pronto a servirti!\n\n" \
+               "Mandami un messaggio di testo o vocale 🎤\n" \
+               "Comandi: /start /skills /stop"
+    bot.api.send_message(chat_id: CHAT_ID, text: greeting, parse_mode: 'Markdown')
+    puts "👋 Greeting sent to chat #{CHAT_ID}".to_green
+  end
+
   bot.listen do |message|
     chat_id = message.chat.id
 
