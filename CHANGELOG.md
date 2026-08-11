@@ -2,9 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.5] - 2026-08-11 🪵✨
+* 🪄 Added automagic Rails & ENV-aware logger initialization (Closes #2):
+  1. Auto-attaches `Rails.logger` if defined.
+  2. Auto-attaches standard file logger unless `ENV['ANTIGRAVITY_LOGGER']` is `false`.
+  3. Resolves log target to `log/#{ENV['RAILS_ENV']}.log` when `RAILS_ENV` / `RACK_ENV` is set, defaulting to `log/antigravity.log`.
+  4. Outputs `🪵 Logging to [TARGET]` on agent initialization.
+  5. Auto-creates `log/` directory via `FileUtils.mkdir_p`.
+
 ## [0.1.4] - 2026-08-11 🪵
-* 🪵 Added `Antigravity::Guards::AgentLogger` and `Agent#attach_logger("log/antigravity.log")` for logging prompts, responses, and tool calls to standard Ruby/Rails log targets (`log/development.log`, `Rails.logger`, or file targets).
-* 📦 Added explicit `logger` dependency for Ruby 3.5+ compatibility.
+* 🪵 Added `Antigravity::Guards::AgentLogger` and `Agent#attach_logger("log/antigravity.log")` for logging prompts, responses, and tool calls to standard Ruby/Rails log targets.
 
 ## [0.1.3] - 2026-08-11 🛡️
 * 🛡️ Added `Antigravity::Guards::FileProtection` (`files: [".env", "Gemfile"]`) and `Antigravity::Guards::SecretMasker` as clean, opt-in helper classes in `lib/antigravity/guards.rb`.

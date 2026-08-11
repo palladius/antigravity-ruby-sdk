@@ -8,7 +8,7 @@ puts "================================================"
 
 # Define a declarative tool by subclassing Antigravity::Tool
 class WeatherTool < Antigravity::Tool
-  name "get_weather", desc: "Fetches live weather reports"
+  name :get_weather, desc: "Fetches live weather reports"
   param :location, type: :string, description: "City or region", required: true
 
   def call(location:)

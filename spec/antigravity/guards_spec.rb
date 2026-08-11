@@ -4,15 +4,18 @@ require "spec_helper"
 
 RSpec.describe Antigravity::Guards do
   describe Antigravity::Guards::AgentLogger do
-    let(:tmp_log) { "tmp/test_agent_logger.log" }
-    subject(:agent) { Antigravity::Agent.new }
+    let(:tmp_dir) { "tmp/test_logs" }
+    let(:tmp_log) { "#{tmp_dir}/custom_agent.log" }
 
     after do
-      FileUtils.rm_f(tmp_log)
+      FileUtils.rm_rf(tmp_dir)
+      ENV.delete("ANTIGRAVITY_LOGGER")
+      ENV.delete("RAILS_ENV")
     end
 
-    it "logs agent prompts, responses, and tool calls to specified log file" do
-      agent.attach_logger(tmp_log)
+    it "automagically logs agent prompts, responses, and tool calls to specified log file" do
+      agent = Antigravity::Agent.new(auto_logger: false)
+      agent.attach_logger(tmp_log, silent_notice: true)
       agent.register_tool("ping", description: "Pings server") { "pong" }
 
       agent.ask("Run ping")
@@ -21,6 +24,31 @@ RSpec.describe Antigravity::Guards do
       log_content = File.read(tmp_log)
       expect(log_content).to include("[Antigravity::Prompt] User: 'Run ping'")
       expect(log_content).to include("[Antigravity::Response] Assistant (gemini-flash-latest):")
+    end
+
+    it "prints startup notice '🪵 Logging to ...' when logger is attached" do
+      expect {
+        Antigravity::Agent.new(model: "gemini-flash-latest", auto_logger: false).attach_logger(tmp_log)
+      }.to output(/🪵 Logging to tmp\/test_logs\/custom_agent\.log/).to_stdout
+    end
+
+    it "suppresses automagic logger when ENV['ANTIGRAVITY_LOGGER'] is false" do
+      ENV["ANTIGRAVITY_LOGGER"] = "false"
+      expect {
+        agent = Antigravity::Agent.new
+        expect(agent.logger_guard).to be_nil
+      }.not_to output(/🪵 Logging to/).to_stdout
+    end
+
+    it "uses log/RAILS_ENV.log when ENV['RAILS_ENV'] is set" do
+      ENV["RAILS_ENV"] = "test_environment"
+      expect {
+        agent = Antigravity::Agent.new(auto_logger: false)
+        guard = agent.attach_logger
+        expect(guard.target_description).to eq("log/test_environment.log")
+      }.to output(/🪵 Logging to log\/test_environment\.log/).to_stdout
+
+      FileUtils.rm_f("log/test_environment.log")
     end
   end
 
