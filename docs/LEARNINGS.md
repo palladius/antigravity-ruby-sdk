@@ -125,6 +125,50 @@ Mitigations:
 Each test creates a fresh `Agent` with its own harness process and WebSocket.
 The `after(:each)` cleanup with `@agent&.close! rescue nil` is essential.
 
+## Developer Experience
+
+### Stateless Examples with `rv` + `bundler/inline`
+Use `rv` (Ruby's answer to Python's `uv`) for zero-install script execution.
+Each example self-resolves its deps via `bundler/inline`:
+```ruby
+require 'bundler/inline'
+gemfile(true) do
+  source 'https://rubygems.org'
+  gem 'websocket', '~> 1.2'
+end
+```
+Then just: `rv run ruby -Ilib examples/04_simple_llm_chat.rb` — no `gem install`, 
+no `bundle exec`, no state. Gems are cached after first run.
+
+### Timeout Tuning
+- **20s default** (dev) is too aggressive — model can take >30s to start responding under load
+- **40s** is the sweet spot for integration tests
+- **120s** for production/complex agentic tasks
+- All configurable via ENV: `ANTIGRAVITY_TIMEOUT_LLM=60 ruby my_agent.rb`
+- Per-call override: `agent.ask("complex question", timeout: 90)`
+
+### The FULLY_IDLE Race Condition
+When `trajectoryStateUpdate(STATE_FULLY_IDLE)` arrives, it sets `finished = true`.
+But the stop condition `finished && msg.key?(:trajectoryStateUpdate)` matches
+on the SAME message — exiting before usage data arrives.
+
+**Fix**: Track `finished_this_msg` flag to skip same-message stop:
+```ruby
+finished_this_msg = false
+if traj[:state] =~ /FULLY_IDLE/ && !finished
+  finished = true
+  finished_this_msg = true
+end
+# Stop only on SUBSEQUENT metadata messages
+if finished && !finished_this_msg && (msg.key?(:trajectoryStateUpdate) || msg.key?(:usageUpdate))
+  :stop
+end
+```
+
+### POLA: Workspace Indexing Warning
+Setting a workspace causes the harness to index the entire directory tree.
+Always warn users: `"⏳ Indexing workspace: /path — this may take a moment..."`
+
 ## Reference: Python SDK Architecture
 - `LocalConnection` spawns the binary, does stdio handshake, connects WebSocket
 - `EventProcessor` handles all message routing (steps, tools, hooks, policies)
