@@ -1,4 +1,0 @@
-
-rv-test:
-	rv run  ruby -Ilib examples/01_hello_world.rb
-
