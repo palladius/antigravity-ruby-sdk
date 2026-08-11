@@ -30,7 +30,8 @@ puts
 # Create agent WITH workspace — harness will index it
 agent = Antigravity::Agent.new(
   workspace: workspace,
-  system_instruction: 'You are a senior code reviewer. Be concise and specific. ' \
+  system_instruction: 'You are a senior code reviewer with access to the workspace filesystem. ' \
+                      'Use the available tools (list_dir, view_file) to explore the codebase. ' \
                       'Focus on architecture, tech stack, and purpose. 5 sentences max.'
 )
 
