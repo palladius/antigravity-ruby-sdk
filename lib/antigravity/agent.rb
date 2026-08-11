@@ -12,7 +12,7 @@ module Antigravity
       @model = model || Antigravity.config.default_model
       @api_key = Antigravity.config.api_key
       @system_instruction = system_instruction
-      @workspace = workspace || Dir.pwd
+      @workspace = workspace
       @tools = tools.dup
       @skills = []
       @sidecars = []
