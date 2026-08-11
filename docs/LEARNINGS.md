@@ -187,6 +187,15 @@ directory (`spec/fixtures/honeypot/`) with just 2 files (~15 lines total).
 Indexing is near-instant vs 120+ seconds for a real project.
 This makes workspace-dependent tests fast AND deterministic.
 
+### Workspace Tools Need Explicit System Instructions
+Setting a workspace gives the harness built-in tools (`list_dir`, `view_file`, `grep_search`),
+but **the model won't use them** unless the system instruction explicitly says so!
+Without it, flash-lite literally responds "I cannot directly access local files" 
+with 0 tool calls. Always include:
+```
+"You have access to the workspace filesystem. Use list_dir and view_file to explore it."
+```
+
 ## Reference: Python SDK Architecture
 - `LocalConnection` spawns the binary, does stdio handshake, connects WebSocket
 - `EventProcessor` handles all message routing (steps, tools, hooks, policies)

@@ -208,10 +208,18 @@ module Antigravity
       end
 
       # Add system instructions if specified (protobuf: SystemInstructions.custom.part[])
-      if @system_instruction && !@system_instruction.empty?
+      effective_instructions = @system_instruction || ''
+
+      # Auto-append workspace tool hints — models (esp. flash-lite) won't use tools unless told
+      if @workspace && !effective_instructions.match?(/list_dir|view_file|tools/i)
+        tool_hint = 'You have access to the workspace filesystem. Use the available tools (list_dir, view_file, grep_search) to explore it.'
+        effective_instructions = effective_instructions.empty? ? tool_hint : "#{effective_instructions}\n#{tool_hint}"
+      end
+
+      unless effective_instructions.empty?
         config[:config][:systemInstructions] = {
           custom: {
-            part: [{ text: @system_instruction }]
+            part: [{ text: effective_instructions }]
           }
         }
       end
