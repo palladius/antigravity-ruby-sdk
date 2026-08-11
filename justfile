@@ -54,5 +54,9 @@ rv-workspace DIR=".":
 rv-skill-audit DIR=".":
     rv run ruby examples/06_skill_security_audit.rb {{DIR}}
 
+# Remote skills demo: SRE post-mortem from GitHub
+rv-sre-postmortem DIR=".":
+    rv run ruby examples/07_skill_remote_sre.rb {{DIR}}
+
 # Run all rv examples
-rv-examples: rv-chat rv-workspace rv-skill-audit
+rv-examples: rv-chat rv-workspace rv-skill-audit rv-sre-postmortem
