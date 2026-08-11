@@ -62,5 +62,9 @@ rv-skill-sre-postmortem DIR=".":
 rv-skill-telegram:
     rv run ruby examples/08_skill_telegram_bot.rb
 
+# E2E test for telegram bot agent pipeline (no Telegram needed!)
+rv-e2e-telegram:
+    rv run ruby examples/08_e2e_telegram_bot.rb
+
 # Run all rv examples (excludes telegram — it's a long-running daemon)
 rv-examples: rv-chat rv-workspace rv-skill-audit rv-skill-sre-postmortem

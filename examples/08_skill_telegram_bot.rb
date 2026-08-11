@@ -268,7 +268,7 @@ FILE_TOOLS << Antigravity::Tool.define(:find_skills,
       skill_dir = File.dirname(skill_file)
       skill_name = File.basename(skill_dir)
       if query.empty? || skill_name.downcase.include?(query.downcase)
-        content = File.read(skill_file) rescue ''
+        content = File.read(skill_file, encoding: 'UTF-8', invalid: :replace, undef: :replace) rescue ''
         desc = content.match(/^description:\s*(.+)$/i)&.[](1)&.strip || '(no description)'
         results << "#{skill_name}: #{desc[0, 80]}\n  path: #{skill_dir}"
       end
