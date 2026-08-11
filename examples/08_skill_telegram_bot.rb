@@ -310,10 +310,12 @@ FILE_TOOLS << Antigravity::Tool.define(:load_skill,
   end
 
   begin
+    content = File.read(skill_md, encoding: 'UTF-8', invalid: :replace, undef: :replace)
     session.agent.add_skills([expanded])
     loaded = session.agent.skills.find { |s| s.path&.include?(File.basename(expanded)) }
     name = loaded ? loaded.name : File.basename(expanded)
-    "Skill '#{name}' loaded from #{expanded}"
+    # Return the FULL skill content so the LLM has it in context immediately.
+    "Skill '#{name}' loaded successfully from #{expanded}.\n\n--- SKILL CONTENT ---\n#{content}\n--- END SKILL ---"
   rescue => e
     "Failed to load skill: #{e.message}"
   end

@@ -129,7 +129,7 @@ TOOLS << Antigravity::Tool.define(:find_skills,
 }
 
 TOOLS << Antigravity::Tool.define(:load_skill,
-  desc: 'Dynamically load a skill into the current agent session by path. Use after find_skills to activate a discovered skill.',
+  desc: 'Dynamically load a skill into the current agent session by path. Returns the full skill content so you can use it immediately.',
   params: {
     skill_path: { type: :string, desc: 'Full path to the skill directory (containing SKILL.md)' },
     chat_id: { type: :string, desc: 'Current chat ID', required: false }
@@ -145,10 +145,13 @@ TOOLS << Antigravity::Tool.define(:load_skill,
     next "No active session to load skill into."
   end
   begin
+    content = File.read(skill_md, encoding: 'UTF-8', invalid: :replace, undef: :replace)
     session.agent.add_skills([expanded])
     loaded = session.agent.skills.find { |s| s.path&.include?(File.basename(expanded)) }
     name = loaded ? loaded.name : File.basename(expanded)
-    "Skill '#{name}' loaded from #{expanded}"
+    # Return the FULL skill content so the LLM has it in context immediately.
+    # This is how real dynamic skill loading works — the tool response IS the knowledge.
+    "Skill '#{name}' loaded successfully from #{expanded}.\n\n--- SKILL CONTENT ---\n#{content}\n--- END SKILL ---"
   rescue => e
     "Failed to load skill: #{e.message}"
   end
@@ -240,42 +243,46 @@ begin
   puts
 
   # ========================================================================
-  # Phase 3: Restart session WITH the discovered skill
+  # Phase 3: Load skill via session restart (v1.0 approach)
   # ========================================================================
-  puts "📋 Phase 3: Restart Session with Skill".to_bold
+  # v1.0 LIMITATION: The harness can't inject new skill content mid-session.
+  # The LLM calling load_skill with full SKILL.md content causes a WebSocket
+  # timeout (>180s). Until GH#15 is resolved (full skill directory support),
+  # we restart the session with the skill pre-loaded — same as /reset in bot.
+  #
+  # Future (GH#15): load_skill should handle full skill dirs (scripts/,
+  # resources/, etc.) and inject mid-session without restart.
+  puts "📋 Phase 3: Load Skill (session restart — v1.0)".to_bold
   todo_path = File.expand_path('~/git/pvt-skillume/gemini-cli-palladius-private-goodies/skills/riccardo-todo')
 
-  # NO CHEATING: close the old session, create a new one with the skill
-  # pre-loaded. This is what the Telegram bot /reset would do, or what
-  # happens when a user says "add this skill" and we restart the session.
-  puts "     🔌 Closing old session...".to_gray
+  puts "     🔌 Closing session...".to_gray
   session.close!
   SESSIONS.delete(1)
 
   new_skills = boot_skills + [todo_path]
-  puts "     🔄 Reconnecting with #{new_skills.size} skills: #{new_skills.map { |s| File.basename(s) }.join(', ')}".to_cyan
+  puts "     🔄 Restarting with skills: #{new_skills.map { |s| File.basename(s) }.join(', ')}".to_cyan
   session = ChatSession.new(skills: new_skills, tools: TOOLS)
   SESSIONS[1] = session
 
-  runner.assert("New session connected") { session.agent != nil }
-  runner.assert("New session has more skills than before") { session.agent.skills.size > skills_before }
+  runner.assert("Session reconnected") { session.agent != nil }
+  runner.assert("Agent has more skills than before") { session.agent.skills.size > skills_before }
 
   todo_skill = session.agent.skills.find { |s| s.name&.downcase&.include?('riccardo') || s.name&.downcase&.include?('todo') }
-  runner.assert("riccardo-todo skill object exists in new session") { !todo_skill.nil? }
+  runner.assert("riccardo-todo in agent.skills") { !todo_skill.nil? }
   if todo_skill
-    puts "     📚 Loaded skill: #{todo_skill.name} (#{todo_skill.path})".to_yellow
+    puts "     📚 Loaded: #{todo_skill.name} (#{todo_skill.path})".to_yellow
   end
   puts
 
   # ========================================================================
-  # Phase 4: Use the skill — ask about Riccardo's todos (NO CHEATING!)
+  # Phase 4: Use the skill — harness provides skill context natively
   # ========================================================================
-  puts "📋 Phase 4: Use Loaded Skill (honest!)".to_bold
-  # The harness now has riccardo-todo in its skill context from session creation.
-  # Ask a question that ONLY the skill content can answer.
+  puts "📋 Phase 4: Use Loaded Skill".to_bold
+  # The harness injected riccardo-todo at session creation.
+  # No hints, no content in prompt — the LLM gets it from the harness.
   response3 = session.ask("Where is Riccardo's to-do list file stored? What exact file path?")
   runner.assert_includes("Response mentions Obsidian", response3, "obsidian")
-  runner.assert_includes("Response mentions the TODO file path", response3, "todo")
+  runner.assert_includes("Response mentions TODO file", response3, "todo")
   puts
 
   # ========================================================================
