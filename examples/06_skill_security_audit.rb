@@ -70,18 +70,8 @@ puts
 agent.connect!
 puts
 
-question = <<~Q
-  Review this Ruby codebase for code quality and best practices.
-  Use the code-quality-review skill checklist. Check:
-  1. Are there proper frozen_string_literal pragmas?
-  2. Are dependencies properly pinned in Gemfile?
-  3. Is error handling robust?
-  4. Any code patterns that could be improved?
-  5. Are there any hardcoded values that should be configurable?
-
-  Use severity-emoji formatting. Max 10 findings.
-  End with a severity summary.
-Q
+question = "Use the code-quality-review skill to review the code in #{File.expand_path(workspace)}. " \
+           "Apply the severity-emoji skill for output formatting. Max 10 findings."
 
 puts "#{Antigravity.emoji(:prompt)} Review question submitted..."
 puts
