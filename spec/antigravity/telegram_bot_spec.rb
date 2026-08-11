@@ -393,6 +393,21 @@ RSpec.describe 'Telegram Bot Script' do
       expect(script_content).to include(':load_skill')
     end
 
+    it 'defines BOT_VERSION constant in semver format' do
+      match = script_content.match(/BOT_VERSION\s*=\s*'(\d+\.\d+\.\d+)'/)
+      expect(match).not_to be_nil, 'BOT_VERSION not found or not semver'
+      version = match[1]
+      major, minor, patch = version.split('.').map(&:to_i)
+      expect(major).to be >= 0
+      expect(minor).to be >= 0
+      expect(patch).to be >= 0
+    end
+
+    it 'shows BOT_VERSION in /status output' do
+      expect(script_content).to include('BOT_VERSION')
+      expect(script_content).to match(/Bot v.*BOT_VERSION/)
+    end
+
     it 'handles 409 Conflict errors' do
       expect(script_content).to include("409")
       expect(script_content).to include('Conflict')

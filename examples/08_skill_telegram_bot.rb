@@ -54,8 +54,10 @@ SKILLS      = ENV.fetch('TELEGRAM_SKILLS', '').split(',').map(&:strip).reject(&:
                 .map { |s| s.start_with?('http') ? s : File.expand_path(s) }
 AGENT_MODEL = ENV.fetch('GEMINI_MODEL', 'gemini-2.5-flash-lite')
 TRANSCRIPTION_MODEL = ENV.fetch('GEMINI_TRANSCRIPTION_MODEL', AGENT_MODEL)
+BOT_VERSION = '0.4.0' # Bump on every meaningful change!
 
 puts '🤖 Antigravity Telegram Bot'.to_bold
+puts "   v#{BOT_VERSION}".to_magenta
 puts '=' * 40
 puts
 puts "📡 Bot token: #{BOT_TOKEN[0..5]}...#{BOT_TOKEN[-4..]}".to_gray
@@ -436,10 +438,12 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
           turns = session ? session.history.size : 0
           bot.api.send_message(
             chat_id: chat_id,
-            text: "✴️ Agent: `#{AGENT_MODEL}`\n" \
+            text: "🤖 Bot v#{BOT_VERSION} | SDK v#{VERSION}\n" \
+                  "✴️ Agent: `#{AGENT_MODEL}`\n" \
                   "🎤 Transcription: `#{TRANSCRIPTION_MODEL}`\n" \
                   "💬 Turns: #{turns}\n" \
-                  "📚 Skills: #{SKILLS.size}",
+                  "📚 Skills: #{SKILLS.size}\n" \
+                  "🛠️ Tools: #{FILE_TOOLS.size}",
             parse_mode: 'Markdown'
           )
           next
