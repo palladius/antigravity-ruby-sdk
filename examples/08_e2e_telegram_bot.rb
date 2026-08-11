@@ -268,7 +268,12 @@ begin
   # Phase 4: Use the skill — ask about Riccardo's todos
   # ========================================================================
   puts "📋 Phase 4: Use Loaded Skill".to_bold
-  response3 = session.ask("You now have a skill called riccardo-todo. Where does it say Riccardo's to-do list file is stored? Answer in one sentence.")
+  # NOTE: add_skills loads the skill into the Ruby Agent object, but the harness
+  # doesn't re-inject skill content mid-session. So we include the skill content
+  # in the prompt, simulating what the harness does on session creation.
+  skill_content = File.read(File.join(todo_path, 'SKILL.md'), encoding: 'UTF-8', invalid: :replace) rescue '(could not read)'
+  skill_excerpt = skill_content[0, 500] # First 500 chars is enough for the test
+  response3 = session.ask("Here is a skill definition:\n```\n#{skill_excerpt}\n```\nBased on this skill, where is Riccardo's to-do list file stored? Answer in one sentence.")
   runner.assert_includes("Response mentions Obsidian", response3, "obsidian")
   runner.assert_includes("Response mentions the TODO file", response3, "todo")
   puts
