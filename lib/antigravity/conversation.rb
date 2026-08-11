@@ -52,7 +52,7 @@ module Antigravity
     #
     # @param prompt [String] user message
     # @return [Message] the complete response
-    def chat(prompt, timeout: 30, &block)
+    def chat(prompt, timeout: Antigravity.config.timeout_llm, &block)
       raise ProtocolError, 'Session not initialized' unless @initialized
 
       @turn_count += 1
@@ -86,7 +86,7 @@ module Antigravity
 
     private
 
-    def collect_response(timeout: 30, &block)
+    def collect_response(timeout: Antigravity.config.timeout_llm, &block)
       text_parts = []
       thinking_parts = []
       steps = []
