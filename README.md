@@ -6,7 +6,7 @@
 
 An elegant, expressive, and human-friendly Ruby SDK for building autonomous AI agents with **Google Antigravity**.
 
-Inspired by the Ruby community's philosophy of developer happiness and standard conventions (such as `RubyLLM`), `antigravity-sdk` lets you configure agents, stream thoughts & token deltas, invoke declarative/dynamic tools, manage async sidecars, and attach custom lifecycle hooks with minimal boilerplate.
+Inspired by the Ruby community's philosophy of developer happiness and standard conventions (such as `RubyLLM`), `antigravity-sdk` lets you configure agents, stream thoughts & token deltas, invoke declarative/dynamic tools, manage async sidecars, and attach opt-in safety guards with minimal boilerplate.
 
 ---
 
@@ -44,24 +44,14 @@ end
 
 ---
 
-## 🛡️ Custom Tool Hooks & Sidecars
+## 🛡️ Opt-In Configurable Guards & Sidecars
 
-You can easily attach custom pre-tool and post-tool hooks for permission guardrails and secret masking:
+`antigravity-sdk` ships with opt-in guard helpers like `Antigravity::Guards::FileProtection` and `Antigravity::Guards::SecretMasker`:
 
 ```ruby
-# Example Custom Pre-Hook Guard: Block edits to sensitive files
-class FileProtectionGuard
-  def call(tool_name, params)
-    path = params[:path] || params["path"]
-    if path == ".env" || path == "Gemfile"
-      { status: :deny, reason: "Editing #{path} requires explicit approval." }
-    else
-      :allow
-    end
-  end
-
-  def to_proc; method(:call).to_proc; end
-end
+# Configurable file protection guard (pass custom files, or use defaults)
+file_guard = Antigravity::Guards::FileProtection.new(files: [".env", "Gemfile", "config/database.yml"])
+secret_masker = Antigravity::Guards::SecretMasker.new
 
 # Attach Audit Logger Sidecar
 audit_logger = Antigravity::Sidecar::AuditLogger.new("log/agent_audit.jsonl")
@@ -69,8 +59,9 @@ audit_logger = Antigravity::Sidecar::AuditLogger.new("log/agent_audit.jsonl")
 agent = Antigravity::Agent.new do |a|
   a.attach_sidecar(audit_logger)
 
-  # Attach custom pre-tool guardrail
-  a.before_tool_call(&FileProtectionGuard.new)
+  # Explicitly attach configurable guards
+  a.before_tool_call(&file_guard)
+  a.after_tool_call(&secret_masker)
 end
 
 # Ask agent

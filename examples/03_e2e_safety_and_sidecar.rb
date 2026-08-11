@@ -3,61 +3,25 @@
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 require "antigravity"
 
-puts "🛡️ Antigravity Ruby SDK — Custom Safety Hooks & Sidecar Example"
+puts "🛡️ Antigravity Ruby SDK — Configurable Guards & Sidecar Example"
 puts "==================================================================="
 
-# --- Educational Sample Hook 1: Pre-Tool File Guard ---
-# Illustrates how developers can create custom policy guards by returning :allow or :deny
-class ProtectedFilesGuard
-  PROTECTED_PATTERNS = [/\.env(\..*)?$/i, /Gemfile(\.lock)?$/i].freeze
-
-  def call(tool_name, params)
-    path = params[:path] || params["path"]
-    return :allow unless path
-
-    if PROTECTED_PATTERNS.any? { |pattern| path =~ pattern }
-      { status: :deny, reason: "Security Policy: Edits to '#{path}' are restricted and require user approval." }
-    else
-      :allow
-    end
-  end
-
-  def to_proc
-    method(:call).to_proc
-  end
-end
-
-# --- Educational Sample Hook 2: Post-Tool Secret Masker ---
-# Illustrates how developers can sanitize or redact sensitive data from tool outputs
-class SecretMasker
-  SECRET_PATTERNS = [/(AIzaSy[A-Za-z0-9_-]{25,45})/].freeze
-
-  def call(_tool_name, _params, result)
-    return result unless result.is_a?(String)
-
-    sanitized = result.dup
-    SECRET_PATTERNS.each { |pattern| sanitized.gsub!(pattern, "[REDACTED_SECRET]") }
-    sanitized
-  end
-
-  def to_proc
-    method(:call).to_proc
-  end
-end
-
-# --- Scenario Execution ---
-
+# 1. Instantiate AuditLogger Sidecar
 audit_logger = Antigravity::Sidecar::AuditLogger.new("log/safety_demo_audit.jsonl")
 
-agent = Antigravity::Agent.new do |a|
-  a.system_instruction = "You are an agent with custom security policy hooks."
+# 2. Instantiate opt-in Configurable Guards
+file_guard = Antigravity::Guards::FileProtection.new(files: [".env", "Gemfile"])
+secret_masker = Antigravity::Guards::SecretMasker.new
 
-  # Attach sidecar for async background log streaming
+# 3. Build Agent and attach hooks & sidecar explicitly
+agent = Antigravity::Agent.new do |a|
+  a.system_instruction = "You are an agent equipped with opt-in FileProtection and SecretMasker guards."
+
   a.attach_sidecar(audit_logger)
 
-  # Attach custom pre/post tool hooks
-  a.before_tool_call(&ProtectedFilesGuard.new)
-  a.after_tool_call(&SecretMasker.new)
+  # Explicitly attach configurable guards
+  a.before_tool_call(&file_guard)
+  a.after_tool_call(&secret_masker)
 
   # Register tools
   a.register_tool("write_file", description: "Modifies file content") do |params|
@@ -89,4 +53,4 @@ if File.exist?("log/safety_demo_audit.jsonl")
 end
 
 puts "==================================================================="
-puts "✅ Custom Safety Hooks & Sidecar Example Completed Successfully!"
+puts "✅ Configurable Guards & Sidecar Example Completed Successfully!"
