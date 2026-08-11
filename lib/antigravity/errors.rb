@@ -21,4 +21,7 @@ module Antigravity
 
   # Raised when WebSocket connection fails
   class ConnectionError < Error; end
+
+  # Raised when required configuration (e.g., GEMINI_API_KEY) is missing
+  class ConfigError < Error; end
 end

@@ -177,16 +177,49 @@ module Antigravity
     end
 
     def build_harness_config
+      api_key = ENV.fetch('GEMINI_API_KEY') {
+        raise ConfigError, 'GEMINI_API_KEY environment variable is required'
+      }
+
       config = {
-        initializeConversation: {
-          harnessConfig: {
-            model: @model,
-            systemInstruction: @system_instruction,
-            workspaceDir: @workspace,
-            hostTools: @tool_runner.to_harness_tools
-          }
+        config: {
+          models: [
+            {
+              name: @model,
+              geminiApiEndpoint: {
+                apiKey: api_key
+              }
+            }
+          ]
         }
       }
+
+      # Add workspaces if specified
+      if @workspace
+        config[:config][:workspaces] = [
+          {
+            filesystemWorkspace: {
+              directory: File.expand_path(@workspace)
+            }
+          }
+        ]
+      end
+
+      # Add system instructions if specified
+      if @system_instruction && !@system_instruction.empty?
+        config[:config][:systemInstructions] = {
+          instructions: [{ text: @system_instruction }]
+        }
+      end
+
+      # Add custom tools
+      if @tool_runner && !@tool_runner.empty?
+        config[:config][:tools] = @tool_runner.to_harness_tools
+      end
+
+      # App data dir
+      config[:config][:appDataDir] = File.expand_path('~/.gemini/antigravity')
+
       config
     end
   end

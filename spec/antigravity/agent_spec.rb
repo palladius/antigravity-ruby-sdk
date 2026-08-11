@@ -9,8 +9,8 @@ RSpec.describe Antigravity::Agent do
     end
   end
 
-  it "initializes with sensible default model gemini-flash-latest and system instruction" do
-    expect(agent.model).to eq("gemini-flash-latest")
+  it "initializes with sensible default model and system instruction" do
+    expect(agent.model).to eq(Antigravity.config.default_model)
     expect(agent.system_instruction).to eq("You are a helpful test agent")
   end
 
@@ -32,6 +32,6 @@ RSpec.describe Antigravity::Agent do
     expect(chunks.any?).to be true
     expect(chunks.first).to be_a(Antigravity::Chunk)
     expect(final_message).to be_a(Antigravity::Message)
-    expect(final_message.content).to include("gemini-flash-latest")
+    expect(final_message.content).to include(Antigravity.config.default_model)
   end
 end

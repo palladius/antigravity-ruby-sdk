@@ -24,7 +24,7 @@ RSpec.describe Antigravity::Guards do
       expect(File.exist?(tmp_log)).to be true
       log_content = File.read(tmp_log, encoding: "UTF-8")
       expect(log_content).to include("💬 [Antigravity::Prompt] User: 'Run ping'")
-      expect(log_content).to include("🤖 [Antigravity::Response] Assistant (gemini-flash-latest):")
+      expect(log_content).to include("🤖 [Antigravity::Response] Assistant (#{Antigravity.config.default_model}):")
       expect(log_content).to include("🛠️ [Antigravity::Tool] Executing 'ping'")
       expect(log_content).to include("📦 [Antigravity::Tool] Result for 'ping': pong")
     end

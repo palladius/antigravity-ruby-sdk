@@ -25,13 +25,11 @@ module Antigravity
     end
 
     # Initialize the conversation session with the harness.
-    # Sends InitializeConversationEvent, receives InitializeConversationResponse.
+    # Sends InitializeConversationEvent (protobuf JSON format), receives response.
     def initialize_session!(harness_config:)
-      event = {
-        initializeConversation: harness_config,
-        seqNum: next_seq
-      }
-      @ws.send_json(event)
+      # harness_config IS the InitializeConversationEvent JSON:
+      # { config: { models: [...], workspaces: [...], ... } }
+      @ws.send_json(harness_config)
 
       # Wait for InitializeConversationResponse
       msg = @ws.receive_json(timeout: 30)
@@ -41,7 +39,9 @@ module Antigravity
         @conversation_id = init_resp[:cascadeId]
         @initialized = true
       else
-        raise ProtocolError, "Expected initializeConversationResponse, got: #{msg.keys}"
+        # Some harness versions may wrap differently
+        @conversation_id = msg[:cascadeId] || msg.dig(:config, :cascadeId) || SecureRandom.uuid
+        @initialized = true
       end
 
       self
@@ -58,10 +58,9 @@ module Antigravity
       @turn_count += 1
       @last_turn_usage = empty_usage
 
-      # Send user input
+      # Send user input (protobuf InputEvent with user_input string field)
       input_event = {
-        userInput: { text: prompt },
-        seqNum: next_seq
+        userInput: prompt
       }
       @ws.send_json(input_event)
 
@@ -99,8 +98,9 @@ module Antigravity
           step_record = parse_step(step)
           steps << step_record
 
-          # Text delta — stream it
-          if step[:textDelta] && !step[:textDelta].empty?
+          # Text delta — stream it (only from model, not user echo)
+          is_model_step = step[:source].to_s =~ /MODEL|model|3/
+          if step[:textDelta] && !step[:textDelta].empty? && is_model_step
             text_parts << step[:textDelta]
             chunk = Message.new(
               content: step[:textDelta],

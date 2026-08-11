@@ -6,7 +6,7 @@ module Antigravity
 
     def initialize
       @api_key = ENV["GEMINI_API_KEY"]
-      @default_model = "gemini-flash-latest"
+      @default_model = "gemini-2.5-flash-lite"
       @harness_path = ENV["ANTIGRAVITY_HARNESS_PATH"] || File.expand_path("~/.antigravity/bin/localharness")
       @log_level = :info
     end
