@@ -8,7 +8,7 @@ module Antigravity
                 :workspace, :connection, :conversation
 
     def initialize(model: nil, system_instruction: nil, tools: [],
-                   workspace: nil, auto_logger: true, &block)
+                   skills: [], workspace: nil, auto_logger: true, &block)
       @model = model || Antigravity.config.default_model
       @api_key = Antigravity.config.api_key
       @system_instruction = system_instruction
@@ -26,6 +26,9 @@ module Antigravity
       # Register pre-provided tools into the tool runner
       @tool_runner = ToolRunner.new
       @tools.each { |t| @tool_runner.register(t) }
+
+      # Load skills provided at construction (local paths or GitHub URLs)
+      add_skills(skills) unless Array(skills).empty?
 
       # Automagic Logger attachment unless disabled via ENV["ANTIGRAVITY_LOGGER"]=false or auto_logger: false
       if auto_logger && logger_enabled?
@@ -140,11 +143,54 @@ module Antigravity
       @logger_guard
     end
 
-    def load_skill(skill_path)
-      skill = Skill.load(skill_path)
-      @skills << skill
+    # Add a single skill by path or GitHub URL.
+    # Raises if the path resolves to multiple skills (use add_skills instead).
+    # @param path_or_url [String] local path or GitHub URL
+    # @param skill_name [String, nil] optional specific skill name within a repo
+    # @return [Skill] the loaded skill
+    def add_skill(path_or_url, skill_name: nil)
+      target = skill_name ? "#{path_or_url.to_s.chomp('/')}/#{skill_name}" : path_or_url.to_s
+      paths = SkillResolver.resolve(target)
+      if paths.size > 1
+        raise ArgumentError,
+              "add_skill resolved to #{paths.size} skills. Use add_skills instead, " \
+              "or specify skill_name: to pick one."
+      end
+      raise ArgumentError, "No skill found at #{target}" if paths.empty?
+
+      load_single_skill(paths.first)
+    end
+
+    # Add one or more skills by path or GitHub URL.
+    # Accepts a single string or an array. Each entry is resolved (may expand to multiple).
+    # @param paths_or_urls [String, Array<String>] local paths or GitHub URLs
+    # @return [Array<Skill>] all loaded skills
+    def add_skills(paths_or_urls)
+      Array(paths_or_urls).flat_map do |p|
+        SkillResolver.resolve(p).map { |skill_path| load_single_skill(skill_path) }
+      end
+    end
+
+    # Create and add an inline skill (no file needed).
+    # @param name [String] skill name
+    # @param description [String] what the skill does
+    # @param instructions [String] the skill body (markdown)
+    # @return [Skill] the inline skill
+    def add_inline_skill(name:, description:, instructions:)
+      skill = Skill.inline(name: name, description: description, instructions: instructions)
+      @skills << skill unless @skills.any? { |s| s.name == skill.name }
       skill
     end
+
+    # List discovered skills in a container path (without loading them).
+    # @param path_or_url [String] local path or GitHub URL
+    # @return [Array<String>] skill directory paths
+    def self.list_skills(path_or_url)
+      SkillResolver.resolve(path_or_url)
+    end
+
+    # Legacy alias
+    alias_method :load_skill, :add_skill
 
     def before_prompt(&block)
       hooks.before_prompt(&block)
@@ -241,10 +287,25 @@ module Antigravity
         searchWeb: { enabled: true }
       }
 
+      # Wire skills paths for harness (proto field: skills_paths)
+      unless @skills.empty?
+        skill_paths = @skills.select(&:path).map(&:path)
+        config[:config][:skillsPaths] = skill_paths unless skill_paths.empty?
+      end
+
       # App data dir
       config[:config][:appDataDir] = File.expand_path('~/.gemini/antigravity')
 
       config
+    end
+
+    def load_single_skill(skill_path)
+      # Dedup by path
+      return @skills.find { |s| s.path == skill_path } if @skills.any? { |s| s.path == skill_path }
+
+      skill = Skill.load(skill_path)
+      @skills << skill
+      skill
     end
   end
 end

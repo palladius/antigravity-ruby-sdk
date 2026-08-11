@@ -50,5 +50,9 @@ rv-chat:
 rv-workspace DIR=".":
     rv run ruby examples/05_workspace_analysis.rb {{DIR}}
 
+# Security audit with skills — scans a codebase for vulnerabilities
+rv-security-audit DIR=".":
+    rv run ruby examples/06_security_audit.rb {{DIR}}
+
 # Run all rv examples
-rv-examples: rv-chat rv-workspace
+rv-examples: rv-chat rv-workspace rv-security-audit
