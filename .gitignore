@@ -4,3 +4,4 @@
 *.gem
 .env*
 !.env.dist
+.env
