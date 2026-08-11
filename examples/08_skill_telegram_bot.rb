@@ -1,0 +1,269 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Example 08: Telegram Bot with Skills & Audio Support
+# =====================================================
+# Runs an Antigravity Agent as a Telegram chatbot.
+# Supports text messages, voice/audio transcription, and skills.
+#
+# Usage:
+#   rv run ruby examples/08_skill_telegram_bot.rb
+#   just rv-skill-telegram
+#
+# Required ENV vars (in .env or exported):
+#   TELEGRAM_BOT_TOKEN — from @BotFather
+#   GEMINI_API_KEY     — for the agent + audio transcription
+#
+# Inspired by: ~/git/emorr-agy (Go Telegram + Gemini audio patterns)
+
+require 'bundler/inline'
+
+gemfile(true) do
+  source 'https://rubygems.org'
+  gem 'websocket', '~> 1.2'
+  gem 'telegram-bot-ruby', '~> 2.0'
+  gem 'dotenv', '~> 3.0'
+end
+
+# Load .env if present
+require 'dotenv/load' if File.exist?(File.expand_path('../../.env', __FILE__))
+
+$LOAD_PATH.unshift(File.expand_path('../lib', __dir__))
+require 'antigravity'
+require 'net/http'
+require 'json'
+require 'base64'
+require 'tempfile'
+require 'telegram/bot'
+
+# --- Configuration ---
+BOT_TOKEN   = ENV.fetch('TELEGRAM_BOT_TOKEN') { abort '❌ Missing TELEGRAM_BOT_TOKEN in .env' }
+GEMINI_KEY  = ENV.fetch('GEMINI_API_KEY')      { abort '❌ Missing GEMINI_API_KEY in .env' }
+SKILLS      = ENV.fetch('TELEGRAM_SKILLS', '').split(',').map(&:strip).reject(&:empty?)
+
+puts "🤖 Antigravity Telegram Bot"
+puts '=' * 40
+puts
+puts "📡 Bot token: #{BOT_TOKEN[0..5]}...#{BOT_TOKEN[-4..]}"
+puts "🔑 Gemini key: #{GEMINI_KEY[0..5]}...#{GEMINI_KEY[-4..]}"
+puts "📚 Skills: #{SKILLS.empty? ? '(none)' : SKILLS.join(', ')}"
+puts
+
+# --- Audio Transcription via Gemini Multimodal API ---
+module GeminiAudio
+  TRANSCRIBE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+
+  LANG_FLAGS = {
+    'it' => "\u{1F1EE}\u{1F1F9}", 'en' => "\u{1F1EC}\u{1F1E7}",
+    'es' => "\u{1F1EA}\u{1F1F8}", 'fr' => "\u{1F1EB}\u{1F1F7}",
+    'de' => "\u{1F1E9}\u{1F1EA}", 'pt' => "\u{1F1F5}\u{1F1F9}",
+    'ja' => "\u{1F1EF}\u{1F1F5}", 'zh' => "\u{1F1E8}\u{1F1F3}",
+  }.freeze
+
+  def self.transcribe(audio_path, mime_type, api_key)
+    file_data = File.binread(audio_path)
+    b64 = Base64.strict_encode64(file_data)
+
+    payload = {
+      contents: [{
+        parts: [
+          { inlineData: { mimeType: mime_type, data: b64 } },
+          { text: 'Transcribe the audio verbatim. Identify the primary language (ISO 639-1 code). Return JSON: {"text": "...", "language": "en"}' }
+        ]
+      }],
+      generationConfig: { responseMimeType: 'application/json' }
+    }
+
+    uri = URI("#{TRANSCRIBE_URL}?key=#{api_key}")
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    http.open_timeout = 10
+    http.read_timeout = 30
+
+    req = Net::HTTP::Post.new(uri)
+    req['Content-Type'] = 'application/json'
+    req.body = JSON.generate(payload)
+
+    resp = http.request(req)
+    body = JSON.parse(resp.body)
+
+    raw = body.dig('candidates', 0, 'content', 'parts', 0, 'text')
+    result = JSON.parse(raw)
+    flag = LANG_FLAGS[result['language']] || "\u{1F310}"
+    { text: result['text'], language: result['language'], flag: flag }
+  rescue StandardError => e
+    { text: nil, language: nil, flag: nil, error: e.message }
+  end
+
+  def self.download_telegram_file(bot_token, file_id)
+    # 1. Get file path from Telegram
+    uri = URI("https://api.telegram.org/bot#{bot_token}/getFile?file_id=#{file_id}")
+    resp = Net::HTTP.get_response(uri)
+    file_path = JSON.parse(resp.body).dig('result', 'file_path')
+
+    # 2. Download the file
+    ext = File.extname(file_path).empty? ? '.ogg' : File.extname(file_path)
+    tmp = Tempfile.new(['voice', ext])
+    tmp.binmode
+
+    dl_uri = URI("https://api.telegram.org/file/bot#{bot_token}/#{file_path}")
+    Net::HTTP.start(dl_uri.host, dl_uri.port, use_ssl: true) do |http|
+      http.request(Net::HTTP::Get.new(dl_uri)) do |response|
+        response.read_body { |chunk| tmp.write(chunk) }
+      end
+    end
+    tmp.close
+
+    mime = ext == '.ogg' ? 'audio/ogg' : "audio/#{ext.delete('.')}"
+    { path: tmp.path, mime: mime, tempfile: tmp }
+  end
+end
+
+# --- Per-Chat Agent Sessions ---
+class ChatSession
+  attr_reader :chat_id, :agent, :history
+
+  def initialize(chat_id, skills: [])
+    @chat_id = chat_id
+    @history = []
+    @agent = Antigravity::Agent.new(
+      skills: skills,
+      system_instruction: "You are a helpful assistant on Telegram. Be concise and use emojis. " \
+                          "Keep responses under 4000 characters (Telegram limit). " \
+                          "When replying to transcribed voice messages, acknowledge the language."
+    )
+    @agent.connect!
+  end
+
+  def ask(text, &block)
+    @history << { role: :user, text: text, at: Time.now }
+    response = @agent.ask(text, timeout: 90, &block)
+    @history << { role: :assistant, text: response.content, at: Time.now }
+    response
+  end
+
+  def close!
+    @agent.close! rescue nil
+  end
+end
+
+# --- Main Bot Loop ---
+sessions = {}
+
+puts "🚀 Starting Telegram long-polling loop..."
+puts "   Send /start to the bot to begin!"
+puts "   Press Ctrl+C to stop."
+puts
+
+Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
+  bot.listen do |message|
+    chat_id = message.chat.id
+
+    case message
+    when Telegram::Bot::Types::CallbackQuery
+      bot.api.answer_callback_query(callback_query_id: message.id)
+      next
+
+    when Telegram::Bot::Types::Message
+      # --- Commands ---
+      if message.text&.start_with?('/')
+        case message.text.split.first
+        when '/start'
+          sessions[chat_id]&.close!
+          sessions[chat_id] = ChatSession.new(chat_id, skills: SKILLS)
+          bot.api.send_message(
+            chat_id: chat_id,
+            text: "🤖 *Antigravity Agent activated!*\n\n" \
+                  "Send me text or voice messages.\n" \
+                  "Skills loaded: #{SKILLS.empty? ? 'none' : SKILLS.map { |s| "`#{File.basename(s)}`" }.join(', ')}\n\n" \
+                  "Commands:\n/start — New session\n/skills — List skills\n/stop — End session",
+            parse_mode: 'Markdown'
+          )
+          next
+
+        when '/skills'
+          session = sessions[chat_id]
+          if session
+            skill_list = session.agent.skills.map { |s| "- #{s.name}: #{s.description[0, 60]}" }.join("\n")
+            bot.api.send_message(chat_id: chat_id, text: "📚 *Loaded Skills:*\n#{skill_list}", parse_mode: 'Markdown')
+          else
+            bot.api.send_message(chat_id: chat_id, text: "No active session. Send /start first!")
+          end
+          next
+
+        when '/stop'
+          sessions[chat_id]&.close!
+          sessions.delete(chat_id)
+          bot.api.send_message(chat_id: chat_id, text: "👋 Session ended. Send /start to begin again.")
+          next
+        end
+      end
+
+      # --- Ensure session exists ---
+      sessions[chat_id] ||= ChatSession.new(chat_id, skills: SKILLS)
+      session = sessions[chat_id]
+
+      # --- Voice / Audio Messages ---
+      if message.voice || message.audio
+        file_id = (message.voice || message.audio).file_id
+        mime = (message.voice || message.audio).mime_type || 'audio/ogg'
+
+        bot.api.send_message(chat_id: chat_id, text: "🎤 Transcribing voice message...")
+
+        begin
+          dl = GeminiAudio.download_telegram_file(BOT_TOKEN, file_id)
+          result = GeminiAudio.transcribe(dl[:path], dl[:mime], GEMINI_KEY)
+          dl[:tempfile].unlink # Clean up temp file
+
+          if result[:error]
+            bot.api.send_message(chat_id: chat_id, text: "❌ Transcription failed: #{result[:error]}")
+            next
+          end
+
+          bot.api.send_message(
+            chat_id: chat_id,
+            text: "#{result[:flag]} _#{result[:text]}_",
+            parse_mode: 'Markdown'
+          )
+
+          # Feed transcribed text to agent
+          user_text = result[:text]
+        rescue StandardError => e
+          bot.api.send_message(chat_id: chat_id, text: "❌ Audio error: #{e.message}")
+          next
+        end
+      else
+        user_text = message.text
+      end
+
+      next unless user_text && !user_text.empty?
+
+      # --- Send to Agent ---
+      bot.api.send_chat_action(chat_id: chat_id, action: 'typing')
+
+      begin
+        full_response = ""
+        response = session.ask(user_text) do |chunk|
+          full_response += chunk.content if chunk.content
+        end
+
+        # Telegram max message is 4096 chars
+        if full_response.length > 4000
+          full_response = full_response[0, 3990] + "\n\n_(truncated)_"
+        end
+
+        bot.api.send_message(
+          chat_id: chat_id,
+          text: full_response.empty? ? "🤔 No response generated." : full_response,
+          parse_mode: 'Markdown'
+        ) rescue bot.api.send_message(chat_id: chat_id, text: full_response) # Fallback without Markdown if parsing fails
+      rescue StandardError => e
+        bot.api.send_message(chat_id: chat_id, text: "❌ Agent error: #{e.message}")
+      end
+    end
+  end
+rescue Interrupt
+  puts "\n👋 Bot stopped. Cleaning up sessions..."
+  sessions.each_value(&:close!)
+  puts "✅ Done!"
+end

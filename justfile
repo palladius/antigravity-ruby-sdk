@@ -58,5 +58,9 @@ rv-skill-audit DIR=".":
 rv-skill-sre-postmortem DIR=".":
     rv run ruby examples/07_skill_sre_postmortem.rb {{DIR}}
 
-# Run all rv examples
+# Telegram bot with skills + audio (requires TELEGRAM_BOT_TOKEN in .env)
+rv-skill-telegram:
+    rv run ruby examples/08_skill_telegram_bot.rb
+
+# Run all rv examples (excludes telegram — it's a long-running daemon)
 rv-examples: rv-chat rv-workspace rv-skill-audit rv-skill-sre-postmortem
