@@ -44,17 +44,22 @@ end
 
 ---
 
-## 🪵 Rails & Standard File Logging
+## 🪵 Automagic Rails & Standard File Logging
 
-Attach structured logging in default Rails positions (`log/development.log`, `log/antigravity.log`, or `Rails.logger`):
+`antigravity-sdk` automagically configures structured emojiful logging upon agent initialization (`Agent.new`):
+
+* 🚂 **Rails Integration**: Auto-attaches `Rails.logger` if running inside a Rails application.
+* 🌍 **Environment-Aware**: Logs to `log/#{ENV['RAILS_ENV']}.log` (e.g. `log/development.log`) when `RAILS_ENV` or `RACK_ENV` is set, defaulting to `log/antigravity.log`.
+* 🛑 **Disabling Auto-Logging**: Set `ENV['ANTIGRAVITY_LOGGER'] = 'false'` (or in your `.env` file) to suppress automatic logging.
 
 ```ruby
-agent = Antigravity::Agent.new do |a|
-  # Option 1: Log to standard Rails/Ruby log file
-  a.attach_logger("log/antigravity.log")
+# Logging is attached automagically on initialization!
+agent = Antigravity::Agent.new
+# Output: 🪵 Logging to log/antigravity.log (or Rails.logger)
 
-  # Option 2: Pass Rails.logger directly inside a Rails app
-  # a.attach_logger(Rails.logger)
+# Optional: Override log target manually
+agent = Antigravity::Agent.new do |a|
+  a.attach_logger("log/custom_agent.log")
 end
 ```
 
