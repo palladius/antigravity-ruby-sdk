@@ -240,50 +240,50 @@ begin
   puts
 
   # ========================================================================
-  # Phase 3: load_skill — dynamically add it (direct Ruby call)
+  # Phase 3: Restart session WITH the discovered skill
   # ========================================================================
-  puts "📋 Phase 3: Load Skill Dynamically".to_bold
+  puts "📋 Phase 3: Restart Session with Skill".to_bold
   todo_path = File.expand_path('~/git/pvt-skillume/gemini-cli-palladius-private-goodies/skills/riccardo-todo')
 
-  # Call add_skills directly — this is the SDK API, not an LLM tool call.
-  # The LLM calling load_skill via harness causes context explosion + timeout.
-  begin
-    loaded_skills = session.agent.add_skills([todo_path])
-    puts "     ⚙️  add_skills returned: #{loaded_skills.map(&:name).join(', ')}".to_yellow
-  rescue => e
-    puts "     💥 add_skills failed: #{e.message}".to_red
-  end
+  # NO CHEATING: close the old session, create a new one with the skill
+  # pre-loaded. This is what the Telegram bot /reset would do, or what
+  # happens when a user says "add this skill" and we restart the session.
+  puts "     🔌 Closing old session...".to_gray
+  session.close!
+  SESSIONS.delete(1)
 
-  runner.assert("Agent now has more skills than before") { session.agent.skills.size > skills_before }
+  new_skills = boot_skills + [todo_path]
+  puts "     🔄 Reconnecting with #{new_skills.size} skills: #{new_skills.map { |s| File.basename(s) }.join(', ')}".to_cyan
+  session = ChatSession.new(skills: new_skills, tools: TOOLS)
+  SESSIONS[1] = session
 
-  # Check the skill is actually in agent.skills
+  runner.assert("New session connected") { session.agent != nil }
+  runner.assert("New session has more skills than before") { session.agent.skills.size > skills_before }
+
   todo_skill = session.agent.skills.find { |s| s.name&.downcase&.include?('riccardo') || s.name&.downcase&.include?('todo') }
-  runner.assert("riccardo-todo skill object exists in agent.skills") { !todo_skill.nil? }
+  runner.assert("riccardo-todo skill object exists in new session") { !todo_skill.nil? }
   if todo_skill
     puts "     📚 Loaded skill: #{todo_skill.name} (#{todo_skill.path})".to_yellow
   end
   puts
 
   # ========================================================================
-  # Phase 4: Use the skill — ask about Riccardo's todos
+  # Phase 4: Use the skill — ask about Riccardo's todos (NO CHEATING!)
   # ========================================================================
-  puts "📋 Phase 4: Use Loaded Skill".to_bold
-  # NOTE: add_skills loads the skill into the Ruby Agent object, but the harness
-  # doesn't re-inject skill content mid-session. So we include the skill content
-  # in the prompt, simulating what the harness does on session creation.
-  skill_content = File.read(File.join(todo_path, 'SKILL.md'), encoding: 'UTF-8', invalid: :replace) rescue '(could not read)'
-  skill_excerpt = skill_content[0, 500] # First 500 chars is enough for the test
-  response3 = session.ask("Here is a skill definition:\n```\n#{skill_excerpt}\n```\nBased on this skill, where is Riccardo's to-do list file stored? Answer in one sentence.")
+  puts "📋 Phase 4: Use Loaded Skill (honest!)".to_bold
+  # The harness now has riccardo-todo in its skill context from session creation.
+  # Ask a question that ONLY the skill content can answer.
+  response3 = session.ask("Where is Riccardo's to-do list file stored? What exact file path?")
   runner.assert_includes("Response mentions Obsidian", response3, "obsidian")
-  runner.assert_includes("Response mentions the TODO file", response3, "todo")
+  runner.assert_includes("Response mentions the TODO file path", response3, "todo")
   puts
 
   # ========================================================================
-  # Phase 5: Verify skill count
+  # Phase 5: Verify final state
   # ========================================================================
   puts "📋 Phase 5: Final Verification".to_bold
-  runner.assert("Agent has at least 1 more skill than at boot") { session.agent.skills.size > skills_before }
-  runner.assert("Total skills: #{session.agent.skills.size}") { session.agent.skills.size >= 1 }
+  runner.assert("Session has riccardo-todo skill") { session.agent.skills.any? { |s| s.name&.include?('riccardo-todo') } }
+  runner.assert("Total skills: #{session.agent.skills.size}") { session.agent.skills.size >= 2 }
 
   skill_names = session.agent.skills.map(&:name).compact
   puts "     📚 All loaded skills: #{skill_names.join(', ')}".to_yellow
