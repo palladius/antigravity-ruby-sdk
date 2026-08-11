@@ -36,6 +36,12 @@ RSpec.describe Antigravity::Connection::LocalConnection, :integration do
     }.to raise_error(Antigravity::HarnessHandshakeError)
   end
 
+  it 'P0.2c: binary prints SDK guard message when run directly' do
+    binary = Antigravity::Connection::LocalConnection.find_binary!
+    output = `#{binary} 2>&1`
+    expect(output).to include('This binary should be run by the SDK')
+  end
+
   it 'P0.3a: initializes conversation session via WebSocket' do
     @conn = described_class.new
     @conn.connect!

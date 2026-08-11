@@ -5,11 +5,14 @@ These learnings were discovered 2026-08-10/11 while building the unofficial Ruby
 
 ## Protocol Architecture
 
-### Binary Extraction
-- The `localharness` binary is bundled inside the `google-antigravity` PyPI wheel.
-- Extract it from `google/antigravity/connections/local/bin/localharness_<os>_<arch>`.
-- It's a Go binary (~120MB) — show a download progress indicator!
+### The Go Binary (`localharness`)
+- Bundled inside the `google-antigravity` PyPI wheel (`pip download google-antigravity`).
+- Extract from `google/antigravity/connections/local/bin/localharness_<os>_<arch>`.
+- It's a **Go binary** (~120MB compressed) — show a download/extraction progress indicator!
+- **Guard message**: Running the binary directly prints `"This binary should be run by the SDK"` and exits. Useful as a smoke test.
 - The Java SDK (by Guillaume Laforge) uses the same extraction approach.
+- The binary name variants: `localharness_darwin_arm64`, `localharness_linux_amd64`, etc.
+- **NOT** `language_server` — that's a different binary for a different protocol.
 
 ### Stdio Handshake (Phase 1)
 1. Spawn `localharness` with subcommand: just the binary path, no args needed.
