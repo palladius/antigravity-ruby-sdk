@@ -3,9 +3,9 @@
 module Antigravity
   class Agent
     attr_accessor :model, :system_instruction, :api_key
-    attr_reader :tools, :skills, :hooks, :sidecars, :client
+    attr_reader :tools, :skills, :hooks, :sidecars, :client, :logger_guard
 
-    def initialize(model: nil, &block)
+    def initialize(model: nil, auto_logger: true, &block)
       @model = model || Antigravity.config.default_model
       @api_key = Antigravity.config.api_key
       @system_instruction = nil
@@ -14,6 +14,12 @@ module Antigravity
       @sidecars = []
       @hooks = Hooks.new
       @client = Client.new
+      @logger_guard = nil
+
+      # Automagic Logger attachment unless disabled via ENV["ANTIGRAVITY_LOGGER"]=false or auto_logger: false
+      if auto_logger && logger_enabled?
+        attach_logger
+      end
 
       yield(self) if block_given?
     end
@@ -35,10 +41,10 @@ module Antigravity
       sidecar
     end
 
-    def attach_logger(log_target = "log/antigravity.log", level: ::Logger::INFO)
-      logger_guard = Guards::AgentLogger.new(log_target, level: level)
-      logger_guard.attach_to(self)
-      logger_guard
+    def attach_logger(log_target = nil, level: ::Logger::INFO, silent_notice: false)
+      @logger_guard = Guards::AgentLogger.new(log_target, level: level, silent_notice: silent_notice)
+      @logger_guard.attach_to(self)
+      @logger_guard
     end
 
     def load_skill(skill_path)
@@ -80,5 +86,14 @@ module Antigravity
       response
     end
     alias ask prompt
+
+    private
+
+    def logger_enabled?
+      env_val = ENV["ANTIGRAVITY_LOGGER"]&.downcase
+      return false if %w[false 0 none no].include?(env_val)
+
+      true
+    end
   end
 end

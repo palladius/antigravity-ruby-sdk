@@ -7,18 +7,29 @@ module Antigravity
   module Guards
     # Configurable opt-in logger guard supporting file loggers and Rails.logger
     class AgentLogger
-      attr_reader :logger
+      attr_reader :logger, :target_description
 
-      def initialize(log_target = "log/antigravity.log", level: Logger::INFO)
-        if log_target.is_a?(String)
-          FileUtils.mkdir_p(File.dirname(log_target)) rescue nil
-          @logger = ::Logger.new(log_target)
-        elsif log_target.respond_to?(:info)
-          @logger = log_target
+      def initialize(log_target = nil, level: Logger::INFO, silent_notice: false)
+        resolved_target = resolve_log_target(log_target)
+
+        if resolved_target.is_a?(String)
+          dir = File.dirname(resolved_target)
+          FileUtils.mkdir_p(dir) unless Dir.exist?(dir)
+          @logger = ::Logger.new(resolved_target)
+          @target_description = resolved_target
+        elsif resolved_target.respond_to?(:info)
+          @logger = resolved_target
+          @target_description = "Rails.logger"
         else
           @logger = ::Logger.new($stdout)
+          @target_description = "$stdout"
         end
+
         @logger.level = level if @logger.respond_to?(:level=)
+
+        unless silent_notice
+          puts "🪵 Logging to #{@target_description}"
+        end
       end
 
       def before_prompt(prompt_text)
@@ -44,6 +55,22 @@ module Antigravity
         agent.after_response { |r| logger_guard.after_response(r) }
         agent.before_tool_call { |t, p| logger_guard.before_tool_call(t, p) }
         agent.after_tool_call { |t, p, r| logger_guard.after_tool_call(t, p, r) }
+      end
+
+      private
+
+      def resolve_log_target(target)
+        return target if target
+
+        if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+          Rails.logger
+        elsif ENV["RAILS_ENV"] && !ENV["RAILS_ENV"].empty?
+          "log/#{ENV['RAILS_ENV']}.log"
+        elsif ENV["RACK_ENV"] && !ENV["RACK_ENV"].empty?
+          "log/#{ENV['RACK_ENV']}.log"
+        else
+          "log/antigravity.log"
+        end
       end
     end
 
