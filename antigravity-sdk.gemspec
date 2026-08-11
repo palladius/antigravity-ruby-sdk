@@ -23,7 +23,7 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "faye-websocket", "~> 0.11"
+  spec.add_dependency "websocket", "~> 1.2"
   spec.add_dependency "json", ">= 2.6"
   spec.add_dependency "logger", ">= 1.5"
 end

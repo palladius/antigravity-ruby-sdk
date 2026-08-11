@@ -22,7 +22,9 @@ require_relative "antigravity/tool_runner"
 require_relative "antigravity/skill"
 require_relative "antigravity/client"
 require_relative "antigravity/connection/binary_fetcher"
+require_relative "antigravity/connection/websocket_client"
 require_relative "antigravity/connection/local_connection"
+require_relative "antigravity/conversation"
 require_relative "antigravity/agent"
 
 module Antigravity

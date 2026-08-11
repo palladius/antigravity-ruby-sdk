@@ -81,17 +81,24 @@ module Antigravity
       def connect!
         spawn_process!
         perform_handshake!
+        connect_websocket!
         @connected = true
         self
       end
 
       def connected?
-        @connected && process_alive?
+        @connected && process_alive? && @ws_client&.connected?
       end
 
       def disconnect!
         @connected = false
+        @ws_client&.close
         kill_process!
+      end
+
+      # Expose the WebSocket client for Conversation to use
+      def ws_client
+        @ws_client
       end
 
       private
@@ -127,6 +134,14 @@ module Antigravity
       rescue IOError, Errno::EPIPE, ProtocolError => e
         kill_process!
         raise HarnessHandshakeError, "Stdio handshake failed: #{e.message}"
+      end
+
+      def connect_websocket!
+        @ws_client = WebSocketClient.new(port: @port, api_key: @api_key)
+        @ws_client.connect!
+      rescue => e
+        kill_process!
+        raise ProtocolError, "WebSocket connection failed: #{e.message}"
       end
 
       def process_alive?
