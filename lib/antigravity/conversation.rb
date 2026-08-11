@@ -99,9 +99,12 @@ module Antigravity
           step_record = parse_step(step)
           steps << step_record
 
-          # Text delta — stream it (only from model, not user echo)
+          # Text delta — stream it (only from model aimed at user, not tool descriptions or error steps)
           is_model_step = step[:source].to_s =~ /MODEL|model|3/
-          if step[:textDelta] && !step[:textDelta].empty? && is_model_step
+          is_target_user = step[:target].to_s =~ /USER|user|1/
+          is_error_step = step[:state].to_s =~ /ERROR|error|4/ || step[:errorMessage]
+
+          if step[:textDelta] && !step[:textDelta].empty? && is_model_step && is_target_user && !is_error_step
             text_parts << step[:textDelta]
             chunk = Message.new(
               content: step[:textDelta],
@@ -127,12 +130,9 @@ module Antigravity
             tool_calls_count += 1 unless step[:customTool]
           end
 
-          # Finished?
-          if step[:state] && step[:state].to_s =~ /DONE|done|2/
-            if step[:source].to_s =~ /MODEL|model|3/
-              finished = true
-              finished_at ||= Process.clock_gettime(Process::CLOCK_MONOTONIC)
-            end
+          # Finished? Model response to user DONE (with non-error text) or trajectory FULLY_IDLE
+          if is_model_step && is_target_user && !is_error_step && step[:state] && step[:state].to_s =~ /DONE|done|2/ && !text_parts.empty?
+            finished = true
           end
         end
 
@@ -147,27 +147,21 @@ module Antigravity
           update_usage(usage)
         end
 
-        # Trajectory state: STATE_FULLY_IDLE = turn complete (authoritative signal from harness)
-        finished_this_msg = false
+        # Trajectory state: STATE_FULLY_IDLE / STATE_CANCELLED = turn complete (authoritative signal from harness)
         if (traj = msg[:trajectoryStateUpdate])
-          if traj[:state].to_s =~ /FULLY_IDLE/ && !finished
+          if traj[:state].to_s =~ /FULLY_IDLE|CANCELLED/
             finished = true
-            finished_at ||= Process.clock_gettime(Process::CLOCK_MONOTONIC)
-            finished_this_msg = true
           end
         end
 
         # Stop conditions (in priority order):
         # 1. Session end — always stop
-        # 2. Model/trajectory done + SUBSEQUENT trailing metadata received — stop
-        #    (skip same message that set finished to allow usage updates to arrive)
-        # 3. Model done + 5s grace period expired — stop (prevents hang)
-        if msg.key?(:sessionEndResponse)
+        # 2. Model response DONE or trajectory FULLY_IDLE / CANCELLED — turn complete
+        if msg.key?(:sessionEndResponse) || finished
           :stop
-        elsif finished && !finished_this_msg && (msg.key?(:trajectoryStateUpdate) || msg.key?(:usageUpdate))
-          :stop
-        elsif finished_at && (Process.clock_gettime(Process::CLOCK_MONOTONIC) - finished_at) > 5
-          :stop
+        elsif !text_parts.empty?
+          # If assistant has sent text response, allow 3s idle timeout for trailing metadata
+          [:idle_timeout, 3.0]
         end
       end
 

@@ -12,12 +12,12 @@ module Antigravity
 
     def initialize
       @api_key = ENV["GEMINI_API_KEY"]
-      @default_model = ENV["GEMINI_MODEL"] || ENV["ANTIGRAVITY_MODEL"] || "gemini-2.5-flash-lite"
+      @default_model = ENV["GEMINI_MODEL"] || ENV["ANTIGRAVITY_MODEL"] || "gemini-3.6-flash"
       @harness_path = ENV["ANTIGRAVITY_HARNESS_PATH"] || File.expand_path("~/.antigravity/bin/localharness")
       @log_level = :info
 
       # Timeouts: aggressive for dev, relax via ENV for production
-      @timeout_llm       = (ENV["ANTIGRAVITY_TIMEOUT_LLM"]       || 20).to_i
+      @timeout_llm       = (ENV["ANTIGRAVITY_TIMEOUT_LLM"]       || 40).to_i
       @timeout_ws        = (ENV["ANTIGRAVITY_TIMEOUT_WS"]        || 3).to_i
       @timeout_handshake = (ENV["ANTIGRAVITY_TIMEOUT_HANDSHAKE"] || 5).to_i
     end

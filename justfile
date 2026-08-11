@@ -42,10 +42,6 @@ harness-update:
 
 # --- rv tasks (stateless, no gem install needed — like `uv run`) ---
 
-# Check rv + gem setup
-rv-init:
-    rv run ruby examples/rv/rv_init.rb
-
 # Simple LLM chat — no workspace, fast
 rv-chat:
     rv run ruby examples/04_simple_llm_chat.rb

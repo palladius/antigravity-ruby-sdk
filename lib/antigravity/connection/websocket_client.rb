@@ -69,15 +69,27 @@ module Antigravity
 
       # Read the next JSON message. Blocks until a text frame arrives.
       # Yields each message if a block is given (for streaming).
-      # Returns nil on connection close.
-      def receive_json(timeout: Antigravity.config.timeout_llm)
+      # Returns nil on connection close or idle_timeout.
+      def receive_json(timeout: Antigravity.config.timeout_llm, idle_timeout: nil)
         deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+        last_activity = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
         loop do
-          remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          remaining = deadline - now
           raise ProtocolError, 'WebSocket read timeout' if remaining <= 0
 
-          ready = IO.select([@socket], nil, nil, [remaining, 0.5].min)
+          if idle_timeout && (now - last_activity) >= idle_timeout
+            return nil
+          end
+
+          select_time = [remaining, 0.5].min
+          if idle_timeout
+            idle_rem = idle_timeout - (now - last_activity)
+            select_time = [select_time, idle_rem].min if idle_rem > 0
+          end
+
+          ready = IO.select([@socket], nil, nil, [select_time, 0.05].max)
           next unless ready
 
           data = @socket.read_nonblock(16384, exception: false)
@@ -88,6 +100,7 @@ module Antigravity
             return nil
           end
 
+          last_activity = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           @frame_buffer << data
 
           while (frame = @frame_buffer.next)
@@ -109,17 +122,22 @@ module Antigravity
 
       # Read messages in a loop, yielding each parsed JSON.
       # Stops when block returns :stop, connection closes, or timeout.
-      # NOTE: timeout is per-message IDLE timeout, not total.
-      # Each received message resets the clock. This is critical for workspace
-      # analysis where indexing sends many steps before the model responds.
       def each_message(timeout: Antigravity.config.timeout_llm, &block)
         loop do
-          msg = receive_json(timeout: timeout)
+          # Block can return [:stop] or [:idle_timeout, seconds]
+          msg = receive_json(timeout: timeout, idle_timeout: @current_idle_timeout)
           break unless msg
 
           result = block.call(msg)
-          break if result == :stop
+          if result.is_a?(Array) && result.first == :idle_timeout
+            @current_idle_timeout = result.last
+          elsif result == :stop
+            @current_idle_timeout = nil
+            break
+          end
         end
+      ensure
+        @current_idle_timeout = nil
       end
 
       def close

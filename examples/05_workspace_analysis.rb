@@ -30,9 +30,10 @@ puts
 # Create agent WITH workspace — harness will index it
 agent = Antigravity::Agent.new(
   workspace: workspace,
-  system_instruction: 'You are a senior code reviewer with access to the workspace filesystem. ' \
-                      'Use the available tools (list_dir, view_file) to explore the codebase. ' \
-                      'Focus on architecture, tech stack, and purpose. 5 sentences max.'
+  system_instruction: "You are a senior code reviewer with access to the workspace filesystem at #{File.expand_path(workspace)}. " \
+                      "Use the available tools (list_dir, view_file) to inspect the files in #{File.expand_path(workspace)}. " \
+                      "Focus on architecture, tech stack, and purpose. 5 sentences max."
+                      "Use colorful emojis in your answers"
 )
 
 # Connect (will show hourglass indexing message)

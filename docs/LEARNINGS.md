@@ -153,29 +153,44 @@ Then just: `rv run ruby -Ilib examples/04_simple_llm_chat.rb` — no `gem instal
 no `bundle exec`, no state. Gems are cached after first run.
 
 ### Timeout Tuning
-- **20s default** (dev) is too aggressive — harness startup + workspace indexing can take >30s (the model itself responds in <5s)
-- **40s** is the sweet spot for integration tests
+- **40s default** is the sweet spot (bumped from 20s which was too aggressive)
+- Timeout is now **per-message idle** timeout, NOT total deadline.
+  Each received message resets the clock — critical for workspace analysis
+  where harness sends 40+ steps over 2+ minutes.
 - **120s** for production/complex agentic tasks
 - All configurable via ENV: `ANTIGRAVITY_TIMEOUT_LLM=60 ruby my_agent.rb`
 - Per-call override: `agent.ask("complex question", timeout: 90)`
+- Idle timeout pattern: after text response, allow 3s for trailing metadata
+  via `[:idle_timeout, 3.0]` return from `each_message` block.
 
-### The FULLY_IDLE Race Condition
-When `trajectoryStateUpdate(STATE_FULLY_IDLE)` arrives, it sets `finished = true`.
-But the stop condition `finished && msg.key?(:trajectoryStateUpdate)` matches
-on the SAME message — exiting before usage data arrives.
+### Turn Completion: Simplified Pattern
+Stop on `FULLY_IDLE`, `CANCELLED`, or `sessionEndResponse`. After the model sends
+text to user, use a 3s idle timeout to collect trailing metadata (usage stats).
+Also handle `STATE_CANCELLED` for interrupted turns.
 
-**Fix**: Track `finished_this_msg` flag to skip same-message stop:
+### Model Names Matter!
+- `gemini-2.5-flash` does NOT exist! Returns: `models/gemini-2.5-flash is not found for API version v1beta`
+- `gemini-2.5-flash-lite` works but is too weak for agentic tool use
+- `gemini-3.6-flash` is the sweet spot: smart enough for tools, fast enough for dev
+- Always overridable via `GEMINI_MODEL` env var
+
+### Harness-Side Tools Must Be Explicitly Enabled
+The harness has built-in tools (list_dir, view_file, grep_search, etc.) but they
+must be enabled in `harnessConfig.config.harnessSideTools`:
 ```ruby
-finished_this_msg = false
-if traj[:state] =~ /FULLY_IDLE/ && !finished
-  finished = true
-  finished_this_msg = true
-end
-# Stop only on SUBSEQUENT metadata messages
-if finished && !finished_this_msg && (msg.key?(:trajectoryStateUpdate) || msg.key?(:usageUpdate))
-  :stop
-end
+config[:config][:harnessSideTools] = {
+  listDir: { enabled: true },
+  viewFile: { enabled: true },
+  grepSearch: { enabled: true },
+  # ... etc
+}
 ```
+Without this, the model has NO tools even with a workspace set!
+
+### Text Filtering: MODEL→USER Only
+Only stream `textDelta` from steps where `source=MODEL` AND `target=USER`.
+Otherwise you get tool descriptions, internal reasoning, and error messages
+mixed into the response text. Also skip steps with `errorMessage` set.
 
 ### POLA: Workspace Indexing Warning
 Setting a workspace causes the harness to index the entire directory tree.

@@ -12,7 +12,7 @@ module Antigravity
       @model = model || Antigravity.config.default_model
       @api_key = Antigravity.config.api_key
       @system_instruction = system_instruction
-      @workspace = workspace
+      @workspace = workspace ? File.expand_path(workspace) : nil
       @tools = tools.dup
       @skills = []
       @sidecars = []
@@ -228,6 +228,18 @@ module Antigravity
       if @tool_runner && !@tool_runner.empty?
         config[:config][:tools] = @tool_runner.to_harness_tools
       end
+
+      # Enable harness-side built-in tools by default (list_dir, view_file, grep_search, etc.)
+      config[:config][:harnessSideTools] = {
+        listDir: { enabled: true },
+        viewFile: { enabled: true },
+        grepSearch: { enabled: true },
+        find: { enabled: true },
+        writeToFile: { enabled: true },
+        fileEdit: { enabled: true },
+        readUrlContent: { enabled: true },
+        searchWeb: { enabled: true }
+      }
 
       # App data dir
       config[:config][:appDataDir] = File.expand_path('~/.gemini/antigravity')
