@@ -82,7 +82,7 @@ end
 
 # Ask agent
 message = agent.ask("Check weather in Rome") do |chunk|
-  puts "[Thought] #{chunk.thinking}" if chunk.thinking
+  puts "🤔 [Thinking] #{chunk.thinking}" if chunk.thinking
   print chunk.content if chunk.content
 end
 ```
