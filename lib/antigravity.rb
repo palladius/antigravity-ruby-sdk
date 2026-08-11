@@ -1,5 +1,11 @@
 # frozen_string_literal: true
 
+begin
+  require "dotenv/load" if File.exist?(".env")
+rescue LoadError
+  # Safe fallback if dotenv gem is not installed in the project
+end
+
 require_relative "antigravity/version"
 require_relative "antigravity/config"
 require_relative "antigravity/message"
