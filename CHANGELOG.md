@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-08-11 📚🚀
+
+### Agent Skills (GHI #11)
+* 📚 Full Agent Skills support with progressive disclosure API.
+* 🏗️ Constructor: `Agent.new(skills: [local_path, github_url])` — mix local and remote freely.
+* ➕ Runtime: `add_skill(path, skill_name:)`, `add_skills([...])`, `add_inline_skill(name:, description:, instructions:)`.
+* 🔍 Smart `SkillResolver` — auto-discovers `SKILL.md`, `skills/` subfolders, or flat containers.
+* 🐙 GitHub auto-clone: `add_skill("https://github.com/org/repo")` clones to `~/.antigravity/cache/ruby-sdk/skills/`.
+* 🔌 Harness wiring: skills paths sent as `skillsPaths` in `InitializeConversationEvent`.
+* 🧪 76 specs passing (was 29 in 0.3.0).
+
+### Workspace & Streaming
+* 📂 Workspace analysis with `workspace:` parameter — harness indexes the directory.
+* 🛠️ Harness-side built-in tools enabled by default (list_dir, view_file, grep_search, etc.).
+* 🎨 Cyan-colored streaming output with separator lines in examples.
+* ⏱️ Per-message idle timeout (not total deadline) for long agentic runs.
+
+### Logging
+* 🪵 Dual-output `AgentLogger`: fat JSONL (`log/antigravity.jsonl`) + compact one-liners (`.log`).
+* 📊 Structured telemetry with request/response sizes in bytes.
+
+### Examples
+* 🗣️ `04_simple_llm_chat.rb` — minimal chat, no workspace.
+* 🔍 `05_workspace_analysis.rb` — indexes a directory, asks about it.
+* 🛡️ `06_skill_security_audit.rb` — local skill + inline skill, code quality review.
+* 🐙 `07_skill_sre_postmortem.rb` — loads SRE skills from GitHub, drafts a post-mortem.
+
+### Bundled Skills
+* 🛡️ `skills/code-quality-review/` — Ruby codebase review checklist.
+* 🔐 `skills/security-audit/` — Security-focused code review.
+
+
 ## [0.3.0] - 2026-08-11 🏗️🤷
 * 🏗️ Introduced `Antigravity::Base` superclass — all SDK classes (`Agent`, `Tool`, `Skill`, `Message`, `Sidecar::Runner`) now inherit from it.
 * 🪄 Automagic emoji via `inherited` hook: any `< Base` subclass gets `.emoji` / `#emoji` for free. Unknown classes default to 🤷.
