@@ -18,15 +18,20 @@ RSpec.describe 'Acceptance Tests', :integration do
 
   after(:each) { @agent&.close! rescue nil }
 
+  # Helper: create and connect an agent
+  def create_agent(**kwargs)
+    agent = Antigravity::Agent.new(**kwargs)
+    agent.connect!
+    agent
+  end
+
   # ---------------------------------------------------------------------------
   # UAT-1: Codebase analysis ("What is this codebase doing?")
   # Mirror of Python: response = await agent.chat("What is this codebase?")
   # ---------------------------------------------------------------------------
   describe 'UAT-1: Codebase analysis' do
     it 'asks the agent to describe a directory and gets a substantive response' do
-      @agent = Antigravity::Agent.new(
-        workspace: File.expand_path('~/git/antigravity-ruby-sdk')
-      )
+      @agent = create_agent(workspace: File.expand_path('~/git/antigravity-ruby-sdk'))
       response = @agent.ask('What is this codebase doing? Be brief, 2-3 sentences max.')
 
       expect(response).to be_a(Antigravity::Message)
@@ -38,17 +43,12 @@ RSpec.describe 'Acceptance Tests', :integration do
 
   # ---------------------------------------------------------------------------
   # UAT-2: Response metadata (like Python's ChatResponse)
-  #   response.usage_metadata => UsageMetadata
-  #   response.tool_calls_count
-  #   response.turn_count
-  #   response.conversation_id / cascade_id
   # ---------------------------------------------------------------------------
   describe 'UAT-2: Response metadata' do
     it 'returns usage metadata with token counts' do
-      @agent = Antigravity::Agent.new
+      @agent = create_agent
       response = @agent.ask('Say exactly: OK')
 
-      # Token usage (mirrors Python's response.usage_metadata)
       usage = response.usage
       expect(usage).to be_a(Hash)
       expect(usage[:prompt_token_count]).to be_a(Integer)
@@ -60,30 +60,25 @@ RSpec.describe 'Acceptance Tests', :integration do
     end
 
     it 'tracks conversation_id / cascade_id' do
-      @agent = Antigravity::Agent.new
+      @agent = create_agent
       @agent.ask('Hello')
 
-      # Mirrors Python's agent.conversation_id
       expect(@agent.conversation_id).to be_a(String)
       expect(@agent.conversation_id).not_to be_empty
     end
 
     it 'counts turns across multiple exchanges' do
-      @agent = Antigravity::Agent.new
+      @agent = create_agent
       @agent.ask('Say A')
       @agent.ask('Say B')
       @agent.ask('Say C')
 
-      # Mirrors Python's agent.conversation.turn_count
       expect(@agent.turn_count).to eq(3)
     end
   end
 
   # ---------------------------------------------------------------------------
   # UAT-3: Tool calls with metadata
-  #   - agent uses a tool
-  #   - response reports tool_calls_count > 0
-  #   - tool result is reflected in the response
   # ---------------------------------------------------------------------------
   describe 'UAT-3: Tool usage tracking' do
     it 'counts tool calls in the response' do
@@ -92,13 +87,12 @@ RSpec.describe 'Acceptance Tests', :integration do
         params: { city: { type: :string, description: 'City name' } }
       ) { |city:| "Sunny, 28C in #{city}" }
 
-      @agent = Antigravity::Agent.new(
+      @agent = create_agent(
         system_instruction: 'Always use get_weather for weather questions. Report the exact tool result.',
         tools: [tool]
       )
       response = @agent.ask('What is the weather in Milan?')
 
-      # Mirrors counting tool_calls from Python's response.chunks
       expect(response.tool_calls_count).to be >= 1
       expect(response.content).to include('28')
     end
@@ -106,29 +100,23 @@ RSpec.describe 'Acceptance Tests', :integration do
 
   # ---------------------------------------------------------------------------
   # UAT-4: Streaming with chunk accumulation
-  #   - text arrives in multiple chunks over time
-  #   - block receives chunk objects with .content
   # ---------------------------------------------------------------------------
   describe 'UAT-4: Streaming' do
     it 'streams real LLM tokens via block (not instant mock)' do
       chunks = []
       timings = []
-      @agent = Antigravity::Agent.new
+      @agent = create_agent
 
       response = @agent.ask('Write a 4-line poem about Ruby programming') do |chunk|
-        if chunk.content
+        if chunk.content && !chunk.content.empty?
           chunks << chunk.content
           timings << Process.clock_gettime(Process::CLOCK_MONOTONIC)
         end
       end
 
-      # Multiple chunks
       expect(chunks.length).to be > 1
-      # Content is non-trivial
       expect(chunks.join.length).to be > 30
-      # Streaming took real time (not instant)
-      expect(timings.last - timings.first).to be > 0.1
-      # Final response also has the full text
+      expect(timings.last - timings.first).to be > 0.1 if timings.length > 1
       expect(response.content).to eq(chunks.join)
     end
   end
@@ -138,7 +126,7 @@ RSpec.describe 'Acceptance Tests', :integration do
   # ---------------------------------------------------------------------------
   describe 'UAT-5: System instructions' do
     it 'shapes the model response according to instructions' do
-      @agent = Antigravity::Agent.new(
+      @agent = create_agent(
         system_instruction: 'You are a pirate. Every response must include "ARRR" and "matey".'
       )
       response = @agent.ask('Hello, who are you?')
@@ -162,7 +150,7 @@ RSpec.describe 'Acceptance Tests', :integration do
     end
 
     it 'close! is idempotent and cleans up' do
-      @agent = Antigravity::Agent.new
+      @agent = create_agent
       @agent.ask('Hello')
       expect { @agent.close! }.not_to raise_error
       expect(@agent).not_to be_connected
@@ -172,21 +160,15 @@ RSpec.describe 'Acceptance Tests', :integration do
 
   # ---------------------------------------------------------------------------
   # UAT-7: Rich response introspection (harness-side tool actions)
-  #   When the agent uses built-in tools (list_dir, view_file, etc.)
-  #   the response should report them in steps
   # ---------------------------------------------------------------------------
   describe 'UAT-7: Harness tool introspection' do
     it 'reports harness-side tool calls (list_dir, view_file, etc.) in steps' do
-      @agent = Antigravity::Agent.new(
-        workspace: File.expand_path('~/git/antigravity-ruby-sdk')
-      )
+      @agent = create_agent(workspace: File.expand_path('~/git/antigravity-ruby-sdk'))
       response = @agent.ask('List the files in the lib/ directory. Just list them.')
 
-      # The agent should have used list_dir or similar
       expect(response.steps).to be_an(Array)
       expect(response.steps.length).to be > 0
 
-      # At least one step should be a tool action
       tool_steps = response.steps.select { |s| s[:source] == :model && s[:target] == :environment }
       expect(tool_steps).not_to be_empty
     end
@@ -194,12 +176,11 @@ RSpec.describe 'Acceptance Tests', :integration do
 
   # ---------------------------------------------------------------------------
   # UAT-8: Session summary / reflection
-  #   Print a human-readable summary of what happened
   # ---------------------------------------------------------------------------
   describe 'UAT-8: Session summary' do
     it 'produces a human-readable session summary' do
-      @agent = Antigravity::Agent.new
-      response = @agent.ask('What is 2 + 2? Answer with just the number.')
+      @agent = create_agent
+      @agent.ask('What is 2 + 2? Answer with just the number.')
 
       summary = @agent.session_summary
       expect(summary).to be_a(Hash)
@@ -209,7 +190,6 @@ RSpec.describe 'Acceptance Tests', :integration do
       expect(summary[:total_tokens]).to be > 0
       expect(summary[:model]).to be_a(String)
 
-      # Print it for human review in test output
       puts "\n--- Session Summary ---"
       summary.each { |k, v| puts "  #{k}: #{v}" }
       puts "----------------------"
