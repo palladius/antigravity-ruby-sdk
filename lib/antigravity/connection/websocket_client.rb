@@ -109,14 +109,12 @@ module Antigravity
 
       # Read messages in a loop, yielding each parsed JSON.
       # Stops when block returns :stop, connection closes, or timeout.
+      # NOTE: timeout is per-message IDLE timeout, not total.
+      # Each received message resets the clock. This is critical for workspace
+      # analysis where indexing sends many steps before the model responds.
       def each_message(timeout: Antigravity.config.timeout_llm, &block)
-        deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
-
         loop do
-          remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          break if remaining <= 0
-
-          msg = receive_json(timeout: remaining)
+          msg = receive_json(timeout: timeout)
           break unless msg
 
           result = block.call(msg)
