@@ -225,7 +225,7 @@ end
 
 ```ruby
 Antigravity.configure do |config|
-  config.default_model = 'gemini-2.5-flash'
+  config.default_model = 'gemini-2.5-flash-lite'
 end
 ```
 
