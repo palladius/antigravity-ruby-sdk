@@ -370,7 +370,7 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
                "🎤 Transcription: `#{TRANSCRIPTION_MODEL}`\n\n" \
                "🤗 Ciao, come butta? Sono il tuo agente Ruby, pronto a servirti!\n\n" \
                "Mandami un messaggio di testo o vocale 🎤\n" \
-               "Comandi: /start /skills /stop"
+               "Comandi: /help /skills /status /reset /stop"
     bot.api.send_message(chat_id: CHAT_ID, text: greeting, parse_mode: 'Markdown')
     puts "👋 Greeting sent to chat #{CHAT_ID}".to_green
   end
@@ -527,4 +527,13 @@ rescue Interrupt
   puts "\n👋 Bot stopped. Cleaning up sessions..."
   sessions.each_value(&:close!)
   puts "✅ Done!"
+rescue Telegram::Bot::Exceptions::ResponseError => e
+  if e.message.include?('409')
+    puts "⚠️  409 Conflict: another bot instance is running!".to_red
+    puts "   Retrying in 5 seconds...".to_yellow
+    sleep 5
+    retry
+  else
+    raise
+  end
 end
