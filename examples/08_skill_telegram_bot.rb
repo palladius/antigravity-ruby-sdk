@@ -239,12 +239,12 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
             chat_id: chat_id,
             text: "💎 *Ruby Antigravity SDK* v#{VERSION}\n\n" \
                   "Commands:\n" \
-                  "/help \u2014 This message\n" \
-                  "/skills \u2014 List loaded skills\n" \
-                  "/status \u2014 Session info\n" \
-                  "/reset \u2014 New agent session\n" \
-                  "/stop \u2014 Shutdown bot\n\n" \
-                  "Send text or voice \ud83c\udfa4 messages to chat!",
+                  "/help — This message\n" \
+                  "/skills — List loaded skills\n" \
+                  "/status — Session info\n" \
+                  "/reset — New agent session\n" \
+                  "/stop — Shutdown bot\n\n" \
+                  "Send text or voice 🎤 messages to chat!",
             parse_mode: 'Markdown'
           )
           next
@@ -253,9 +253,9 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
           session = sessions[chat_id]
           if session && !session.agent.skills.empty?
             skill_list = session.agent.skills.map { |s| "- `#{s.name}`: #{s.description.to_s[0, 60]}" }.join("\n")
-            bot.api.send_message(chat_id: chat_id, text: "\ud83d\udcda *Loaded Skills:*\n#{skill_list}", parse_mode: 'Markdown')
+            bot.api.send_message(chat_id: chat_id, text: "📚 *Loaded Skills:*\n#{skill_list}", parse_mode: 'Markdown')
           else
-            bot.api.send_message(chat_id: chat_id, text: "\ud83d\udcda No skills loaded. Set TELEGRAM\\_SKILLS in .env")
+            bot.api.send_message(chat_id: chat_id, text: "📚 No skills loaded. Set TELEGRAM\\_SKILLS in .env")
           end
           next
 
@@ -264,17 +264,17 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
           turns = session ? session.history.size : 0
           bot.api.send_message(
             chat_id: chat_id,
-            text: "\u2734\ufe0f Agent: `#{AGENT_MODEL}`\n" \
-                  "\ud83c\udfa4 Transcription: `#{TRANSCRIPTION_MODEL}`\n" \
-                  "\ud83d\udcac Turns: #{turns}\n" \
-                  "\ud83d\udcda Skills: #{SKILLS.size}",
+            text: "✴️ Agent: `#{AGENT_MODEL}`\n" \
+                  "🎤 Transcription: `#{TRANSCRIPTION_MODEL}`\n" \
+                  "💬 Turns: #{turns}\n" \
+                  "📚 Skills: #{SKILLS.size}",
             parse_mode: 'Markdown'
           )
           next
 
         when '/stop'
-          bot.api.send_message(chat_id: chat_id, text: "\ud83d\udc4b Shutting down bot... Arrivederci!")
-          puts "\ud83d\udc4b /stop received from #{chat_id} - shutting down".to_red
+          bot.api.send_message(chat_id: chat_id, text: "👋 Shutting down bot... Arrivederci!")
+          puts "👋 /stop received from #{chat_id} - shutting down".to_red
           sessions.each_value(&:close!)
           exit(0)
         end
