@@ -2,16 +2,10 @@
 
 module Antigravity
   class Agent
+    include Emojifiable
+
     attr_accessor :model, :system_instruction, :api_key
     attr_reader :tools, :skills, :hooks, :sidecars, :client, :logger_guard
-
-    def self.emoji
-      Antigravity.emoji(:gem)
-    end
-
-    def emoji
-      self.class.emoji
-    end
 
     def initialize(model: nil, auto_logger: true, &block)
       @model = model || Antigravity.config.default_model

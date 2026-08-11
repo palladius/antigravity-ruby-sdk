@@ -8,15 +8,9 @@ module Antigravity
   module Sidecar
     # Base class for non-blocking agent sidecars
     class Base
+      include Emojifiable
+
       attr_reader :name, :queue, :worker_thread
-
-      def self.emoji
-        Antigravity.emoji(:sidecar)
-      end
-
-      def emoji
-        self.class.emoji
-      end
 
       def initialize(name = "SidecarWorker")
         @name = name

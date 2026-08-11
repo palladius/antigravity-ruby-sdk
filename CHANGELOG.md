@@ -2,10 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-08-11 💎✨
+* 🪄 Created polymorphic `Antigravity::Emojifiable` mixin and reflection method `Antigravity.emoji_for(target)`.
+* 🧹 Eliminated duplicated `.emoji` method boilerplate across `Agent`, `Tool`, `Sidecar::Base`, `Skill`, and `Message` by using single mixin inclusion (`include Antigravity::Emojifiable`).
+
 ## [0.1.9] - 2026-08-11 🎨
 * 🎨 Added central `Antigravity::EMOJIS` registry (`lib/antigravity/emojis.rb`) and `Antigravity.emoji(:key)`.
-* 💎 Added `.emoji` class and instance methods on core classes (`Antigravity::Agent.emoji`, `Antigravity::Tool.emoji`, `Antigravity::Sidecar::Base.emoji`, `Antigravity::Skill.emoji`, `Antigravity::Message#emoji`).
-* 🚗 Updated Sidecar emoji to car (`🚗`).
 
 ## [0.1.8] - 2026-08-11 🎨
 * 🎨 Added emojiful log line prefixes to `Antigravity::Guards::AgentLogger`.
