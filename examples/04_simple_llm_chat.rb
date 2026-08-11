@@ -3,13 +3,20 @@
 
 # Example 1: Simple LLM Chat — no workspace, no tools, just a question.
 #
-# Run with rv (no gem install needed!):
+# Run with rv (stateless, no gem install needed!):
 #   rv run ruby -Ilib examples/04_simple_llm_chat.rb
 #
 # Or with bundler:
 #   bundle exec ruby -Ilib examples/04_simple_llm_chat.rb
 #
 # Requires: GEMINI_API_KEY env var + localharness binary
+
+# Inline gem resolution — fully stateless, like `uv run --with`
+require 'bundler/inline'
+gemfile(true) do
+  source 'https://rubygems.org'
+  gem 'websocket', '~> 1.2'
+end
 
 $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 require 'antigravity'

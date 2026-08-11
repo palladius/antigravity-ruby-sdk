@@ -40,19 +40,15 @@ harness-fetch:
 harness-update:
     bundle exec rake harness:update
 
-# --- rv tasks (no gem install needed, like 'uv' for Python) ---
-
-# Install deps from Gemfile.lock (like `uv sync`)
-rv-setup:
-    rv ci
+# --- rv tasks (stateless, no gem install needed — like `uv run`) ---
 
 # Simple LLM chat — no workspace, fast
-rv-chat: rv-setup
-    rv run bundle exec ruby -Ilib examples/04_simple_llm_chat.rb
+rv-chat:
+    rv run ruby -Ilib examples/04_simple_llm_chat.rb
 
 # Workspace analysis — indexes a directory, asks about it
-rv-workspace DIR=".": rv-setup
-    rv run bundle exec ruby -Ilib examples/05_workspace_analysis.rb {{DIR}}
+rv-workspace DIR=".":
+    rv run ruby -Ilib examples/05_workspace_analysis.rb {{DIR}}
 
 # Run all rv examples
 rv-examples: rv-chat rv-workspace
