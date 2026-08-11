@@ -1,42 +1,44 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Example 06: Security Audit with Skills
-# =======================================
-# Uses the bundled security-audit skill to analyze a Ruby codebase.
-# Demonstrates: skills loading (local + inline), workspace analysis, structured output.
+# Example 06: Skills — Security Audit
+# =====================================
+# Demonstrates Agent Skills support:
+#   - Local skill loaded at construction time
+#   - Inline skill added at runtime
+#   - Skills auto-wired to harness via skillsPaths
 #
 # Usage:
-#   rv run ruby examples/06_security_audit.rb [path_to_audit]
+#   rv run ruby examples/06_skill_security_audit.rb [path_to_audit]
 #
 # Example:
-#   rv run ruby examples/06_security_audit.rb .
-#   rv run ruby examples/06_security_audit.rb ~/git/my-app
+#   just rv-skill-audit
+#   just rv-skill-audit ~/git/my-app
 
-require_relative "../lib/antigravity"
+require_relative 'rv/rv_init'
 
-workspace = ARGV[0] || "."
-puts "#{Antigravity.emoji(:magnifying)} Antigravity Ruby SDK -- Security Audit"
-puts "=" * 56
+workspace = ARGV[0] || File.expand_path('..', __dir__)
+
+puts "#{Antigravity.emoji(:magnifying)} Antigravity Ruby SDK — Skills: Security Audit"
+puts '=' * 56
 puts
 
 # --- Skill loading demo ---
 
 # 1. Local skill: bundled security-audit skill
-local_skill_path = File.expand_path("../skills/security-audit", __dir__)
-
-# 2. Inline skill: custom output format (no file needed!)
-#    This shows progressive disclosure: define a skill on the fly.
+local_skill_path = File.expand_path('../skills/security-audit', __dir__)
 
 puts "#{Antigravity.emoji(:skill)} Loading skills..."
 
 agent = Antigravity::Agent.new(
-  model: "gemini-3.6-flash",
-  skills: [local_skill_path],       # P1: local path in constructor
-  workspace: workspace
+  skills: [local_skill_path],       # Local path in constructor
+  workspace: workspace,
+  system_instruction: "You are a security auditor with access to the workspace at #{File.expand_path(workspace)}. " \
+                      "Use the available tools (list_dir, view_file, grep_search) to inspect files. " \
+                      "Focus on security issues. Be concise: max 10 findings."
 )
 
-# Add an inline skill at runtime (P1: progressive disclosure)
+# 2. Add an inline skill at runtime (progressive disclosure)
 agent.add_inline_skill(
   name: "severity-emoji",
   description: "Maps severity levels to emoji for terminal output",
@@ -56,25 +58,27 @@ agent.add_inline_skill(
 # Show loaded skills
 puts "  Loaded #{agent.skills.size} skills:"
 agent.skills.each do |s|
-  type = s.path ? "local" : "inline"
+  type = s.path ? 'local' : 'inline'
   puts "    #{Antigravity.emoji(:check)} #{s.name} (#{type}) — #{s.description[0, 60]}"
 end
 puts
 
-# --- Connect and audit ---
 puts "#{Antigravity.emoji(:workspace)} Workspace: #{workspace}"
-puts "#{Antigravity.emoji(:logger)} Logging to log/antigravity.jsonl"
+puts
+
+# --- Connect and audit ---
+agent.connect!
+puts
 
 question = <<~Q
-  Perform a security audit of this codebase. Focus on:
+  Perform a quick security audit of this codebase. Check for:
   1. Hardcoded secrets or API keys
-  2. Unsafe file operations
-  3. Dependency vulnerabilities
-  4. Injection risks (eval, system, exec)
-  5. Network security (HTTP vs HTTPS, TLS)
+  2. Unsafe file operations or eval usage
+  3. Dependency vulnerabilities (check Gemfile)
+  4. Injection risks
 
-  Use the security-audit skill checklist. Report findings with severity-emoji formatting.
-  End with a summary: total findings by severity level.
+  Use the security-audit skill checklist and severity-emoji formatting.
+  Keep it to max 10 findings. End with a severity summary.
 Q
 
 puts "#{Antigravity.emoji(:prompt)} Audit question submitted..."
@@ -96,9 +100,11 @@ puts "  Tool calls:   #{response.tool_calls_count}"
 puts "  Steps:        #{response.steps&.length || 0}"
 puts "  Skills:       #{agent.skills.map(&:name).join(', ')}"
 puts
-
-# Show skills paths that were sent to harness
 puts "  skillsPaths sent to harness:"
 agent.skills.each do |s|
   puts "    #{s.path || '(inline)'}"
 end
+puts
+
+agent.close!
+puts "#{Antigravity.emoji(:success)} Done! Agent closed."
