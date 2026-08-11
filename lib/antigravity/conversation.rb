@@ -148,20 +148,23 @@ module Antigravity
         end
 
         # Trajectory state: STATE_FULLY_IDLE = turn complete (authoritative signal from harness)
+        finished_this_msg = false
         if (traj = msg[:trajectoryStateUpdate])
-          if traj[:state].to_s =~ /FULLY_IDLE|IDLE/
+          if traj[:state].to_s =~ /FULLY_IDLE/ && !finished
             finished = true
             finished_at ||= Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            finished_this_msg = true
           end
         end
 
         # Stop conditions (in priority order):
         # 1. Session end — always stop
-        # 2. Model/trajectory done + trailing metadata received — stop
+        # 2. Model/trajectory done + SUBSEQUENT trailing metadata received — stop
+        #    (skip same message that set finished to allow usage updates to arrive)
         # 3. Model done + 5s grace period expired — stop (prevents hang)
         if msg.key?(:sessionEndResponse)
           :stop
-        elsif finished && (msg.key?(:trajectoryStateUpdate) || msg.key?(:usageUpdate))
+        elsif finished && !finished_this_msg && (msg.key?(:trajectoryStateUpdate) || msg.key?(:usageUpdate))
           :stop
         elsif finished_at && (Process.clock_gettime(Process::CLOCK_MONOTONIC) - finished_at) > 5
           :stop
