@@ -52,7 +52,7 @@ BOT_TOKEN   = ENV.fetch('TELEGRAM_BOT_TOKEN') { abort '❌ Missing TELEGRAM_BOT_
 GEMINI_KEY  = ENV.fetch('GEMINI_API_KEY')      { abort '❌ Missing GEMINI_API_KEY in .env' }
 SKILLS      = ENV.fetch('TELEGRAM_SKILLS', '').split(',').map(&:strip).reject(&:empty?)
 AGENT_MODEL = ENV.fetch('GEMINI_MODEL', 'gemini-2.5-flash-lite')
-TRANSCRIPTION_MODEL = ENV.fetch('GEMINI_TRANSCRIPTION_MODEL', 'gemini-2.0-flash')
+TRANSCRIPTION_MODEL = ENV.fetch('GEMINI_TRANSCRIPTION_MODEL', AGENT_MODEL)
 
 puts '🤖 Antigravity Telegram Bot'.to_bold
 puts '=' * 40
@@ -74,10 +74,9 @@ end
 
 # --- Audio Transcription via Gemini Multimodal API ---
 # NOTE: GEMINI_MODEL is for the agent (via harness). Transcription uses REST API
-# directly, so it needs a model available on v1beta (gemini-2.0-flash works).
+# directly, so it needs a model available on v1beta (gemini-2.5-flash-lite works).
 module GeminiAudio
-  TRANSCRIBE_MODEL = ENV.fetch('GEMINI_TRANSCRIPTION_MODEL', 'gemini-2.0-flash')
-  TRANSCRIBE_URL = "https://generativelanguage.googleapis.com/v1beta/models/#{TRANSCRIBE_MODEL}:generateContent"
+  TRANSCRIBE_URL = "https://generativelanguage.googleapis.com/v1beta/models/#{TRANSCRIPTION_MODEL}:generateContent"
 
   LANG_FLAGS = {
     'it' => "\u{1F1EE}\u{1F1F9}", 'en' => "\u{1F1EC}\u{1F1E7}",
