@@ -37,17 +37,27 @@ require 'base64'
 require 'tempfile'
 require 'telegram/bot'
 
+# --- Terminal Color Helpers ---
+module TermColor
+  CODES = { cyan: 36, green: 32, red: 31, yellow: 33, gray: 90, bold: 1, magenta: 35 }.freeze
+
+  CODES.each do |name, code|
+    define_method("to_#{name}") { "\e[#{code}m#{self}\e[0m" }
+  end
+end
+String.include(TermColor)
+
 # --- Configuration ---
 BOT_TOKEN   = ENV.fetch('TELEGRAM_BOT_TOKEN') { abort '❌ Missing TELEGRAM_BOT_TOKEN in .env' }
 GEMINI_KEY  = ENV.fetch('GEMINI_API_KEY')      { abort '❌ Missing GEMINI_API_KEY in .env' }
 SKILLS      = ENV.fetch('TELEGRAM_SKILLS', '').split(',').map(&:strip).reject(&:empty?)
 
-puts "🤖 Antigravity Telegram Bot"
+puts '🤖 Antigravity Telegram Bot'.to_bold
 puts '=' * 40
 puts
-puts "📡 Bot token: #{BOT_TOKEN[0..5]}...#{BOT_TOKEN[-4..]}"
-puts "🔑 Gemini key: #{GEMINI_KEY[0..5]}...#{GEMINI_KEY[-4..]}"
-puts "📚 Skills: #{SKILLS.empty? ? '(none)' : SKILLS.join(', ')}"
+puts "📡 Bot token: #{BOT_TOKEN[0..5]}...#{BOT_TOKEN[-4..]}".to_gray
+puts "🔑 Gemini key: #{GEMINI_KEY[0..5]}...#{GEMINI_KEY[-4..]}".to_gray
+puts "📚 Skills: #{SKILLS.empty? ? '(none)' : SKILLS.join(', ')}".to_yellow
 puts
 
 # --- Audio Transcription via Gemini Multimodal API ---
@@ -254,8 +264,7 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
 
       next unless user_text && !user_text.empty?
 
-      # --- CLI: show user message in cyan ---
-      puts "\e[36m[#{chat_id}] 👤 #{user_text}\e[0m"
+      puts "[#{chat_id}] 👤 #{user_text}".to_cyan
 
       # --- Send to Agent ---
       bot.api.send_chat_action(chat_id: chat_id, action: 'typing')
@@ -271,8 +280,8 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
           full_response = full_response[0, 3990] + "\n\n_(truncated)_"
         end
 
-        # --- CLI: show bot response in green ---
-        puts "\e[32m[#{chat_id}] 🤖 #{full_response.empty? ? '(empty)' : full_response[0, 200]}#{'...' if full_response.length > 200}\e[0m"
+        preview = full_response.empty? ? '(empty)' : full_response[0, 200]
+        puts "[#{chat_id}] 🤖 #{preview}#{'...' if full_response.length > 200}".to_green
 
         bot.api.send_message(
           chat_id: chat_id,
