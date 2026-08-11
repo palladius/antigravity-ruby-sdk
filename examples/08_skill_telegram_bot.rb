@@ -60,9 +60,20 @@ puts "🔑 Gemini key: #{GEMINI_KEY[0..5]}...#{GEMINI_KEY[-4..]}".to_gray
 puts "📚 Skills: #{SKILLS.empty? ? '(none)' : SKILLS.join(', ')}".to_yellow
 puts
 
+# --- Error Logger (appends to JSONL + red CLI) ---
+def log_error(event, detail, chat_id: nil)
+  puts "[#{chat_id || '-'}] #{event}: #{detail}".to_red
+  entry = { ts: Time.now.utc.strftime('%Y-%m-%dT%H:%M:%S.%3NZ'), event: event, error: detail }
+  entry[:chat_id] = chat_id if chat_id
+  File.open('log/telegram.jsonl', 'a') { |f| f.puts(JSON.generate(entry)) } rescue nil
+end
+
 # --- Audio Transcription via Gemini Multimodal API ---
+# NOTE: GEMINI_MODEL is for the agent (via harness). Transcription uses REST API
+# directly, so it needs a model available on v1beta (gemini-2.0-flash works).
 module GeminiAudio
-  TRANSCRIBE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+  TRANSCRIBE_MODEL = ENV.fetch('GEMINI_TRANSCRIPTION_MODEL', 'gemini-2.0-flash')
+  TRANSCRIBE_URL = "https://generativelanguage.googleapis.com/v1beta/models/#{TRANSCRIBE_MODEL}:generateContent"
 
   LANG_FLAGS = {
     'it' => "\u{1F1EE}\u{1F1F9}", 'en' => "\u{1F1EC}\u{1F1E7}",
@@ -254,6 +265,7 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
 
           if result[:error]
             bot.api.send_message(chat_id: chat_id, text: "❌ Transcription failed: #{result[:error]}")
+            log_error('transcription_error', result[:error], chat_id: chat_id)
             next
           end
 
@@ -267,6 +279,7 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
           user_text = result[:text]
         rescue StandardError => e
           bot.api.send_message(chat_id: chat_id, text: "❌ Audio error: #{e.message}")
+          log_error('audio_error', e.message, chat_id: chat_id)
           next
         end
       else
@@ -301,6 +314,7 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
         ) rescue bot.api.send_message(chat_id: chat_id, text: full_response) # Fallback without Markdown if parsing fails
       rescue StandardError => e
         bot.api.send_message(chat_id: chat_id, text: "❌ Agent error: #{e.message}")
+        log_error('agent_error', e.message, chat_id: chat_id)
       end
     end
   end

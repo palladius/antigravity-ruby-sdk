@@ -126,6 +126,13 @@ just integration    # Integration tests (requires GEMINI_API_KEY)
 just rv-examples    # Run all rv examples
 ```
 
+
+## Telgeram integration
+
+You can create a Telegram bot and use Antigravity Ruby SDK to chat with your agent on Telegram!
+
+![Telegram integration](image.png)
+
 ---
 
 ## 📄 License
