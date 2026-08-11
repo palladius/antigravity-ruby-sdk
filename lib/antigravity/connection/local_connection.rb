@@ -14,11 +14,13 @@ module Antigravity
     # It handles model calls, tool orchestration, and agent logic.
     # This class is the Ruby adapter that speaks its protocol.
     class LocalConnection < Base
-      # Known locations for the localharness binary (checked in order)
+      # Known locations for the localharness binary (checked in order).
+      # IMPORTANT: The standalone `localharness` binary (from PyPI wheel) uses
+      # the stdin/stdout protobuf handshake. The `language_server` binary
+      # (Antigravity.app) does NOT — it's the IDE server mode.
       BINARY_SEARCH_PATHS = [
-        '/Applications/Antigravity.app/Contents/Resources/bin/language_server',
-        File.expand_path('~/.antigravity/bin/language_server'),
-        File.expand_path('~/.local/bin/language_server'),
+        File.expand_path('~/.antigravity/bin/localharness'),
+        File.expand_path('~/.local/bin/localharness'),
       ].freeze
 
       HARNESS_SUBCOMMAND = 'localharness'
@@ -62,7 +64,7 @@ module Antigravity
         end
 
         # 3. PATH lookup
-        which_result = `which language_server 2>/dev/null`.strip
+        which_result = `which localharness 2>/dev/null`.strip
         return which_result unless which_result.empty?
 
         # 4. Auto-download from PyPI wheel (opt-out with ANTIGRAVITY_AUTO_DOWNLOAD=false)
@@ -104,9 +106,15 @@ module Antigravity
       private
 
       def spawn_process!
-        @stdin, @stdout, @stderr, @wait_thread = Open3.popen3(
-          @binary_path, HARNESS_SUBCOMMAND
-        )
+        # Only pass 'localharness' subcommand when binary is language_server
+        # (Antigravity.app). The standalone localharness binary needs no subcommand.
+        cmd = if @binary_path.end_with?('language_server')
+                [@binary_path, HARNESS_SUBCOMMAND]
+              else
+                [@binary_path]
+              end
+
+        @stdin, @stdout, @stderr, @wait_thread = Open3.popen3(*cmd)
         @pid = @wait_thread.pid
       rescue Errno::ENOENT => e
         raise HarnessNotFoundError, "Failed to spawn localharness: #{e.message}"
@@ -132,8 +140,15 @@ module Antigravity
 
         raise HarnessHandshakeError, "Harness returned port=0" if @port == 0
       rescue IOError, Errno::EPIPE, ProtocolError => e
+        # Capture stderr for diagnostics
+        stderr_output = begin
+          @stderr&.read_nonblock(4096)
+        rescue EOFError, IOError, Errno::EAGAIN
+          nil
+        end
         kill_process!
-        raise HarnessHandshakeError, "Stdio handshake failed: #{e.message}"
+        detail = stderr_output ? " Stderr: #{stderr_output.strip}" : ''
+        raise HarnessHandshakeError, "Stdio handshake failed: #{e.message}#{detail}"
       end
 
       def connect_websocket!

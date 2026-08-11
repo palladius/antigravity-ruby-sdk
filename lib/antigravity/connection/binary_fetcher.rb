@@ -15,7 +15,7 @@ module Antigravity
     module BinaryFetcher
       PYPI_PACKAGE = 'google-antigravity'
       INSTALL_DIR  = File.expand_path('~/.antigravity/bin')
-      BINARY_NAME  = 'language_server'
+      BINARY_NAME  = 'localharness'
 
       # Platform mapping: Ruby's RUBY_PLATFORM -> PyPI wheel platform tag
       PLATFORM_MAP = {
@@ -136,9 +136,9 @@ module Antigravity
           extract_dir = Dir.mktmpdir('agy-extract-')
           system('unzip', '-q', '-o', wheel_path, '-d', extract_dir)
 
-          # Search for the binary inside
-          candidates = Dir.glob("#{extract_dir}/**/language_server") +
-                       Dir.glob("#{extract_dir}/**/localharness")
+          # Search for the binary inside (prefer localharness over language_server)
+          candidates = Dir.glob("#{extract_dir}/**/localharness") +
+                       Dir.glob("#{extract_dir}/**/language_server")
 
           binary = candidates.find { |f| File.file?(f) && !File.directory?(f) }
 

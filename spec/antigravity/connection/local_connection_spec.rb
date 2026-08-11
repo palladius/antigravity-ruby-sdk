@@ -12,12 +12,12 @@ RSpec.describe Antigravity::Connection::LocalConnection do
       end
     end
 
-    it 'discovers localharness from Antigravity.app on macOS' do
-      app_binary = '/Applications/Antigravity.app/Contents/Resources/bin/language_server'
+    it 'discovers localharness from ~/.antigravity/bin' do
+      harness_binary = File.expand_path('~/.antigravity/bin/localharness')
       with_env('ANTIGRAVITY_HARNESS_PATH' => nil) do
         allow(File).to receive(:executable?).and_return(false)
-        allow(File).to receive(:executable?).with(app_binary).and_return(true)
-        expect(described_class.find_binary!).to include('language_server')
+        allow(File).to receive(:executable?).with(harness_binary).and_return(true)
+        expect(described_class.find_binary!).to include('localharness')
       end
     end
 
