@@ -157,12 +157,9 @@ module Antigravity
 
         # Stop conditions (in priority order):
         # 1. Session end — always stop
-        # 2. Trajectory fully idle — turn is complete, stop immediately
-        # 3. Model step DONE + trailing metadata received — stop
-        # 4. Model done + 5s grace period expired — stop (prevents hang)
+        # 2. Model/trajectory done + trailing metadata received — stop
+        # 3. Model done + 5s grace period expired — stop (prevents hang)
         if msg.key?(:sessionEndResponse)
-          :stop
-        elsif traj && traj[:state].to_s =~ /FULLY_IDLE|IDLE/
           :stop
         elsif finished && (msg.key?(:trajectoryStateUpdate) || msg.key?(:usageUpdate))
           :stop
