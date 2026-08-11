@@ -32,12 +32,14 @@ puts
 question = 'What makes Ruby the best programming language?'
 puts "🙋 Question: #{question}"
 puts
-print '🤖 Answer: '
+puts '🤖 Answer:'
+puts "\e[36m#{'─' * 60}\e[0m"
 
 response = agent.ask(question) do |chunk|
-  print chunk.content if chunk.content
+  print "\e[36m#{chunk.content}\e[0m" if chunk.content
 end
 puts
+puts "\e[36m#{'─' * 60}\e[0m"
 puts
 
 # Show metadata
