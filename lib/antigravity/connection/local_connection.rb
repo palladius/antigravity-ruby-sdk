@@ -133,7 +133,7 @@ module Antigravity
         @stdin.flush
 
         # Read OutputConfig from stdout
-        frame = Protocol.read_length_prefixed(@stdout, timeout: 15)
+        frame = Protocol.read_length_prefixed(@stdout, timeout: Antigravity.config.timeout_handshake)
         output = Protocol.decode_output_config(frame)
         @port = output[:port]
         @api_key = output[:api_key]

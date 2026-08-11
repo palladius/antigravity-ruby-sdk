@@ -70,7 +70,7 @@ module Antigravity
       # Read the next JSON message. Blocks until a text frame arrives.
       # Yields each message if a block is given (for streaming).
       # Returns nil on connection close.
-      def receive_json(timeout: 30)
+      def receive_json(timeout: Antigravity.config.timeout_llm)
         deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
 
         loop do
@@ -109,7 +109,7 @@ module Antigravity
 
       # Read messages in a loop, yielding each parsed JSON.
       # Stops when block returns :stop, connection closes, or timeout.
-      def each_message(timeout: 120, &block)
+      def each_message(timeout: Antigravity.config.timeout_llm, &block)
         deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
 
         loop do
