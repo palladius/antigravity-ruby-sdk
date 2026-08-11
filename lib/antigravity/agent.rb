@@ -134,7 +134,7 @@ module Antigravity
       sidecar
     end
 
-    def attach_logger(log_target = nil, level: ::Logger::INFO, silent_notice: false)
+    def attach_logger(log_target = nil, level: :info, silent_notice: false)
       @logger_guard = Guards::AgentLogger.new(log_target, level: level, silent_notice: silent_notice)
       @logger_guard.attach_to(self)
       @logger_guard

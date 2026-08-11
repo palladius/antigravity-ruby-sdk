@@ -1,11 +1,14 @@
 # frozen_string_literal: true
 
 require "spec_helper"
+require "logger"
+require "json"
 
 RSpec.describe Antigravity::Guards do
   describe Antigravity::Guards::AgentLogger do
     let(:tmp_dir) { "tmp/test_logs" }
-    let(:tmp_log) { "#{tmp_dir}/custom_agent.log" }
+    let(:tmp_log) { "#{tmp_dir}/custom_agent.jsonl" }
+    let(:tmp_compact) { "#{tmp_dir}/custom_agent.log" }
 
     after do
       FileUtils.rm_rf(tmp_dir)
@@ -14,25 +17,33 @@ RSpec.describe Antigravity::Guards do
       ENV.delete("RACK_ENV")
     end
 
-    it "automagically logs agent prompts, responses, and tool calls with emojis to specified log file" do
+    it "writes structured JSONL to primary log and compact one-liners to .log" do
       agent = Antigravity::Agent.new(auto_logger: false)
       agent.attach_logger(tmp_log, silent_notice: true)
       agent.register_tool("ping", description: "Pings server") { "pong" }
 
       agent.ask("Run ping")
 
+      # JSONL log: structured events
       expect(File.exist?(tmp_log)).to be true
-      log_content = File.read(tmp_log, encoding: "UTF-8")
-      expect(log_content).to include("💬 [Antigravity::Prompt] User: 'Run ping'")
-      expect(log_content).to include("🤖 [Antigravity::Response] Assistant (#{Antigravity.config.default_model}):")
-      expect(log_content).to include("🛠️ [Antigravity::Tool] Executing 'ping'")
-      expect(log_content).to include("📦 [Antigravity::Tool] Result for 'ping': pong")
+      lines = File.readlines(tmp_log, chomp: true).map { |l| JSON.parse(l, symbolize_names: true) }
+      events = lines.map { |l| l[:event] }
+      expect(events).to include('prompt', 'response', 'tool_call', 'tool_result')
+      expect(lines.find { |l| l[:event] == 'prompt' }[:user_input]).to eq('Run ping')
+
+      # Compact log: human-readable one-liners with byte sizes
+      expect(File.exist?(tmp_compact)).to be true
+      compact = File.read(tmp_compact, encoding: "UTF-8")
+      expect(compact).to include("PROMPT")
+      expect(compact).to include("RESPONSE")
+      expect(compact).to include("TOOL_CALL ping")
+      expect(compact).to include("TOOL_RESULT ping OK")
     end
 
     it "prints startup notice '🪵 Logging to ...' when logger is attached" do
       expect {
         Antigravity::Agent.new(model: "gemini-flash-latest", auto_logger: false).attach_logger(tmp_log)
-      }.to output(/🪵 Logging to tmp\/test_logs\/custom_agent\.log/).to_stdout
+      }.to output(/🪵 Logging to tmp\/test_logs\/custom_agent\.jsonl/).to_stdout
     end
 
     context "when Rails.logger is defined" do
@@ -49,7 +60,6 @@ RSpec.describe Antigravity::Guards do
         expect {
           agent = Antigravity::Agent.new
           expect(agent.logger_guard.target_description).to eq("Rails.logger")
-          expect(agent.logger_guard.logger).to eq(Rails.logger)
         }.to output(/🪵 Logging to Rails\.logger/).to_stdout
       end
     end
@@ -70,39 +80,43 @@ RSpec.describe Antigravity::Guards do
         expect {
           agent = Antigravity::Agent.new
           expect(agent.logger_guard).not_to be_nil
-        }.to output(/🪵 Logging to log\/antigravity\.log/).to_stdout
+        }.to output(/🪵 Logging to log\/antigravity\.jsonl/).to_stdout
 
+        FileUtils.rm_f("log/antigravity.jsonl")
         FileUtils.rm_f("log/antigravity.log")
       end
     end
 
     context "when environment variables dictate log path" do
-      it "uses log/production.log when RAILS_ENV='production'" do
+      it "uses log/production.jsonl when RAILS_ENV='production'" do
         ENV["RAILS_ENV"] = "production"
         expect {
           agent = Antigravity::Agent.new
-          expect(agent.logger_guard.target_description).to eq("log/production.log")
-        }.to output(/🪵 Logging to log\/production\.log/).to_stdout
+          expect(agent.logger_guard.target_description).to eq("log/production.jsonl")
+        }.to output(/🪵 Logging to log\/production\.jsonl/).to_stdout
 
+        FileUtils.rm_f("log/production.jsonl")
         FileUtils.rm_f("log/production.log")
       end
 
-      it "uses log/staging.log when RACK_ENV='staging'" do
+      it "uses log/staging.jsonl when RACK_ENV='staging'" do
         ENV["RACK_ENV"] = "staging"
         expect {
           agent = Antigravity::Agent.new
-          expect(agent.logger_guard.target_description).to eq("log/staging.log")
-        }.to output(/🪵 Logging to log\/staging\.log/).to_stdout
+          expect(agent.logger_guard.target_description).to eq("log/staging.jsonl")
+        }.to output(/🪵 Logging to log\/staging\.jsonl/).to_stdout
 
+        FileUtils.rm_f("log/staging.jsonl")
         FileUtils.rm_f("log/staging.log")
       end
 
-      it "defaults to log/antigravity.log when no environment variables are set" do
+      it "defaults to log/antigravity.jsonl when no environment variables are set" do
         expect {
           agent = Antigravity::Agent.new
-          expect(agent.logger_guard.target_description).to eq("log/antigravity.log")
-        }.to output(/🪵 Logging to log\/antigravity\.log/).to_stdout
+          expect(agent.logger_guard.target_description).to eq("log/antigravity.jsonl")
+        }.to output(/🪵 Logging to log\/antigravity\.jsonl/).to_stdout
 
+        FileUtils.rm_f("log/antigravity.jsonl")
         FileUtils.rm_f("log/antigravity.log")
       end
     end
