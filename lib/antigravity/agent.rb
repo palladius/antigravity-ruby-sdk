@@ -80,12 +80,12 @@ module Antigravity
 
     # --- Chat ---
 
-    def prompt(message, &block)
+    def prompt(message, timeout: 30, &block)
       emit_sidecar_event(:prompt_started, prompt: message)
       hooks.run_pre_prompt(message)
 
       if @connected && @conversation
-        response = @conversation.chat(message, &block)
+        response = @conversation.chat(message, timeout: timeout, &block)
       else
         # Legacy mock-client path (unit tests, pre-connection)
         response = client.send_turn(self, message, &block)

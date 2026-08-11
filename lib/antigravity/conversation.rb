@@ -52,7 +52,7 @@ module Antigravity
     #
     # @param prompt [String] user message
     # @return [Message] the complete response
-    def chat(prompt, &block)
+    def chat(prompt, timeout: 30, &block)
       raise ProtocolError, 'Session not initialized' unless @initialized
 
       @turn_count += 1
@@ -65,7 +65,7 @@ module Antigravity
       @ws.send_json(input_event)
 
       # Collect response
-      collect_response(&block)
+      collect_response(timeout: timeout, &block)
     end
 
     def initialized?
@@ -86,7 +86,7 @@ module Antigravity
 
     private
 
-    def collect_response(&block)
+    def collect_response(timeout: 30, &block)
       text_parts = []
       thinking_parts = []
       steps = []
@@ -94,7 +94,7 @@ module Antigravity
       finished = false
       finished_at = nil
 
-      @ws.each_message(timeout: 120) do |msg|
+      @ws.each_message(timeout: timeout) do |msg|
         if (step = msg[:stepUpdate])
           step_record = parse_step(step)
           steps << step_record
