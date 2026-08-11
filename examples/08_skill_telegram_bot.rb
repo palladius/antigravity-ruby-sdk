@@ -221,34 +221,61 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
       # --- Commands ---
       if message.text&.start_with?('/')
         case message.text.split.first
-        when '/start'
+        when '/reset'
           sessions[chat_id]&.close!
           sessions[chat_id] = ChatSession.new(chat_id, skills: SKILLS)
           bot.api.send_message(
             chat_id: chat_id,
-            text: "🤖 *Antigravity Agent activated!*\n\n" \
-                  "Send me text or voice messages.\n" \
-                  "Skills loaded: #{SKILLS.empty? ? 'none' : SKILLS.map { |s| "`#{File.basename(s)}`" }.join(', ')}\n\n" \
-                  "Commands:\n/start — New session\n/skills — List skills\n/stop — End session",
+            text: "🔄 *Session reset!* Fresh agent, clean slate.\n\n" \
+                  "Skills: #{SKILLS.empty? ? 'none' : SKILLS.map { |s| "`#{File.basename(s)}`" }.join(', ')}",
+            parse_mode: 'Markdown'
+          )
+          puts "[#{chat_id}] /reset - new session".to_yellow
+          next
+
+        when '/help'
+          bot.api.send_message(
+            chat_id: chat_id,
+            text: "💎 *Ruby Antigravity SDK* v#{VERSION}\n\n" \
+                  "Commands:\n" \
+                  "/help \u2014 This message\n" \
+                  "/skills \u2014 List loaded skills\n" \
+                  "/status \u2014 Session info\n" \
+                  "/reset \u2014 New agent session\n" \
+                  "/stop \u2014 Shutdown bot\n\n" \
+                  "Send text or voice \ud83c\udfa4 messages to chat!",
             parse_mode: 'Markdown'
           )
           next
 
         when '/skills'
           session = sessions[chat_id]
-          if session
-            skill_list = session.agent.skills.map { |s| "- #{s.name}: #{s.description[0, 60]}" }.join("\n")
-            bot.api.send_message(chat_id: chat_id, text: "📚 *Loaded Skills:*\n#{skill_list}", parse_mode: 'Markdown')
+          if session && !session.agent.skills.empty?
+            skill_list = session.agent.skills.map { |s| "- `#{s.name}`: #{s.description.to_s[0, 60]}" }.join("\n")
+            bot.api.send_message(chat_id: chat_id, text: "\ud83d\udcda *Loaded Skills:*\n#{skill_list}", parse_mode: 'Markdown')
           else
-            bot.api.send_message(chat_id: chat_id, text: "No active session. Send /start first!")
+            bot.api.send_message(chat_id: chat_id, text: "\ud83d\udcda No skills loaded. Set TELEGRAM\\_SKILLS in .env")
           end
           next
 
-        when '/stop'
-          sessions[chat_id]&.close!
-          sessions.delete(chat_id)
-          bot.api.send_message(chat_id: chat_id, text: "👋 Session ended. Send /start to begin again.")
+        when '/status'
+          session = sessions[chat_id]
+          turns = session ? session.history.size : 0
+          bot.api.send_message(
+            chat_id: chat_id,
+            text: "\u2734\ufe0f Agent: `#{AGENT_MODEL}`\n" \
+                  "\ud83c\udfa4 Transcription: `#{TRANSCRIPTION_MODEL}`\n" \
+                  "\ud83d\udcac Turns: #{turns}\n" \
+                  "\ud83d\udcda Skills: #{SKILLS.size}",
+            parse_mode: 'Markdown'
+          )
           next
+
+        when '/stop'
+          bot.api.send_message(chat_id: chat_id, text: "\ud83d\udc4b Shutting down bot... Arrivederci!")
+          puts "\ud83d\udc4b /stop received from #{chat_id} - shutting down".to_red
+          sessions.each_value(&:close!)
+          exit(0)
         end
       end
 
