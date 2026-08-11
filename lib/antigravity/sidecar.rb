@@ -10,6 +10,14 @@ module Antigravity
     class Base
       attr_reader :name, :queue, :worker_thread
 
+      def self.emoji
+        Antigravity.emoji(:sidecar)
+      end
+
+      def emoji
+        self.class.emoji
+      end
+
       def initialize(name = "SidecarWorker")
         @name = name
         @queue = Queue.new

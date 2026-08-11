@@ -2,14 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.9] - 2026-08-11 🎨
+* 🎨 Added central `Antigravity::EMOJIS` registry (`lib/antigravity/emojis.rb`) and `Antigravity.emoji(:key)`.
+* 💎 Added `.emoji` class and instance methods on core classes (`Antigravity::Agent.emoji`, `Antigravity::Tool.emoji`, `Antigravity::Sidecar::Base.emoji`, `Antigravity::Skill.emoji`, `Antigravity::Message#emoji`).
+* 🚗 Updated Sidecar emoji to car (`🚗`).
+
 ## [0.1.8] - 2026-08-11 🎨
-* 🎨 Added emojiful log line prefixes to `Antigravity::Guards::AgentLogger`:
-  - 💬 `[Antigravity::Prompt]` User prompt
-  - 🤖 `[Antigravity::Response]` Assistant turn
-  - 🛠️ `[Antigravity::Tool]` Tool execution
-  - 📦 `[Antigravity::Tool]` Tool result
-  - ❌ `[Antigravity::Tool]` Tool blocked
-  - 🚗 `[Antigravity::Sidecar]` Sidecar event
+* 🎨 Added emojiful log line prefixes to `Antigravity::Guards::AgentLogger`.
 
 ## [0.1.7] - 2026-08-11 🧪
 * 🧪 Added comprehensive RSpec unit tests covering all automagic logging behaviors.

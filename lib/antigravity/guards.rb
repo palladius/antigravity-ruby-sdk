@@ -28,30 +28,30 @@ module Antigravity
         @logger.level = level if @logger.respond_to?(:level=)
 
         unless silent_notice
-          puts "🪵 Logging to #{@target_description}"
+          puts "#{Antigravity.emoji(:logger)} Logging to #{@target_description}"
         end
       end
 
       def before_prompt(prompt_text)
-        @logger.info("💬 [Antigravity::Prompt] User: '#{prompt_text}'")
+        @logger.info("#{Antigravity.emoji(:prompt)} [Antigravity::Prompt] User: '#{prompt_text}'")
       end
 
       def after_response(response)
-        @logger.info("🤖 [Antigravity::Response] Assistant (#{response.model_id}): #{response.content.strip}")
+        @logger.info("#{Antigravity.emoji(:response)} [Antigravity::Response] Assistant (#{response.model_id}): #{response.content.strip}")
       end
 
       def before_tool_call(tool_name, params)
-        @logger.info("🛠️ [Antigravity::Tool] Executing '#{tool_name}' with params: #{params.inspect}")
+        @logger.info("#{Antigravity.emoji(:tool)} [Antigravity::Tool] Executing '#{tool_name}' with params: #{params.inspect}")
       end
 
       def after_tool_call(tool_name, params, result)
-        prefix = result.to_s.include?("TOOL BLOCKED") ? "❌" : "📦"
+        prefix = result.to_s.include?("TOOL BLOCKED") ? Antigravity.emoji(:tool_blocked) : Antigravity.emoji(:tool_result)
         @logger.info("#{prefix} [Antigravity::Tool] Result for '#{tool_name}': #{result}")
         result
       end
 
       def sidecar_event(event_type, payload)
-        @logger.info("🚗 [Antigravity::Sidecar] Event :#{event_type} payload: #{payload.inspect}")
+        @logger.info("#{Antigravity.emoji(:sidecar)} [Antigravity::Sidecar] Event :#{event_type} payload: #{payload.inspect}")
       end
 
       def attach_to(agent)

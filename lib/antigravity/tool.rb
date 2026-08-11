@@ -2,11 +2,21 @@
 
 module Antigravity
   class Tool
-    def self.inherited(subclass)
-      subclass.extend(ClassMethods)
+    class << self
+      def inherited(subclass)
+        subclass.extend(ClassMethods)
+      end
+
+      def emoji
+        Antigravity.emoji(:tool)
+      end
     end
 
     module ClassMethods
+      def emoji
+        Antigravity.emoji(:tool)
+      end
+
       def name(val = nil, desc: nil)
         if val
           @tool_name = val.to_s
@@ -57,6 +67,10 @@ module Antigravity
           }
         }
       end
+    end
+
+    def emoji
+      self.class.emoji
     end
 
     def tool_name

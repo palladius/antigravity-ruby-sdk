@@ -6,6 +6,14 @@ module Antigravity
   class Skill
     attr_reader :name, :description, :instructions, :path
 
+    def self.emoji
+      Antigravity.emoji(:skill)
+    end
+
+    def emoji
+      self.class.emoji
+    end
+
     def initialize(path)
       @path = File.expand_path(path)
       parse_skill_file
