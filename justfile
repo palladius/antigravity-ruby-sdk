@@ -42,17 +42,17 @@ harness-update:
 
 # --- rv tasks (no gem install needed, like 'uv' for Python) ---
 
-# Install runtime deps for rv (only websocket gem needed)
+# Install deps from Gemfile.lock (like `uv sync`)
 rv-setup:
-    rv run gem install websocket --no-document 2>/dev/null || true
+    rv ci
 
 # Simple LLM chat — no workspace, fast
 rv-chat: rv-setup
-    rv run ruby -Ilib examples/04_simple_llm_chat.rb
+    rv run bundle exec ruby -Ilib examples/04_simple_llm_chat.rb
 
 # Workspace analysis — indexes a directory, asks about it
 rv-workspace DIR=".": rv-setup
-    rv run ruby -Ilib examples/05_workspace_analysis.rb {{DIR}}
+    rv run bundle exec ruby -Ilib examples/05_workspace_analysis.rb {{DIR}}
 
 # Run all rv examples
 rv-examples: rv-chat rv-workspace
