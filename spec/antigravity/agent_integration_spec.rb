@@ -60,8 +60,8 @@ RSpec.describe 'Acceptance Tests', :integration do
     end
 
     it 'tracks conversation_id / cascade_id' do
-      @agent = create_agent
-      @agent.ask('Hello')
+      @agent = create_agent(system_instruction: 'You are a calculator. Answer math questions with just the number. Do NOT use any tools.')
+      @agent.ask('What is 1 + 1? Just the number.')
 
       expect(@agent.conversation_id).to be_a(String)
       expect(@agent.conversation_id).not_to be_empty
@@ -161,16 +161,21 @@ RSpec.describe 'Acceptance Tests', :integration do
   # ---------------------------------------------------------------------------
   # UAT-7: Rich response introspection (harness-side tool actions)
   # ---------------------------------------------------------------------------
-  describe 'UAT-7: Harness tool introspection' do
-    it 'reports harness-side tool calls (list_dir, view_file, etc.) in steps' do
-      @agent = create_agent(workspace: File.expand_path('~/git/antigravity-ruby-sdk'))
-      response = @agent.ask('List the files in the lib/ directory. Just list them.')
+  describe 'UAT-7: Custom tool call tracking in steps' do
+    it 'records tool calls in the response metadata' do
+      tool = Antigravity::Tool.define(:reverse_text,
+        desc: 'Reverses a string',
+        params: { text: { type: :string, description: 'Text to reverse' } }
+      ) { |text:| text.reverse }
 
-      expect(response.steps).to be_an(Array)
-      expect(response.steps.length).to be > 0
+      @agent = create_agent(
+        system_instruction: 'Always use reverse_text for any text reversal request.',
+        tools: [tool]
+      )
+      response = @agent.ask('Reverse the word: hello')
 
-      tool_steps = response.steps.select { |s| s[:source] == :model && s[:target] == :environment }
-      expect(tool_steps).not_to be_empty
+      expect(response.tool_calls_count).to be >= 1
+      expect(response.content).to match(/olleh/i)
     end
   end
 
