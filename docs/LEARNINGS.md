@@ -153,7 +153,7 @@ Then just: `rv run ruby -Ilib examples/04_simple_llm_chat.rb` — no `gem instal
 no `bundle exec`, no state. Gems are cached after first run.
 
 ### Timeout Tuning
-- **20s default** (dev) is too aggressive — model can take >30s to start responding under load
+- **20s default** (dev) is too aggressive — harness startup + workspace indexing can take >30s (the model itself responds in <5s)
 - **40s** is the sweet spot for integration tests
 - **120s** for production/complex agentic tasks
 - All configurable via ENV: `ANTIGRAVITY_TIMEOUT_LLM=60 ruby my_agent.rb`

@@ -42,13 +42,17 @@ harness-update:
 
 # --- rv tasks (stateless, no gem install needed — like `uv run`) ---
 
+# Check rv + gem setup
+rv-init:
+    rv run ruby examples/rv/rv_init.rb
+
 # Simple LLM chat — no workspace, fast
 rv-chat:
-    rv run ruby -Ilib examples/04_simple_llm_chat.rb
+    rv run ruby examples/04_simple_llm_chat.rb
 
 # Workspace analysis — indexes a directory, asks about it
 rv-workspace DIR=".":
-    rv run ruby -Ilib examples/05_workspace_analysis.rb {{DIR}}
+    rv run ruby examples/05_workspace_analysis.rb {{DIR}}
 
 # Run all rv examples
 rv-examples: rv-chat rv-workspace

@@ -4,8 +4,8 @@
 # Example 2: Workspace Analysis — ask the agent about a local directory.
 #
 # Run with rv (stateless, no gem install needed!):
-#   rv run ruby -Ilib examples/05_workspace_analysis.rb
-#   rv run ruby -Ilib examples/05_workspace_analysis.rb /path/to/project
+#   rv run ruby examples/05_workspace_analysis.rb
+#   rv run ruby examples/05_workspace_analysis.rb /path/to/project
 #
 # Or with bundler:
 #   bundle exec ruby -Ilib examples/05_workspace_analysis.rb
@@ -16,15 +16,7 @@
 # The agent can then use built-in tools (list_dir, view_file) to explore it.
 # This is slower than a simple chat but enables codebase-aware responses.
 
-# Inline gem resolution — fully stateless, like `uv run --with`
-require 'bundler/inline'
-gemfile(true) do
-  source 'https://rubygems.org'
-  gem 'websocket', '~> 1.2'
-end
-
-$LOAD_PATH.unshift File.expand_path('../lib', __dir__)
-require 'antigravity'
+require_relative 'rv/rv_init'
 
 # Use CLI arg or default to current SDK directory
 workspace = ARGV[0] || File.expand_path('..', __dir__)
