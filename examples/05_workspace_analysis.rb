@@ -45,13 +45,13 @@ question = "What's cool about this repo? What does it do and what tech stack doe
 puts "🙋 Question: #{question}"
 puts
 puts '🤖 Answer:'
-puts "\e[36m#{'─' * 60}\e[0m"
+puts "#{'─' * 60}"
 
 response = agent.ask(question, timeout: 60) do |chunk|
   print "\e[36m#{chunk.content}\e[0m" if chunk.content
 end
 puts
-puts "\e[36m#{'─' * 60}\e[0m"
+puts "#{'─' * 60}"
 puts
 
 # Show metadata
