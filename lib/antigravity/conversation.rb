@@ -130,8 +130,8 @@ module Antigravity
             tool_calls_count += 1 unless step[:customTool]
           end
 
-          # Finished? Model response to user DONE (with non-error text) or trajectory FULLY_IDLE
-          if is_model_step && is_target_user && !is_error_step && step[:state] && step[:state].to_s =~ /DONE|done|2/ && !text_parts.empty?
+          # Finished? Model response to user DONE (even if text_parts is empty — tool-only turns are valid)
+          if is_model_step && is_target_user && !is_error_step && step[:state] && step[:state].to_s =~ /DONE|done|2/
             finished = true
           end
         end
@@ -148,9 +148,11 @@ module Antigravity
         end
 
         # Trajectory state: STATE_FULLY_IDLE / STATE_CANCELLED = turn complete (authoritative signal from harness)
+        # This is the MOST authoritative signal — always stop, even with empty text.
         if (traj = msg[:trajectoryStateUpdate])
           if traj[:state].to_s =~ /FULLY_IDLE|CANCELLED/
             finished = true
+            finished_at = Time.now
           end
         end
 
