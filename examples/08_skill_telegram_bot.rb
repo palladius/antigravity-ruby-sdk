@@ -51,12 +51,16 @@ String.include(TermColor)
 BOT_TOKEN   = ENV.fetch('TELEGRAM_BOT_TOKEN') { abort '❌ Missing TELEGRAM_BOT_TOKEN in .env' }
 GEMINI_KEY  = ENV.fetch('GEMINI_API_KEY')      { abort '❌ Missing GEMINI_API_KEY in .env' }
 SKILLS      = ENV.fetch('TELEGRAM_SKILLS', '').split(',').map(&:strip).reject(&:empty?)
+AGENT_MODEL = ENV.fetch('GEMINI_MODEL', 'gemini-2.5-flash-lite')
+TRANSCRIPTION_MODEL = ENV.fetch('GEMINI_TRANSCRIPTION_MODEL', 'gemini-2.0-flash')
 
 puts '🤖 Antigravity Telegram Bot'.to_bold
 puts '=' * 40
 puts
 puts "📡 Bot token: #{BOT_TOKEN[0..5]}...#{BOT_TOKEN[-4..]}".to_gray
 puts "🔑 Gemini key: #{GEMINI_KEY[0..5]}...#{GEMINI_KEY[-4..]}".to_gray
+puts "✴️  Agent model: #{AGENT_MODEL}".to_cyan
+puts "🎤 Transcription model: #{TRANSCRIPTION_MODEL}".to_cyan
 puts "📚 Skills: #{SKILLS.empty? ? '(none)' : SKILLS.join(', ')}".to_yellow
 puts
 
@@ -197,6 +201,8 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
   # Proactive greeting on startup!
   if CHAT_ID && CHAT_ID > 0
     greeting = "💎 *Ruby Antigravity SDK — Telegram Bot* v#{VERSION}\n\n" \
+               "✴️ Agent model: `#{AGENT_MODEL}`\n" \
+               "🎤 Transcription: `#{TRANSCRIPTION_MODEL}`\n\n" \
                "🤗 Ciao, come butta? Sono il tuo agente Ruby, pronto a servirti!\n\n" \
                "Mandami un messaggio di testo o vocale 🎤\n" \
                "Comandi: /start /skills /stop"
