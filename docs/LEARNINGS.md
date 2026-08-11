@@ -169,6 +169,12 @@ end
 Setting a workspace causes the harness to index the entire directory tree.
 Always warn users: `"⏳ Indexing workspace: /path — this may take a moment..."`
 
+### Honeypot Technique for Tests
+For integration tests that need a workspace, use a tiny "honeypot" fixture
+directory (`spec/fixtures/honeypot/`) with just 2 files (~15 lines total).
+Indexing is near-instant vs 120+ seconds for a real project.
+This makes workspace-dependent tests fast AND deterministic.
+
 ## Reference: Python SDK Architecture
 - `LocalConnection` spawns the binary, does stdio handshake, connects WebSocket
 - `EventProcessor` handles all message routing (steps, tools, hooks, policies)

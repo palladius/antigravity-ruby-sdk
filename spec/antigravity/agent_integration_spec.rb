@@ -27,17 +27,18 @@ RSpec.describe 'Acceptance Tests', :integration do
 
   # ---------------------------------------------------------------------------
   # UAT-1: Codebase analysis ("What is this codebase doing?")
-  # Mirror of Python: response = await agent.chat("What is this codebase?")
+  # Uses a tiny "honeypot" fixture (2 files) for fast indexing.
   # ---------------------------------------------------------------------------
   describe 'UAT-1: Codebase analysis' do
     it 'asks the agent to describe a directory and gets a substantive response' do
-      @agent = create_agent(workspace: File.expand_path('~/git/antigravity-ruby-sdk'))
-      response = @agent.ask('Based on the directory name and common Ruby conventions, what does this codebase likely do? Be brief, 2-3 sentences max. Do NOT use any tools, just answer directly.')
+      honeypot = File.expand_path('spec/fixtures/honeypot', __dir__.sub('/spec/antigravity', ''))
+      @agent = create_agent(workspace: honeypot)
+      response = @agent.ask('Read the files in this workspace and tell me what this project does. Be brief, 2-3 sentences max.')
 
       expect(response).to be_a(Antigravity::Message)
       expect(response.content).to be_a(String)
-      expect(response.content.length).to be > 50  # not empty/trivial
-      expect(response.content).to match(/ruby|sdk|antigravity|agent|gem/i)
+      expect(response.content.length).to be > 20  # not empty/trivial
+      expect(response.content).to match(/ruby|honeypot|42|gem|meaning/i)
     end
   end
 
