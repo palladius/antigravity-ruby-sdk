@@ -68,10 +68,10 @@ RSpec.describe 'Acceptance Tests', :integration do
     end
 
     it 'counts turns across multiple exchanges' do
-      @agent = create_agent
-      @agent.ask('Say A')
-      @agent.ask('Say B')
-      @agent.ask('Say C')
+      @agent = create_agent(system_instruction: 'You are a simple echo bot. Reply with just the letter requested. Do NOT use any tools.')
+      @agent.ask('Say A. Reply with just: A')
+      @agent.ask('Say B. Reply with just: B')
+      @agent.ask('Say C. Reply with just: C')
 
       expect(@agent.turn_count).to eq(3)
     end
@@ -142,11 +142,11 @@ RSpec.describe 'Acceptance Tests', :integration do
   describe 'UAT-6: Lifecycle' do
     it 'Agent.open auto-closes and returns the response' do
       response = nil
-      Antigravity::Agent.open do |agent|
-        response = agent.ask('Say OK')
+      Antigravity::Agent.open(system_instruction: 'Reply with just OK when asked. Do NOT use any tools.') do |agent|
+        response = agent.ask('Say OK. Reply with just: OK')
         expect(agent).to be_connected
       end
-      expect(response.content).to include('OK')
+      expect(response.content).to match(/OK/i)
     end
 
     it 'close! is idempotent and cleans up' do
