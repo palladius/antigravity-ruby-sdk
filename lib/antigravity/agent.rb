@@ -4,18 +4,28 @@ module Antigravity
   class Agent < Base
 
     attr_accessor :model, :system_instruction, :api_key
-    attr_reader :tools, :skills, :hooks, :sidecars, :client, :logger_guard
+    attr_reader :tools, :skills, :hooks, :sidecars, :client, :logger_guard,
+                :workspace, :connection, :conversation
 
-    def initialize(model: nil, auto_logger: true, &block)
+    def initialize(model: nil, system_instruction: nil, tools: [],
+                   workspace: nil, auto_logger: true, &block)
       @model = model || Antigravity.config.default_model
       @api_key = Antigravity.config.api_key
-      @system_instruction = nil
-      @tools = []
+      @system_instruction = system_instruction
+      @workspace = workspace || Dir.pwd
+      @tools = tools.dup
       @skills = []
       @sidecars = []
       @hooks = Hooks.new
       @client = Client.new
       @logger_guard = nil
+      @connection = nil
+      @conversation = nil
+      @connected = false
+
+      # Register pre-provided tools into the tool runner
+      @tool_runner = ToolRunner.new
+      @tools.each { |t| @tool_runner.register(t) }
 
       # Automagic Logger attachment unless disabled via ENV["ANTIGRAVITY_LOGGER"]=false or auto_logger: false
       if auto_logger && logger_enabled?
@@ -24,6 +34,87 @@ module Antigravity
 
       yield(self) if block_given?
     end
+
+    # --- Class Methods ---
+
+    # Block form: opens connection, yields agent, auto-closes.
+    def self.open(**kwargs, &block)
+      agent = new(**kwargs)
+      agent.connect!
+      begin
+        block.call(agent)
+      ensure
+        agent.close!
+      end
+    end
+
+    # --- Connection Lifecycle ---
+
+    def connect!
+      return self if @connected
+
+      @connection = Connection::LocalConnection.new
+      @connection.connect!
+
+      @conversation = Conversation.new(
+        ws_client: @connection.ws_client,
+        tool_runner: @tool_runner
+      )
+
+      harness_config = build_harness_config
+      @conversation.initialize_session!(harness_config: harness_config)
+      @connected = true
+      self
+    end
+
+    def connected?
+      @connected && @connection&.connected?
+    end
+
+    def close!
+      @connected = false
+      @connection&.disconnect!
+      @connection = nil
+      @conversation = nil
+    end
+
+    # --- Chat ---
+
+    def prompt(message, &block)
+      emit_sidecar_event(:prompt_started, prompt: message)
+      hooks.run_pre_prompt(message)
+
+      if @connected && @conversation
+        response = @conversation.chat(message, &block)
+      else
+        # Legacy mock-client path (unit tests, pre-connection)
+        response = client.send_turn(self, message, &block)
+      end
+
+      hooks.run_post_response(response)
+      emit_sidecar_event(:turn_completed, response: response.content, model: model)
+
+      response
+    end
+    alias ask prompt
+
+    # --- Metadata Accessors (mirrors Python SDK) ---
+
+    def conversation_id
+      @conversation&.conversation_id
+    end
+
+    def turn_count
+      @conversation&.turn_count || 0
+    end
+
+    def session_summary
+      return {} unless @conversation
+
+      @conversation.session_summary(model: @model)
+    end
+
+    # --- Tool Registration ---
 
     def register_tool(tool_or_name = nil, description: "", &block)
       if block_given? && tool_or_name
@@ -34,6 +125,7 @@ module Antigravity
         raise ArgumentError, "Invalid tool definition"
       end
       @tools << tool
+      @tool_runner.register(tool) if @tool_runner
       tool
     end
 
@@ -75,19 +167,6 @@ module Antigravity
       @sidecars.each { |sidecar| sidecar.emit(event_type, payload) }
     end
 
-    def prompt(message, &block)
-      emit_sidecar_event(:prompt_started, prompt: message)
-      hooks.run_pre_prompt(message)
-
-      response = client.send_turn(self, message, &block)
-
-      hooks.run_post_response(response)
-      emit_sidecar_event(:turn_completed, response: response.content, model: model)
-
-      response
-    end
-    alias ask prompt
-
     private
 
     def logger_enabled?
@@ -95,6 +174,20 @@ module Antigravity
       return false if %w[false 0 none no].include?(env_val)
 
       true
+    end
+
+    def build_harness_config
+      config = {
+        initializeConversation: {
+          harnessConfig: {
+            model: @model,
+            systemInstruction: @system_instruction,
+            workspaceDir: @workspace,
+            hostTools: @tool_runner.to_harness_tools
+          }
+        }
+      }
+      config
     end
   end
 end
