@@ -127,11 +127,32 @@ just rv-examples    # Run all rv examples
 ```
 
 
-## Telgeram integration
+## 🤖 Telegram Integration
 
-You can create a Telegram bot and use Antigravity Ruby SDK to chat with your agent on Telegram!
+Chat with your Antigravity agent on Telegram — text and voice messages with automatic transcription!
+
+1. Create a bot with [@BotFather](https://t.me/BotFather)
+2. Add these to your `.env`:
+
+```bash
+TELEGRAM_BOT_TOKEN=your-token-from-botfather
+TELEGRAM_CHAT_ID=your-chat-id        # Optional: enables startup greeting
+TELEGRAM_SKILLS=./skills/my-skill    # Optional: comma-separated skill paths/URLs
+```
+
+3. Run:
+
+```bash
+just rv-skill-telegram
+```
+
+Commands: `/start` `/skills` `/stop` — supports voice messages with 🇮🇹🇬🇧🇪🇸 language detection.
+
+See `.env.dist` for all available options.
 
 ![Telegram integration](image.png)
+
+![Telegram voice transcription](image-1.png)
 
 ---
 
