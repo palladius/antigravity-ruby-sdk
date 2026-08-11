@@ -37,7 +37,9 @@ module Antigravity
                      method = tool.method(:call)
                      param_types = method.parameters
 
-                     if param_types.any? { |type, _| type == :keyreq || type == :key }
+                     if param_types.empty?
+                       tool.call
+                     elsif param_types.any? { |type, _| type == :keyreq || type == :key }
                        valid_keys = param_types.map { |_, name| name }.compact
                        kw_args = params.transform_keys(&:to_sym).select { |k, _| valid_keys.include?(k) }
                        kw_args[:location] = "Milan" if valid_keys.include?(:location) && kw_args[:location].nil?
