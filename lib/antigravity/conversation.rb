@@ -92,6 +92,7 @@ module Antigravity
       steps = []
       tool_calls_count = 0
       finished = false
+      finished_at = nil
 
       @ws.each_message(timeout: 120) do |msg|
         if (step = msg[:stepUpdate])
@@ -128,7 +129,10 @@ module Antigravity
 
           # Finished?
           if step[:state] && step[:state].to_s =~ /DONE|done|2/
-            finished = true if step[:source].to_s =~ /MODEL|model|3/
+            if step[:source].to_s =~ /MODEL|model|3/
+              finished = true
+              finished_at ||= Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            end
           end
         end
 
@@ -137,11 +141,15 @@ module Antigravity
           update_usage(usage)
         end
 
-        # Session end
+        # Stop conditions (in priority order):
+        # 1. Session end — always stop
+        # 2. Model done + trailing metadata received — stop
+        # 3. Model done + 5s grace period expired — stop (prevents hang)
         if msg.key?(:sessionEndResponse)
           :stop
-        elsif finished
-          # Small delay to catch trailing usage_update
+        elsif finished && (msg.key?(:trajectoryStateUpdate) || msg.key?(:usageUpdate))
+          :stop
+        elsif finished_at && (Process.clock_gettime(Process::CLOCK_MONOTONIC) - finished_at) > 5
           :stop
         end
       end
@@ -227,7 +235,9 @@ module Antigravity
     end
 
     def update_usage(usage)
-      meta = usage[:cumulativeUsage] || usage
+      # The harness sends: { total: { promptTokenCount: "3855", ... }, agents: [...] }
+      # Fall back to cumulativeUsage (legacy) or flat usage hash
+      meta = usage[:total] || usage[:cumulativeUsage] || usage
       @last_turn_usage = {
         prompt_token_count: meta[:promptTokenCount].to_i,
         candidates_token_count: meta[:candidatesTokenCount].to_i,

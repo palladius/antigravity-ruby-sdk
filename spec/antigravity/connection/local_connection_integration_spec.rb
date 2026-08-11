@@ -42,11 +42,19 @@ RSpec.describe Antigravity::Connection::LocalConnection, :integration do
 
     conversation = Antigravity::Conversation.new(ws_client: @conn.ws_client)
     harness_config = {
-      initializeConversation: {
-        harnessConfig: {
-          model: 'gemini-2.5-flash',
-          workspaceDir: Dir.pwd
-        }
+      config: {
+        models: [
+          {
+            name: Antigravity.config.default_model,
+            geminiApiEndpoint: {
+              apiKey: ENV['GEMINI_API_KEY']
+            }
+          }
+        ],
+        workspaces: [
+          { filesystemWorkspace: { directory: Dir.pwd } }
+        ],
+        appDataDir: File.expand_path('~/.gemini/antigravity')
       }
     }
     conversation.initialize_session!(harness_config: harness_config)
