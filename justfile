@@ -2,9 +2,17 @@
 default:
     @just -l
 
-# Run all RSpec tests
+# Run unit tests only (fast, no harness needed)
 test:
-    bundle exec rake spec
+    bundle exec rspec --tag '~integration' spec/
+
+# Run integration tests (requires localharness + GEMINI_API_KEY)
+integration:
+    bundle exec rspec --tag integration spec/
+
+# Run ALL tests (unit + integration)
+all-tests:
+    bundle exec rspec spec/
 
 # Run all example scripts
 examples:
@@ -19,3 +27,15 @@ build:
 # Push gem package to RubyGems.org
 release:
     bundle exec rake release
+
+# Check if localharness binary is available
+harness-check:
+    bundle exec rake harness:check
+
+# Download localharness binary from PyPI (⏳ ~50MB)
+harness-fetch:
+    bundle exec rake harness:fetch
+
+# Force re-download localharness binary
+harness-update:
+    bundle exec rake harness:update

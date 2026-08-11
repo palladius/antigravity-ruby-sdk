@@ -8,6 +8,8 @@
 
 ## 🎨 Emoji Mapping
 
+Antigravity overall: "🛰️"
+
 * 💬 `[Antigravity::Prompt]` User prompt
 * 🤖 `[Antigravity::Response]` Assistant turn
 * 🛠️ `[Antigravity::Tool]` Tool execution

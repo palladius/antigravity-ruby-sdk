@@ -2,6 +2,7 @@
 
 module Antigravity
   EMOJIS = {
+    antigravity: "🛰️",
     gem: "💎",
     agent: "🕵️‍♂️",
     prompt: "💬",

@@ -8,17 +8,38 @@ RSpec::Core::RakeTask.new(:spec)
 task default: :spec
 
 namespace :harness do
-  desc "Fetch or verify localharness Go binary for local platform"
-  task :fetch do
-    puts "🔍 Checking for localharness binary..."
-    harness_path = File.expand_path("~/.antigravity/bin/localharness")
-    if File.exist?(harness_path)
-      puts "✅ Found localharness at #{harness_path}"
-    else
-      puts "ℹ️ localharness not found at #{harness_path}. Installing/verifying..."
-      # Create bin directory if needed
-      FileUtils.mkdir_p(File.dirname(harness_path))
-      puts "💡 Ensure `google-antigravity` wheel or localharness is installed."
+  desc "Check if localharness binary is available"
+  task :check do
+    require "antigravity"
+    begin
+      path = Antigravity::Connection::LocalConnection.find_binary!
+      puts "✅ localharness found at: #{path}"
+    rescue Antigravity::HarnessNotFoundError => e
+      puts "❌ #{e.message}"
+      exit 1
     end
+  end
+
+  desc "Download localharness binary from PyPI wheel"
+  task :fetch do
+    require "antigravity"
+    if Antigravity::Connection::BinaryFetcher.installed?
+      puts "✅ Already installed at #{Antigravity::Connection::BinaryFetcher.installed_path}"
+    else
+      puts "⏳ Downloading localharness binary from PyPI... this will take some time."
+      path = Antigravity::Connection::BinaryFetcher.fetch!
+      puts "✅ Installed at #{path}"
+    end
+  end
+
+  desc "Force re-download localharness binary"
+  task :update do
+    require "antigravity"
+    require "fileutils"
+    old = Antigravity::Connection::BinaryFetcher.installed_path
+    FileUtils.rm_f(old)
+    puts "⏳ Re-downloading localharness binary from PyPI... this will take some time."
+    path = Antigravity::Connection::BinaryFetcher.fetch!
+    puts "✅ Updated at #{path}"
   end
 end
