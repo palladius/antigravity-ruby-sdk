@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    antigravity-sdk (0.1.1)
+    antigravity-sdk (0.1.2)
       faye-websocket (~> 0.11)
       json (>= 2.6)
 
@@ -74,7 +74,7 @@ DEPENDENCIES
   rubocop (~> 1.50)
 
 CHECKSUMS
-  antigravity-sdk (0.1.1)
+  antigravity-sdk (0.1.2)
   ast (2.4.3) sha256=954615157c1d6a382bc27d690d973195e79db7f55e9765ac7c481c60bdb4d383
   base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
   diff-lcs (1.6.2) sha256=9ae0d2cba7d4df3075fe8cd8602a8604993efc0dfa934cff568969efb1909962

@@ -2,34 +2,47 @@
 
 require "spec_helper"
 
-RSpec.describe Antigravity::Safety do
-  describe Antigravity::Safety::ProtectedFilesGuard do
-    subject(:guard) { described_class.new }
-
-    it "blocks attempts to edit .env or Gemfile" do
-      result_env = guard.call("write_file", { path: ".env" })
-      expect(result_env[:status]).to eq(:deny)
-      expect(result_env[:reason]).to include("Security Policy Violation")
-
-      result_gemfile = guard.call("write_file", { path: "Gemfile" })
-      expect(result_gemfile[:status]).to eq(:deny)
+RSpec.describe "Custom Safety Hooks" do
+  class CustomGuard
+    def call(_tool_name, params)
+      if params[:path] == ".env"
+        { status: :deny, reason: "Forbidden file" }
+      else
+        :allow
+      end
     end
 
-    it "allows editing safe files" do
-      result_safe = guard.call("write_file", { path: "app/models/user.rb" })
-      expect(result_safe).to eq(:allow)
+    def to_proc
+      method(:call).to_proc
     end
   end
 
-  describe Antigravity::Safety::SecretMasker do
-    subject(:masker) { described_class.new }
-
-    it "redacts Google API keys and bearer tokens from tool results" do
-      raw_output = "API_KEY=AIzaSyA12345678901234567890123456789012"
-      sanitized = masker.call("get_keys", {}, raw_output)
-
-      expect(sanitized).not_to include("AIzaSy")
-      expect(sanitized).to include("[REDACTED_SECRET]")
+  class CustomMasker
+    def call(_tool_name, _params, result)
+      result.to_s.gsub(/SECRET_KEY/, "[REDACTED]")
     end
+
+    def to_proc
+      method(:call).to_proc
+    end
+  end
+
+  subject(:agent) do
+    Antigravity::Agent.new do |a|
+      a.before_tool_call(&CustomGuard.new)
+      a.after_tool_call(&CustomMasker.new)
+      a.register_tool("write_file", description: "Edits file") { |params| "Edited #{params[:path]}" }
+      a.register_tool("get_key", description: "Gets key") { |_params| "Key: SECRET_KEY" }
+    end
+  end
+
+  it "blocks tool calls when custom pre-hook returns deny" do
+    output = agent.client.execute_tool(agent, "write_file", { path: ".env" })
+    expect(output).to include("TOOL BLOCKED: Forbidden file")
+  end
+
+  it "sanitizes tool outputs when custom post-hook transforms result" do
+    output = agent.client.execute_tool(agent, "get_key", {})
+    expect(output).to eq("Key: [REDACTED]")
   end
 end

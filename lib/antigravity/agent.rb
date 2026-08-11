@@ -15,17 +15,7 @@ module Antigravity
       @hooks = Hooks.new
       @client = Client.new
 
-      # Auto-attach default safety guardrails
-      use_safety_defaults!
-
       yield(self) if block_given?
-    end
-
-    def use_safety_defaults!
-      # Pre-tool guard against editing protected files (.env, Gemfile, etc.)
-      before_tool_call(&Safety::ProtectedFilesGuard.new)
-      # Post-tool secret masking
-      after_tool_call(&Safety::SecretMasker.new)
     end
 
     def register_tool(tool_or_name = nil, description: "", &block)

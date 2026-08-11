@@ -6,7 +6,7 @@
 
 An elegant, expressive, and human-friendly Ruby SDK for building autonomous AI agents with **Google Antigravity**.
 
-Inspired by the Ruby community's philosophy of developer happiness and standard conventions (such as `RubyLLM`), `antigravity-sdk` lets you configure agents, stream thoughts & token deltas, invoke declarative/dynamic tools, manage async sidecars, and enforce safety guardrails with minimal boilerplate.
+Inspired by the Ruby community's philosophy of developer happiness and standard conventions (such as `RubyLLM`), `antigravity-sdk` lets you configure agents, stream thoughts & token deltas, invoke declarative/dynamic tools, manage async sidecars, and attach custom lifecycle hooks with minimal boilerplate.
 
 ---
 
@@ -44,36 +44,37 @@ end
 
 ---
 
-## 🛡️ Declarative Tools & Safety Guardrails
+## 🛡️ Custom Tool Hooks & Sidecars
+
+You can easily attach custom pre-tool and post-tool hooks for permission guardrails and secret masking:
 
 ```ruby
-# Subclass Antigravity::Tool (or `include Antigravity::Tool` for mixins)
-class WeatherTool < Antigravity::Tool
-  name "get_weather", desc: "Retrieves weather report"
-  param :city, type: :string, description: "City name"
-
-  def call(city:)
-    "Sunny in #{city}"
+# Example Custom Pre-Hook Guard: Block edits to sensitive files
+class FileProtectionGuard
+  def call(tool_name, params)
+    path = params[:path] || params["path"]
+    if path == ".env" || path == "Gemfile"
+      { status: :deny, reason: "Editing #{path} requires explicit approval." }
+    else
+      :allow
+    end
   end
+
+  def to_proc; method(:call).to_proc; end
 end
 
 # Attach Audit Logger Sidecar
 audit_logger = Antigravity::Sidecar::AuditLogger.new("log/agent_audit.jsonl")
 
 agent = Antigravity::Agent.new do |a|
-  # Register declarative & dynamic tools
-  a.register_tool(WeatherTool.new)
   a.attach_sidecar(audit_logger)
 
-  # Pre-tool safety policy against modifying .env or Gemfile
-  a.before_tool_call(&Antigravity::Safety::ProtectedFilesGuard.new)
-
-  # Post-tool secret masker
-  a.after_tool_call(&Antigravity::Safety::SecretMasker.new)
+  # Attach custom pre-tool guardrail
+  a.before_tool_call(&FileProtectionGuard.new)
 end
 
 # Ask agent
-message = agent.ask("Check get_weather in Rome") do |chunk|
+message = agent.ask("Check weather in Rome") do |chunk|
   puts "[Thought] #{chunk.thinking}" if chunk.thinking
   print chunk.content if chunk.content
 end
