@@ -1,18 +1,15 @@
 # frozen_string_literal: true
 
 module Antigravity
-  class Tool
-    include Emojifiable
-
+  class Tool < Base
     class << self
       def inherited(subclass)
+        super
         subclass.extend(ClassMethods)
       end
     end
 
     module ClassMethods
-      include Emojifiable::ClassMethods
-
       def name(val = nil, desc: nil)
         if val
           @tool_name = val.to_s

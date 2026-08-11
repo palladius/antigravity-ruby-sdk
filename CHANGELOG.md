@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-08-11 🏗️🤷
+* 🏗️ Introduced `Antigravity::Base` superclass — all SDK classes (`Agent`, `Tool`, `Skill`, `Message`, `Sidecar::Runner`) now inherit from it.
+* 🪄 Automagic emoji via `inherited` hook: any `< Base` subclass gets `.emoji` / `#emoji` for free. Unknown classes default to 🤷.
+* 🚗 Renamed `Sidecar::Base` → `Sidecar::Runner` (backward-compat alias preserved).
+* 🧹 Removed all manual `include Emojifiable` boilerplate from domain classes.
+* 🧪 29 specs passing.
+
 ## [0.2.0] - 2026-08-11 💎✨
 * 🪄 Created polymorphic `Antigravity::Emojifiable` mixin and reflection method `Antigravity.emoji_for(target)`.
 * 🧹 Eliminated duplicated `.emoji` method boilerplate across `Agent`, `Tool`, `Sidecar::Base`, `Skill`, and `Message` by using single mixin inclusion (`include Antigravity::Emojifiable`).

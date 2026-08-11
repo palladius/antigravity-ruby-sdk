@@ -8,6 +8,7 @@ end
 
 require_relative "antigravity/version"
 require_relative "antigravity/emojis"
+require_relative "antigravity/base"
 require_relative "antigravity/config"
 require_relative "antigravity/message"
 require_relative "antigravity/harness"

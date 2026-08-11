@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 module Antigravity
-  class Agent
-    include Emojifiable
+  class Agent < Base
 
     attr_accessor :model, :system_instruction, :api_key
     attr_reader :tools, :skills, :hooks, :sidecars, :client, :logger_guard
