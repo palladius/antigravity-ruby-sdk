@@ -43,7 +43,7 @@ module Antigravity
         {
           name: schema[:name],
           description: schema[:description],
-          parameters_json_schema: JSON.generate(schema[:parameters])
+          parametersJsonSchema: JSON.generate(schema[:parameters])
         }
       end
     end

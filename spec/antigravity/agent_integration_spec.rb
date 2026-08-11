@@ -32,7 +32,7 @@ RSpec.describe 'Acceptance Tests', :integration do
   describe 'UAT-1: Codebase analysis' do
     it 'asks the agent to describe a directory and gets a substantive response' do
       @agent = create_agent(workspace: File.expand_path('~/git/antigravity-ruby-sdk'))
-      response = @agent.ask('What is this codebase doing? Be brief, 2-3 sentences max.')
+      response = @agent.ask('Based on the directory name and common Ruby conventions, what does this codebase likely do? Be brief, 2-3 sentences max. Do NOT use any tools, just answer directly.')
 
       expect(response).to be_a(Antigravity::Message)
       expect(response.content).to be_a(String)

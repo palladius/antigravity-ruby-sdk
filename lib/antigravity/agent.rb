@@ -205,10 +205,12 @@ module Antigravity
         ]
       end
 
-      # Add system instructions if specified
+      # Add system instructions if specified (protobuf: SystemInstructions.custom.part[])
       if @system_instruction && !@system_instruction.empty?
         config[:config][:systemInstructions] = {
-          instructions: [{ text: @system_instruction }]
+          custom: {
+            part: [{ text: @system_instruction }]
+          }
         }
       end
 

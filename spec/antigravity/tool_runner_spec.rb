@@ -56,7 +56,7 @@ RSpec.describe Antigravity::ToolRunner do
       expect(schemas.length).to eq(1)
       expect(schemas.first[:name]).to eq('calculator')
       expect(schemas.first[:description]).to eq('Does math')
-      expect(schemas.first[:parameters_json_schema]).to include('expression')
+      expect(schemas.first[:parametersJsonSchema]).to include('expression')
     end
   end
 
