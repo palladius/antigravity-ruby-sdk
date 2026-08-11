@@ -56,7 +56,7 @@ rv-skill-audit DIR=".":
 
 # Remote skills demo: SRE post-mortem from GitHub
 rv-sre-postmortem DIR=".":
-    rv run ruby examples/07_skill_remote_sre.rb {{DIR}}
+    rv run ruby examples/07_skill_sre_postmortem.rb {{DIR}}
 
 # Run all rv examples
 rv-examples: rv-chat rv-workspace rv-skill-audit rv-sre-postmortem

@@ -98,6 +98,9 @@ module Antigravity
         when %r{github\.com/([^/]+)/([^/]+)(?:\.git)?/?$}
           # Bare repo URL
           [Regexp.last_match(1), Regexp.last_match(2), nil]
+        when %r{github\.com/([^/]+)/([^/]+)/(.+)}
+          # URL with subpath but no /tree/branch/ (e.g. from skill_name:)
+          [Regexp.last_match(1), Regexp.last_match(2), Regexp.last_match(3)]
         else
           raise ArgumentError, "Cannot parse GitHub URL: #{url}"
         end
