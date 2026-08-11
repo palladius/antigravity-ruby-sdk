@@ -14,7 +14,7 @@ RSpec.describe Antigravity::Guards do
       ENV.delete("RACK_ENV")
     end
 
-    it "automagically logs agent prompts, responses, and tool calls to specified log file" do
+    it "automagically logs agent prompts, responses, and tool calls with emojis to specified log file" do
       agent = Antigravity::Agent.new(auto_logger: false)
       agent.attach_logger(tmp_log, silent_notice: true)
       agent.register_tool("ping", description: "Pings server") { "pong" }
@@ -22,9 +22,11 @@ RSpec.describe Antigravity::Guards do
       agent.ask("Run ping")
 
       expect(File.exist?(tmp_log)).to be true
-      log_content = File.read(tmp_log)
-      expect(log_content).to include("[Antigravity::Prompt] User: 'Run ping'")
-      expect(log_content).to include("[Antigravity::Response] Assistant (gemini-flash-latest):")
+      log_content = File.read(tmp_log, encoding: "UTF-8")
+      expect(log_content).to include("💬 [Antigravity::Prompt] User: 'Run ping'")
+      expect(log_content).to include("🤖 [Antigravity::Response] Assistant (gemini-flash-latest):")
+      expect(log_content).to include("🛠️ [Antigravity::Tool] Executing 'ping'")
+      expect(log_content).to include("📦 [Antigravity::Tool] Result for 'ping': pong")
     end
 
     it "prints startup notice '🪵 Logging to ...' when logger is attached" do

@@ -2,8 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.8] - 2026-08-11 🎨
+* 🎨 Added emojiful log line prefixes to `Antigravity::Guards::AgentLogger`:
+  - 💬 `[Antigravity::Prompt]` User prompt
+  - 🤖 `[Antigravity::Response]` Assistant turn
+  - 🛠️ `[Antigravity::Tool]` Tool execution
+  - 📦 `[Antigravity::Tool]` Tool result
+  - ❌ `[Antigravity::Tool]` Tool blocked
+  - 🚗 `[Antigravity::Sidecar]` Sidecar event
+
 ## [0.1.7] - 2026-08-11 🧪
-* 🧪 Added comprehensive RSpec unit tests covering all automagic logging behaviors: `Rails.logger` auto-attachment, `ANTIGRAVITY_LOGGER` env var suppression (`false`, `0`, `none`, `no`), `RAILS_ENV` / `RACK_ENV` log path resolution, and startup notice printing.
+* 🧪 Added comprehensive RSpec unit tests covering all automagic logging behaviors.
 
 ## [0.1.6] - 2026-08-11 🔑
 * 🔑 Added automatic `dotenv/load` requiring if `.env` file exists and `dotenv` gem is present.

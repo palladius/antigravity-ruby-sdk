@@ -33,20 +33,25 @@ module Antigravity
       end
 
       def before_prompt(prompt_text)
-        @logger.info("[Antigravity::Prompt] User: '#{prompt_text}'")
+        @logger.info("💬 [Antigravity::Prompt] User: '#{prompt_text}'")
       end
 
       def after_response(response)
-        @logger.info("[Antigravity::Response] Assistant (#{response.model_id}): #{response.content.strip}")
+        @logger.info("🤖 [Antigravity::Response] Assistant (#{response.model_id}): #{response.content.strip}")
       end
 
       def before_tool_call(tool_name, params)
-        @logger.info("[Antigravity::Tool] Executing '#{tool_name}' with params: #{params.inspect}")
+        @logger.info("🛠️ [Antigravity::Tool] Executing '#{tool_name}' with params: #{params.inspect}")
       end
 
       def after_tool_call(tool_name, params, result)
-        @logger.info("[Antigravity::Tool] Result for '#{tool_name}': #{result}")
+        prefix = result.to_s.include?("TOOL BLOCKED") ? "❌" : "📦"
+        @logger.info("#{prefix} [Antigravity::Tool] Result for '#{tool_name}': #{result}")
         result
+      end
+
+      def sidecar_event(event_type, payload)
+        @logger.info("🚗 [Antigravity::Sidecar] Event :#{event_type} payload: #{payload.inspect}")
       end
 
       def attach_to(agent)
