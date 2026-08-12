@@ -178,19 +178,55 @@ class ChatSession
     )
     @agent.connect!
 
-    # Brief activity trace — shows tool calls so you know it's not stuck
+    # Dynamic single-line status — overwrites in-place like a TUI spinner
+    @_status = { state: 'IDLE', dots: '', tool: nil, msg_count: 0 }
     @agent.hooks.on(:ws_message) do |msg|
+      st = @_status
+      st[:msg_count] += 1
+
       if (s = msg[:stepUpdate])
         if s[:target].to_s =~ /ENVIRONMENT/ && s[:textDelta] && !s[:textDelta].empty?
-          puts "     🔧 tool: #{s[:textDelta][0, 65]}".to_gray
-        elsif s[:state].to_s =~ /ERROR/ && s[:errorMessage]
-          puts "     ❌ #{s[:errorMessage][0, 68]}".to_gray
+          st[:tool] = s[:textDelta][0, 50]
+          st[:dots] = ''
+        elsif s[:state].to_s =~ /ERROR/ && (s[:errorMessage] || s[:textDelta])
+          err = (s[:errorMessage] || s[:textDelta])[0, 50]
+          st[:tool] = "❌ #{err}"
+          st[:dots] = ''
+        elsif s[:thinkingDelta] && !s[:thinkingDelta].empty?
+          st[:dots] += '💭'
+          st[:tool] = nil
+        elsif s[:textDelta] && !s[:textDelta].empty? && s[:target].to_s =~ /USER/
+          st[:dots] += '·'
+          st[:tool] = nil
         end
       elsif (t = msg[:trajectoryStateUpdate])
-        state = t[:state].to_s.sub('STATE_', '')
-        puts "     ⚡ #{state}".to_gray if state =~ /IDLE|CANCEL/
+        st[:state] = t[:state].to_s.sub('STATE_', '')
+        st[:dots] = ''
+        st[:tool] = nil
       end
+
+      # State emoji map
+      icon = case st[:state]
+             when /RUNNING/ then '🏃'
+             when /IDLE/    then '😴'
+             when /CANCEL/  then '🛑'
+             else '⏳'
+             end
+
+      # Build status line (<80 chars)
+      line = "     #{icon} #{st[:state].downcase}"
+      line += " 🔧 #{st[:tool]}" if st[:tool]
+      line += " #{st[:dots]}" unless st[:dots].empty?
+      line += " (#{st[:msg_count]})"
+
+      print "\r\e[K#{line[0, 79]}"
+      $stdout.flush
     end
+  end
+
+  def _clear_status
+    print "\r\e[K"
+    $stdout.flush
   end
 
   def ask(text, wall_timeout: 180)
