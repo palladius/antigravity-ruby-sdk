@@ -130,8 +130,10 @@ module Antigravity
             tool_calls_count += 1 unless step[:customTool]
           end
 
-          # Finished? Model response to user DONE (even if text_parts is empty — tool-only turns are valid)
-          if is_model_step && is_target_user && !is_error_step && step[:state] && step[:state].to_s =~ /DONE|done|2/
+          # Finished? Model response to user with DONE state AND text collected.
+          # NOTE: DONE can arrive before text deltas, so we require text here.
+          # For tool-only turns (no text), FULLY_IDLE below is the authoritative stop.
+          if is_model_step && is_target_user && !is_error_step && step[:state] && step[:state].to_s =~ /DONE|done|2/ && !text_parts.empty?
             finished = true
           end
         end
