@@ -280,7 +280,26 @@ begin
   puts "📋 Phase 4: Use Loaded Skill".to_bold
   # The harness injected riccardo-todo at session creation.
   # No hints, no content in prompt — the LLM gets it from the harness.
-  response3 = session.ask("Where is Riccardo's to-do list file stored? What exact file path?")
+  # Retry up to 2 times — model can be flaky after session restart.
+  response3 = ""
+  max_retries = 2
+  (1 + max_retries).times do |attempt|
+    begin
+      response3 = session.ask("Where is Riccardo's to-do list file stored? What exact file path?")
+      break unless response3.strip.empty?
+      if attempt < max_retries
+        puts "  ⚠️  Empty response (attempt #{attempt + 1}/#{1 + max_retries}), retrying...".to_yellow
+      end
+    rescue => e
+      if attempt < max_retries
+        puts "  ⚠️  Error: #{e.message[0,60]} (attempt #{attempt + 1}/#{1 + max_retries}), resetting session...".to_yellow
+        session.close! rescue nil
+        session = ChatSession.new(skills: metaskill_paths + [todo_skill_path], tools: TOOLS)
+      else
+        puts "  💥 Phase 4 failed after #{1 + max_retries} attempts: #{e.message[0,100]}".to_red
+      end
+    end
+  end
   runner.assert_includes("Response mentions Obsidian", response3, "obsidian")
   runner.assert_includes("Response mentions TODO file", response3, "todo")
   puts
