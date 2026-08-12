@@ -14,8 +14,8 @@
 
 ## Principles
 
-* DRY. Keep things non repeated.
-* POLA. Principle of Least Astonishment. If something hands as its indexing a whole directory, be polite and add a `puts` with whats happening. use hourglass emojis when long waits are expected.
+* *DRY*. Keep things non repeated.
+* *POLA*. Principle of Least Astonishment. If something hands as its indexing a whole directory, be polite and add a `puts` with whats happening. use hourglass emojis when long waits are expected.
 
 ## 🎨 Emoji Mapping
 

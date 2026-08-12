@@ -170,7 +170,9 @@ class ChatSession
       system_instruction: "You are a test assistant. Be extremely concise. " \
                           "You MUST use tools when asked. NEVER describe what you would do — call the tool immediately. " \
                           "When asked to find a skill, call find_skills. When asked to load a skill, call load_skill. " \
-                          "Always pass the exact path returned by find_skills to load_skill."
+                          "Always pass the exact path returned by find_skills to load_skill. " \
+                          "When asked about information from a loaded skill, answer ONLY from the skill's content — " \
+                          "do NOT use find, list_dir, grep_search or any filesystem tools. The skill already contains the answer."
     )
     @agent.connect!
   end
@@ -279,13 +281,16 @@ begin
   # ========================================================================
   puts "📋 Phase 4: Use Loaded Skill".to_bold
   # The harness injected riccardo-todo at session creation.
-  # No hints, no content in prompt — the LLM gets it from the harness.
-  # Retry up to 2 times — model can be flaky after session restart.
+  # We explicitly reference the skill to prevent the model from brute-forcing
+  # filesystem searches (find commands timeout on large directories).
   response3 = ""
   max_retries = 2
+  phase4_prompt = "According to the riccardo-todo skill you have loaded, " \
+                  "where is Riccardo's to-do list file stored? " \
+                  "Answer based on the skill instructions only — do NOT search the filesystem."
   (1 + max_retries).times do |attempt|
     begin
-      response3 = session.ask("Where is Riccardo's to-do list file stored? What exact file path?")
+      response3 = session.ask(phase4_prompt)
       break unless response3.strip.empty?
       if attempt < max_retries
         puts "  ⚠️  Empty response (attempt #{attempt + 1}/#{1 + max_retries}), retrying...".to_yellow
@@ -294,7 +299,7 @@ begin
       if attempt < max_retries
         puts "  ⚠️  Error: #{e.message[0,60]} (attempt #{attempt + 1}/#{1 + max_retries}), resetting session...".to_yellow
         session.close! rescue nil
-        session = ChatSession.new(skills: metaskill_paths + [todo_skill_path], tools: TOOLS)
+        session = ChatSession.new(skills: boot_skills + [todo_path], tools: TOOLS)
       else
         puts "  💥 Phase 4 failed after #{1 + max_retries} attempts: #{e.message[0,100]}".to_red
       end
