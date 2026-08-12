@@ -1,1 +1,2 @@
 - [ ] **Track: Add MCP Server Support** *Link: [conductor/tracks/mcp_support_20260811/index.md](./tracks/mcp_support_20260811/index.md)*
+- [ ] **Track: Extract Channel Transport Layer** *Link: [conductor/tracks/channel_refactor_20260812/index.md](./tracks/channel_refactor_20260812/index.md)*

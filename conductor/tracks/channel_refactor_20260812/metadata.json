@@ -1,0 +1,8 @@
+{
+  "track_id": "channel_refactor_20260812",
+  "type": "refactor",
+  "status": "planned",
+  "created_at": "2026-08-12T08:35:00+02:00",
+  "updated_at": "2026-08-12T08:41:00+02:00",
+  "description": "Extract Telegram bot into Channel::Base + Channel::Telegram transport layer"
+}
