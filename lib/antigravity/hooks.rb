@@ -9,6 +9,7 @@ module Antigravity
       @post_response_hooks = []
       @pre_tool_hooks = []
       @post_tool_hooks = []
+      @listeners = Hash.new { |h, k| h[k] = [] }
     end
 
     def before_prompt(&block)
@@ -27,6 +28,17 @@ module Antigravity
     # Filter / sanitize result after a tool runs before model receives it. Block can return modified result.
     def after_tool_call(&block)
       @post_tool_hooks << block if block_given?
+    end
+
+    # Generic event system — subscribe to any named event.
+    # Usage: hooks.on(:ws_message) { |msg| puts msg.keys }
+    def on(event, &block)
+      @listeners[event.to_sym] << block if block_given?
+    end
+
+    # Emit a named event to all subscribers.
+    def emit(event, *args)
+      @listeners[event.to_sym].each { |cb| cb.call(*args) }
     end
 
     def run_pre_prompt(prompt_text)

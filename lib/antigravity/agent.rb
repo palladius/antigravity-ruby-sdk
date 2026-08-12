@@ -61,7 +61,8 @@ module Antigravity
 
       @conversation = Conversation.new(
         ws_client: @connection.ws_client,
-        tool_runner: @tool_runner
+        tool_runner: @tool_runner,
+        hooks: @hooks
       )
 
       harness_config = build_harness_config

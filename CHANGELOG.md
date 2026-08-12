@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.1] - 2026-08-12 🎣🔧
+
+### Generic Event Hooks
+* 🎣 `hooks.on(:event) { |data| ... }` / `hooks.emit(:event, data)` — subscribe to any named event.
+* 📡 `:ws_message` event emitted for every WebSocket message in `collect_response`.
+* 🔍 Enables debug tracing from tests/bots WITHOUT touching `conversation.rb`:
+  ```ruby
+  agent.hooks.on(:ws_message) { |msg| $stderr.puts msg.keys }
+  ```
+
+### E2E Test Fixes
+* 🧪 Fixed Phase 4 empty response — model was brute-forcing filesystem `find` commands instead of reading loaded skill.
+* 📝 System instruction now explicitly forbids filesystem tools when answering from loaded skills.
+* 🔄 Retry with session reset (up to 3 attempts) for model timeout/flakiness after session restart.
+* 🐛 Fixed `NameError: undefined local variable 'metaskill_paths'` in retry path.
+
 ## [0.4.0] - 2026-08-11 📚🚀
 
 ### Agent Skills (GHI #11)

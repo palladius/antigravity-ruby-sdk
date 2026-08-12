@@ -13,9 +13,10 @@ module Antigravity
   class Conversation
     attr_reader :conversation_id, :history, :turn_count, :total_usage, :last_turn_usage
 
-    def initialize(ws_client:, tool_runner: nil)
+    def initialize(ws_client:, tool_runner: nil, hooks: nil)
       @ws = ws_client
       @tool_runner = tool_runner || ToolRunner.new
+      @hooks = hooks
       @conversation_id = nil
       @history = []
       @turn_count = 0
@@ -95,6 +96,8 @@ module Antigravity
       finished_at = nil
 
       @ws.each_message(timeout: timeout) do |msg|
+        @hooks&.emit(:ws_message, msg)
+
         if (step = msg[:stepUpdate])
           step_record = parse_step(step)
           steps << step_record
