@@ -217,7 +217,7 @@ class ChatSession
       line = "     #{icon} #{st[:state].downcase}"
       line += " 🔧 #{st[:tool]}" if st[:tool]
       line += " #{st[:dots]}" unless st[:dots].empty?
-      line += " (#{st[:msg_count]})"
+      line += " (#{st[:msg_count]}↕)"
 
       print "\r\e[K#{line[0, 79]}"
       $stdout.flush
