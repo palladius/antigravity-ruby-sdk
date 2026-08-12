@@ -179,7 +179,7 @@ class ChatSession
     @agent.connect!
 
     # Dynamic single-line status — overwrites in-place like a TUI spinner
-    @_status = { state: 'IDLE', dots: '', tool: nil, msg_count: 0 }
+    @_status = { state: 'IDLE', dots: '', tool: nil, msg_count: 0, started: Time.now, active: false }
     @agent.hooks.on(:ws_message) do |msg|
       st = @_status
       st[:msg_count] += 1
@@ -205,41 +205,55 @@ class ChatSession
         st[:tool] = nil
       end
 
-      # State emoji map
-      icon = case st[:state]
-             when /RUNNING/ then '🏃'
-             when /IDLE/    then '😴'
-             when /CANCEL/  then '🛑'
-             else '⏳'
-             end
-
-      # Build status line (<80 chars)
-      line = "     #{icon} #{st[:state].downcase}"
-      line += " 🔧 #{st[:tool]}" if st[:tool]
-      line += " #{st[:dots]}" unless st[:dots].empty?
-      line += " (#{st[:msg_count]}↕)"
-
-      print "\r\e[K#{line[0, 79]}"
-      $stdout.flush
+      _render_status
     end
+
+    # Background ticker — updates ⏳ every second even when no WS messages arrive
+    @_ticker = Thread.new do
+      loop do
+        sleep 1
+        _render_status if @_status[:active]
+      end
+    end
+    @_ticker.abort_on_exception = false
   end
 
-  def _clear_status
-    print "\r\e[K"
+  def _render_status
+    st = @_status
+    icon = case st[:state]
+           when /RUNNING/ then '🏃'
+           when /IDLE/    then '😴'
+           when /CANCEL/  then '🛑'
+           else '⏳'
+           end
+
+    elapsed = (Time.now - st[:started]).to_i
+    line = "     #{icon} #{st[:state].downcase}"
+    line += " 🔧 #{st[:tool]}" if st[:tool]
+    line += " #{st[:dots]}" unless st[:dots].empty?
+    line += " ⏳#{elapsed}s #{st[:msg_count]}↕"
+
+    print "\r\e[K#{line[0, 79]}"
     $stdout.flush
   end
 
   def ask(text, wall_timeout: 180)
     puts "  👤 #{text}".to_cyan
     @history << { role: :user, text: text }
+    @_status.merge!(started: Time.now, msg_count: 0, dots: '', tool: nil, active: true)
     full = ""
     Timeout.timeout(wall_timeout, Timeout::Error, "Wall-clock timeout after #{wall_timeout}s") do
       @agent.ask(text, timeout: wall_timeout) { |chunk| full += chunk.content if chunk.content }
     end
     @history << { role: :assistant, text: full }
     preview = full.empty? ? '(empty)' : full[0, 150]
+    print "\r\e[K"
     puts "  🤖 #{preview}#{'...' if full.length > 150}".to_green
     full
+  ensure
+    @_status[:active] = false
+    print "\r\e[K"
+    $stdout.flush
   end
 
   def close!
