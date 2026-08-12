@@ -25,6 +25,8 @@ gemfile(true) do
   gem 'base64'
 end
 
+require 'json'
+require 'timeout'
 require 'dotenv/load' if File.exist?(File.expand_path('../../.env', __FILE__))
 
 $LOAD_PATH.unshift(File.expand_path('../lib', __dir__))
@@ -175,13 +177,29 @@ class ChatSession
                           "do NOT use find, list_dir, grep_search or any filesystem tools. The skill already contains the answer."
     )
     @agent.connect!
+
+    # Brief activity trace — shows tool calls so you know it's not stuck
+    @agent.hooks.on(:ws_message) do |msg|
+      if (s = msg[:stepUpdate])
+        if s[:target].to_s =~ /ENVIRONMENT/ && s[:textDelta] && !s[:textDelta].empty?
+          puts "     🔧 tool: #{s[:textDelta][0, 65]}".to_gray
+        elsif s[:state].to_s =~ /ERROR/ && s[:errorMessage]
+          puts "     ❌ #{s[:errorMessage][0, 68]}".to_gray
+        end
+      elsif (t = msg[:trajectoryStateUpdate])
+        state = t[:state].to_s.sub('STATE_', '')
+        puts "     ⚡ #{state}".to_gray if state =~ /IDLE|CANCEL/
+      end
+    end
   end
 
-  def ask(text)
+  def ask(text, wall_timeout: 180)
     puts "  👤 #{text}".to_cyan
     @history << { role: :user, text: text }
     full = ""
-    response = @agent.ask(text, timeout: 180) { |chunk| full += chunk.content if chunk.content }
+    Timeout.timeout(wall_timeout, Timeout::Error, "Wall-clock timeout after #{wall_timeout}s") do
+      @agent.ask(text, timeout: wall_timeout) { |chunk| full += chunk.content if chunk.content }
+    end
     @history << { role: :assistant, text: full }
     preview = full.empty? ? '(empty)' : full[0, 150]
     puts "  🤖 #{preview}#{'...' if full.length > 150}".to_green
@@ -290,7 +308,7 @@ begin
                   "Answer based on the skill instructions only — do NOT search the filesystem."
   (1 + max_retries).times do |attempt|
     begin
-      response3 = session.ask(phase4_prompt)
+      response3 = session.ask(phase4_prompt, wall_timeout: 60)
       break unless response3.strip.empty?
       if attempt < max_retries
         puts "  ⚠️  Empty response (attempt #{attempt + 1}/#{1 + max_retries}), retrying...".to_yellow
