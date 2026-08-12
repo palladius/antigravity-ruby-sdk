@@ -75,6 +75,43 @@ def log_error(event, detail, chat_id: nil)
   File.open('log/telegram.jsonl', 'a') { |f| f.puts(JSON.generate(entry)) } rescue nil
 end
 
+# Split long text into Telegram-safe chunks (max 4096 chars).
+# Splits on paragraph boundaries (\n\n) when possible, falls back to newlines.
+MAX_TG_MSG = 4096
+
+def send_long_message(bot, chat_id, text)
+  chunks = split_text(text, MAX_TG_MSG - 50) # leave margin for safety
+  chunks.each_with_index do |chunk, i|
+    label = chunks.size > 1 ? " (#{i + 1}/#{chunks.size})" : ''
+    msg = chunks.size > 1 ? "#{chunk}\n\n_#{label.strip}_" : chunk
+    bot.api.send_message(chat_id: chat_id, text: msg, parse_mode: 'Markdown')
+  rescue StandardError
+    # Markdown parse error — retry without parse_mode
+    bot.api.send_message(chat_id: chat_id, text: msg) rescue nil
+  end
+end
+
+def split_text(text, max_len)
+  return [text] if text.length <= max_len
+
+  chunks = []
+  remaining = text
+  while remaining.length > max_len
+    # Try to split on paragraph boundary
+    cut = remaining[0, max_len].rindex("\n\n")
+    # Fall back to newline
+    cut = remaining[0, max_len].rindex("\n") if cut.nil? || cut < max_len / 4
+    # Fall back to space
+    cut = remaining[0, max_len].rindex(' ') if cut.nil? || cut < max_len / 4
+    # Hard cut as last resort
+    cut = max_len if cut.nil? || cut < max_len / 4
+    chunks << remaining[0, cut].rstrip
+    remaining = remaining[cut..].lstrip
+  end
+  chunks << remaining unless remaining.empty?
+  chunks
+end
+
 # --- Audio Transcription via Gemini Multimodal API ---
 # NOTE: GEMINI_MODEL is for the agent (via harness). Transcription uses REST API
 # directly, so it needs a model available on v1beta (gemini-2.5-flash-lite works).
@@ -510,19 +547,15 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
           full_response += chunk.content if chunk.content
         end
 
-        # Telegram max message is 4096 chars
-        if full_response.length > 4000
-          full_response = full_response[0, 3990] + "\n\n_(truncated)_"
-        end
-
         preview = full_response.empty? ? '(empty)' : full_response[0, 200]
         puts "[#{chat_id}] 🤖 #{preview}#{'...' if full_response.length > 200}".to_green
 
-        bot.api.send_message(
-          chat_id: chat_id,
-          text: full_response.empty? ? "🤔 No response generated." : full_response,
-          parse_mode: 'Markdown'
-        ) rescue bot.api.send_message(chat_id: chat_id, text: full_response) # Fallback without Markdown if parsing fails
+        if full_response.empty?
+          bot.api.send_message(chat_id: chat_id, text: "🤔 No response generated.")
+        else
+          # Split long responses into multiple messages (Telegram 4096 char limit)
+          send_long_message(bot, chat_id, full_response)
+        end
       rescue Antigravity::ProtocolError, IOError, Errno::EPIPE => e
         # Connection-level errors: auto-reset the session
         bot.api.send_message(chat_id: chat_id, text: "⚡ Connection lost, resetting session...\n`#{e.message[0,80]}`", parse_mode: 'Markdown') rescue nil
