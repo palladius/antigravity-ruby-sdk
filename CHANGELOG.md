@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.3] - 2026-08-13 🎤🐛
+
+### Bug Fix: Voice Messages Return Empty (GHI #18)
+* 🐛 **Root cause**: stale `FULLY_IDLE` in WebSocket buffer. During voice transcription (5-10s HTTP call to Gemini API), a leftover `FULLY_IDLE` from the previous turn sits unread. `collect_response` picks it up and exits immediately with zero steps/text.
+* 🧹 **`drain_stale_messages`**: non-blocking flush of leftover WS messages before sending `userInput` event. Belt-and-suspenders defense.
+* 🛡️ **FULLY_IDLE guard**: ignore `FULLY_IDLE` that arrives with zero `stepUpdate`/`toolCall`/`usageUpdate` AND within 1s of turn start -- it's definitely stale.
+* 🔍 Debug hooks emit `_debug: 'drained_stale_message'` and `'skipped_stale_fully_idle'` for observability.
+
+### Telegram Bot Improvements
+* 🎤 Markdown escaping for transcription display (prevents Telegram API errors on special chars).
+* 🔧 `response.content` fallback when streaming chunks are empty.
+* 🐛 Debug logging (`tool_calls`, `thinking`, `steps`) on empty responses.
+
+### Docs & README
+* 🏛️ Added [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) with plan-vs-reality comparison and nanobanana E2E flow diagram.
+* 🖼️ Generated architecture diagram: [`docs/images/architecture_nanobanana.jpg`](docs/images/architecture_nanobanana.jpg).
+* 📝 README: gem badge, RubyGems link, Related Projects table (official Python SDK, Java SDK).
+
 ## [0.4.2] - 2026-08-13 🍌🎉
 
 ### E2E Nano Banana Pipeline (9/9 green!)
