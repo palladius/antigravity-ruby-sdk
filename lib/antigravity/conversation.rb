@@ -59,6 +59,11 @@ module Antigravity
       @turn_count += 1
       @last_turn_usage = empty_usage
 
+      # GHI #18: Drain any stale messages from the WebSocket buffer before sending
+      # a new prompt. This prevents leftover FULLY_IDLE from previous turns or init
+      # from being consumed by collect_response.
+      drain_stale_messages
+
       # Send user input (protobuf InputEvent with user_input string field)
       input_event = {
         userInput: prompt
@@ -87,6 +92,20 @@ module Antigravity
 
     private
 
+    # GHI #18: Non-blocking drain of stale WebSocket messages (FULLY_IDLE leftovers).
+    # During gaps between turns (e.g. voice transcription taking 5-10s), the harness
+    # may send trajectory updates that would confuse the next collect_response call.
+    def drain_stale_messages
+      drained = 0
+      loop do
+        msg = @ws.receive_json(timeout: 0.05, idle_timeout: 0.05) rescue nil
+        break unless msg
+        drained += 1
+        @hooks&.emit(:ws_message, { _debug: 'drained_stale_message', message_keys: msg.keys, drained_count: drained })
+      end
+      @hooks&.emit(:ws_message, { _debug: 'drain_complete', count: drained }) if drained > 0
+    end
+
     def collect_response(timeout: Antigravity.config.timeout_llm, &block)
       text_parts = []
       thinking_parts = []
@@ -94,11 +113,14 @@ module Antigravity
       tool_calls_count = 0
       finished = false
       finished_at = nil
+      seen_any_step = false          # GHI #18: track if we've seen real work from this turn
+      turn_started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
       @ws.each_message(timeout: timeout) do |msg|
         @hooks&.emit(:ws_message, msg)
 
         if (step = msg[:stepUpdate])
+          seen_any_step = true
           step_record = parse_step(step)
           steps << step_record
 
@@ -144,20 +166,31 @@ module Antigravity
         # Top-level tool call (custom tools are sent as separate messages, not in stepUpdate)
         if (tool_call = msg[:toolCall])
           tool_calls_count += 1
+          seen_any_step = true
           handle_tool_call(tool_call)
         end
 
         # Usage update
         if (usage = msg[:usageUpdate])
           update_usage(usage)
+          seen_any_step = true
         end
 
         # Trajectory state: STATE_FULLY_IDLE / STATE_CANCELLED = turn complete (authoritative signal from harness)
-        # This is the MOST authoritative signal — always stop, even with empty text.
+        # GHI #18 FIX: Only honor FULLY_IDLE if we've seen at least one stepUpdate/toolCall/usageUpdate
+        # from this turn, OR if enough time has elapsed (1s) that this can't be a stale leftover.
+        # A stale FULLY_IDLE from a previous turn sitting in the WebSocket buffer was causing
+        # collect_response to return immediately with zero steps/text.
         if (traj = msg[:trajectoryStateUpdate])
+          elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - turn_started_at
           if traj[:state].to_s =~ /FULLY_IDLE|CANCELLED/
-            finished = true
-            finished_at = Time.now
+            if seen_any_step || elapsed > 1.0
+              finished = true
+              finished_at = Time.now
+            else
+              # Stale FULLY_IDLE — skip it (likely leftover from previous turn or init)
+              @hooks&.emit(:ws_message, { _debug: 'skipped_stale_fully_idle', elapsed: elapsed.round(3) })
+            end
           end
         end
 
