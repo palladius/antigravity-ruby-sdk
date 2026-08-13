@@ -85,6 +85,7 @@ module Antigravity
     # --- Chat ---
 
     def prompt(message, timeout: Antigravity.config.timeout_llm, &block)
+      connect! unless @connected
       emit_sidecar_event(:prompt_started, prompt: message)
       hooks.run_pre_prompt(message)
 
