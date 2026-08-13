@@ -1,3 +1,5 @@
+The Antigravity Ruby SDK is an unofficial, community project. It is **not** an official Google product.
+
 # 💎 Antigravity Ruby SDK
 
 <p align="center">

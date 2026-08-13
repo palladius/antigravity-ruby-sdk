@@ -69,5 +69,9 @@ rv-e2e-telegram:
 rv-e2e-telegram-debug:
   ANTIGRAVITY_DEBUG=1 rv run ruby examples/08_e2e_telegram_bot.rb
 
+# E2E test for nanobanana image generation pipeline
+rv-e2e-nanobanana:
+    rv run ruby examples/09_e2e_nanobanana.rb
+
 # Run all rv examples (excludes telegram — it's a long-running daemon)
 rv-examples: rv-chat rv-workspace rv-skill-audit rv-skill-sre-postmortem
