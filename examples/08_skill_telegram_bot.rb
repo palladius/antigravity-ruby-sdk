@@ -517,11 +517,13 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
             next
           end
 
+          # Escape Markdown special chars in transcription to prevent Telegram API errors
+          escaped_text = result[:text].gsub(/([_*\[\]()~`>#+\-=|{}.!])/, '\\\\\1')
           bot.api.send_message(
             chat_id: chat_id,
-            text: "#{result[:flag]} _#{result[:text]}_",
+            text: "#{result[:flag]} _#{escaped_text}_",
             parse_mode: 'Markdown'
-          )
+          ) rescue bot.api.send_message(chat_id: chat_id, text: "#{result[:flag]} #{result[:text]}")
 
           # Feed transcribed text to agent
           user_text = result[:text]
@@ -547,11 +549,22 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
           full_response += chunk.content if chunk.content
         end
 
+        # GHI #18: Fallback — if streaming produced empty but response object has content, use that
+        if full_response.empty? && response&.content && !response.content.empty?
+          full_response = response.content
+          puts "[#{chat_id}] 🔧 Streaming was empty but response.content has text (#{full_response.length} chars)".to_yellow
+        end
+
         preview = full_response.empty? ? '(empty)' : full_response[0, 200]
         puts "[#{chat_id}] 🤖 #{preview}#{'...' if full_response.length > 200}".to_green
 
         if full_response.empty?
-          bot.api.send_message(chat_id: chat_id, text: "🤔 No response generated.")
+          # GHI #18: Debug logging for empty voice responses
+          puts "[#{chat_id}] 🐛 DEBUG: response.content=#{response&.content&.length || 'nil'} " \
+               "tool_calls=#{response&.tool_calls_count || '?'} " \
+               "thinking=#{response&.thinking&.length || 0} " \
+               "steps=#{response&.steps&.length || 0}".to_yellow
+          bot.api.send_message(chat_id: chat_id, text: "🤔 No response generated. Try sending the same message as text.")
         else
           # Split long responses into multiple messages (Telegram 4096 char limit)
           send_long_message(bot, chat_id, full_response)
