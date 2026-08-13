@@ -1,6 +1,20 @@
-# 📝 Changelog — `antigravity-sdk`
+# 📝 Changelog -- `antigravity-sdk`
 
 All notable changes to this project will be documented in this file.
+
+## [0.4.2] - 2026-08-13 🍌🎉
+
+### E2E Nano Banana Pipeline (9/9 green!)
+* 🍌 `examples/09_e2e_nanobanana.rb` -- full end-to-end test: find skill -> load skill -> generate image -> verify output.
+* 🚫 **No session restart.** Phases 3-4 now run in the SAME session (no `close!` + reconnect). Eliminates context amnesia (GHI #16).
+* 🔧 **Truncated `load_skill` tool result.** Was returning 61-line SKILL.md content, causing model to hang 20s+ thinking. Now returns 4-line summary: name, script path, description, usage hint.
+* 🛡️ **Failsafe command building.** If model times out building the `uv run` command, harness constructs it directly from `scripts/generate_image.py` path + known parameters.
+* ⏱️ Phase 3 wrapped in `rescue` -- timeout no longer crashes the entire test.
+* 🖼️ Image generation: 17-19s, ~1MB PNG, auto-opened on Mac via `open`.
+
+### Learnings
+* 💡 **Tool Result Hygiene**: Large tool responses (>10 lines) cause model thinking hangs. Keep tool results concise -- return summaries, not full file contents.
+* 💡 **Graceful degradation**: assert-after-fallback pattern lets tests verify end state, not intermediate steps.
 
 ## [0.4.1] - 2026-08-12 🎣🔧
 
