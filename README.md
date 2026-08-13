@@ -6,9 +6,15 @@ The Antigravity Ruby SDK is an unofficial, community project. It is **not** an o
   <img src="docs/images/logo.jpg" alt="Ruby Antigravity Logo" width="350"/>
 </p>
 
+[![Gem Version](https://badge.fury.io/rb/antigravity-sdk.svg)](https://rubygems.org/gems/antigravity-sdk)
+[![GitHub](https://img.shields.io/github/license/palladius/antigravity-ruby-sdk)](LICENSE)
+
 An elegant, expressive Ruby SDK for building autonomous AI agents with **Google Antigravity**.
 
-Inspired by [RubyLLM](https://rubyllm.com) and the Ruby philosophy of developer happiness: configure agents, stream responses, load skills from GitHub, analyze workspaces, and attach safety guards — all with minimal boilerplate.
+> **Gem**: [`antigravity-sdk`](https://rubygems.org/gems/antigravity-sdk) on RubyGems
+> **Source**: [`palladius/antigravity-ruby-sdk`](https://github.com/palladius/antigravity-ruby-sdk) on GitHub
+
+Inspired by [RubyLLM](https://rubyllm.com) and the Ruby philosophy of developer happiness: configure agents, stream responses, load skills from GitHub, analyze workspaces, and attach safety guards -- all with minimal boilerplate.
 
 ```ruby
 agent = Antigravity::Agent.new(
@@ -156,8 +162,19 @@ See `.env.dist` for all available options.
 
 ![Telegram voice transcription](image-1.png)
 
+## 🔗 Related Projects
+
+| Project | Language | Link |
+|---------|----------|------|
+| **Antigravity Python SDK** (official) | Python | [google-antigravity/antigravity-sdk-python](https://github.com/google-antigravity/antigravity-sdk-python) |
+| **Antigravity Java SDK** (unofficial) | Java | [glaforge/antigravity-java-sdk](https://github.com/glaforge/antigravity-java-sdk) |
+| **Antigravity Ruby SDK** (this repo) | Ruby | [palladius/antigravity-ruby-sdk](https://github.com/palladius/antigravity-ruby-sdk) |
+| **antigravity-sdk gem** | RubyGems | [rubygems.org/gems/antigravity-sdk](https://rubygems.org/gems/antigravity-sdk) |
+
 ---
 
 ## 📄 License
 
 Apache 2.0 - see `LICENSE` for details.
+
+*The Antigravity Ruby SDK is an unofficial, community project. It is **not** an official Google product.*
