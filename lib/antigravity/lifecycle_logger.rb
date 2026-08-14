@@ -55,7 +55,7 @@ module Antigravity
         logger.instance_variable_set(:@session_start_time, Process.clock_gettime(Process::CLOCK_MONOTONIC))
         model = info[:model] || agent.model || '?'
         conv_id = (info[:conversation_id] || '?')[0..11]
-        puts C.gray("🪝🟢 #{C.dim("session_start")} | model=#{C.cyan(model)} | conv=#{C.cyan(conv_id)}")
+        puts C.gray("\n🪝🟢 #{C.dim("session_start")} | model=#{C.cyan(model)} | conv=#{C.cyan(conv_id)}")
       end
 
       agent.hooks.on(:session_end) do |info|

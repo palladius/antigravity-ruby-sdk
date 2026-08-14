@@ -170,13 +170,13 @@ module Antigravity
       Time.now - @born_at
     end
 
-    # Human-readable uptime: "1m 23s", "45s", "2m 5s"
+    # Human-readable uptime: "1m 23.4s", "7.3s"
     def uptime_human
-      secs = uptime.round
+      secs = uptime
       if secs >= 60
-        "#{secs / 60}m #{secs % 60}s"
+        "#{(secs / 60).to_i}m #{(secs % 60).round(1)}s"
       else
-        "#{secs}s"
+        "#{secs.round(1)}s"
       end
     end
 

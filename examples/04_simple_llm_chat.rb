@@ -63,9 +63,34 @@ puts
 puts "\e[35m#{'─' * 60}\e[0m"
 puts
 
-puts '--- Metadata (T2) ---'
-puts "  Tokens used:     #{response2.usage[:total_token_count] || 'N/A'}"
-puts "  Tool calls:      #{response2.tool_calls_count}"
+# --- Turn 3: Tool call! 🌍 ---
+# Register a geolocation tool to exercise the tool hooks
+agent.register_tool("whereami", description: "Returns the user's approximate location based on their IP address") do
+  require 'net/http'
+  require 'json'
+  raw = Net::HTTP.get(URI('https://ipinfo.io/json'))
+  data = JSON.parse(raw)
+  location = "#{data['city']}, #{data['region']}, #{data['country']} (#{data['org']})"
+  puts "\e[33m  🌍 [Ruby-side] IP says: #{location}\e[0m"
+  location
+end
+
+question3 = 'Use the whereami tool and tell me something fun about where I am!'
+puts "🙋 T3: #{question3}"
+puts
+puts '🤖 Answer:'
+puts "\e[33m#{'─' * 60}\e[0m"
+
+response3 = agent.ask(question3) do |chunk|
+  print "\e[33m#{chunk.content}\e[0m" if chunk.content
+end
+puts
+puts "\e[33m#{'─' * 60}\e[0m"
+puts
+
+puts '--- Metadata (T3) ---'
+puts "  Tokens used:     #{response3.usage[:total_token_count] || 'N/A'}"
+puts "  Tool calls:      #{response3.tool_calls_count}"
 puts "  Total turns:     #{agent.turn_count}"
 puts
 
