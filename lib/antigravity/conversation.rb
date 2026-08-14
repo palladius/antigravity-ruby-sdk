@@ -169,26 +169,27 @@ module Antigravity
           handle_tool_call(tool_call)
         end
 
-        # Usage update
+        # Usage update — do NOT set seen_any_step here!
+        # usageUpdate can leak from the previous turn and trick the GHI #18
+        # stale-FULLY_IDLE guard into accepting a stale FULLY_IDLE as real.
         if (usage = msg[:usageUpdate])
           update_usage(usage)
-          seen_any_step = true
         end
 
         # Trajectory state: STATE_FULLY_IDLE / STATE_CANCELLED = turn complete (authoritative signal from harness)
-        # GHI #18 FIX: Only honor FULLY_IDLE if we've seen at least one stepUpdate/toolCall/usageUpdate
-        # from this turn, OR if enough time has elapsed (1s) that this can't be a stale leftover.
-        # A stale FULLY_IDLE from a previous turn sitting in the WebSocket buffer was causing
-        # collect_response to return immediately with zero steps/text.
+        # GHI #18 + #24 FIX: Only honor FULLY_IDLE if we've seen at least one stepUpdate or toolCall
+        # (NOT usageUpdate — it leaks across turns) from this turn, OR if enough time has elapsed
+        # (2s) that this can't be a stale leftover. A stale FULLY_IDLE from a previous turn sitting
+        # in the WebSocket buffer was causing collect_response to return immediately with 0B text.
         if (traj = msg[:trajectoryStateUpdate])
           elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - turn_started_at
           if traj[:state].to_s =~ /FULLY_IDLE|CANCELLED/
-            if seen_any_step || elapsed > 1.0
+            if seen_any_step || elapsed > 2.0
               finished = true
               finished_at = Time.now
             else
               # Stale FULLY_IDLE — skip it (likely leftover from previous turn or init)
-              @hooks&.emit(:ws_message, { _debug: 'skipped_stale_fully_idle', elapsed: elapsed.round(3) })
+              @hooks&.emit(:ws_message, { _debug: 'skipped_stale_fully_idle', elapsed: elapsed.round(3), seen_any_step: seen_any_step })
             end
           end
         end

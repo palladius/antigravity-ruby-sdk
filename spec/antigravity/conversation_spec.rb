@@ -200,6 +200,41 @@ RSpec.describe Antigravity::Conversation do
         expect(response.content.bytesize).to be > 0
       end
     end
+
+    context 'when usageUpdate + FULLY_IDLE leak from previous turn (the T3 bug)' do
+      it 'does NOT let usageUpdate trick the stale guard' do
+        # This is the exact sequence that caused 0B on T3:
+        # A leaked usageUpdate from T2 set seen_any_step=true,
+        # then a leaked FULLY_IDLE was accepted as real.
+        messages = [
+          usage_update(total: 7500),               # leaked from previous turn
+          fully_idle,                               # also leaked from previous turn
+          step_text('Ruby rocks!', state: 'DONE'),  # real response for THIS turn
+          fully_idle                                # real FULLY_IDLE for THIS turn
+        ]
+        conv, = build_conversation(messages)
+        response = conv.chat('Tell me about Ruby')
+
+        expect(response.content).to eq('Ruby rocks!')
+        expect(response.content.bytesize).to be > 0
+      end
+    end
+
+    context 'when only usageUpdate arrives before FULLY_IDLE (no stepUpdate)' do
+      it 'treats FULLY_IDLE as stale since usageUpdate alone is not real work' do
+        messages = [
+          usage_update(total: 500),                # could be from prev turn
+          fully_idle,                               # stale
+          step_text('Real answer', state: 'DONE'), # actual response
+          usage_update(total: 1000),               # real usage
+          fully_idle                                # real completion
+        ]
+        conv, = build_conversation(messages)
+        response = conv.chat('Question')
+
+        expect(response.content).to eq('Real answer')
+      end
+    end
   end
 
   # ---------------------------------------------------------------------------
