@@ -118,28 +118,32 @@ module Antigravity
       agent.hooks.on(:tool_call) do |info|
         name = info[:tool_name] || info[:name] || '?'
         params_preview = (info[:params] || {}).keys.join(', ')
-        puts C.gray("    🔧 #{C.dim("tool_call")}  | #{C.cyan(name)}(#{C.dim(params_preview)})")
+        puts C.gray("  🪝 🔧 #{C.dim("tool_call")}  | #{C.cyan(name)}(#{C.dim(params_preview)})")
       end
 
       agent.hooks.on(:tool_result) do |info|
         name = info[:tool_name] || info[:name] || '?'
-        result_len = info[:result].to_s.bytesize rescue 0
+        result_str = info[:result].to_s
+        result_len = result_str.bytesize rescue 0
+        preview = result_str[0..120].gsub("\n", ' ')
+        preview += '...' if result_str.length > 120
         duration = info[:duration] ? "#{info[:duration].round(2)}s" : nil
-        parts = [C.cyan(name), "#{result_len}ch"]
+        parts = [C.cyan(name), "#{result_len}B"]
         parts << duration if duration
-        puts C.gray("    ✅ #{C.dim("tool_done")}  | #{parts.join(' | ')}")
+        puts C.gray("  🪝 ✅ #{C.dim("tool_done")}  | #{parts.join(' | ')}")
+        puts C.dim("     → #{C.yellow(preview)}") if result_len > 0
       end
 
       agent.hooks.on(:tool_blocked) do |info|
         name = info[:tool] || '?'
         reason = info[:reason] || 'policy'
-        puts C.red("    🚫 #{C.dim("tool_deny")}  | #{C.red(name)} — #{reason}")
+        puts C.red("  🪝 🚫 #{C.dim("tool_deny")}  | #{C.red(name)} — #{reason}")
       end
 
       agent.hooks.on(:tool_error) do |info|
         name = info[:tool_name] || info[:name] || '?'
         error = info[:error] || info[:message] || '?'
-        puts C.red("    💥 #{C.dim("tool_error")} | #{C.red(name)} — #{error.to_s[0..80]}")
+        puts C.red("  🪝 💥 #{C.dim("tool_error")} | #{C.red(name)} — #{error.to_s[0..80]}")
       end
     end
   end

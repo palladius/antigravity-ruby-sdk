@@ -241,10 +241,22 @@ module Antigravity
       # Symbolize keys for Ruby kwargs
       kwargs = args.transform_keys(&:to_sym)
 
+      # Emit tool_call hook BEFORE execution
+      @hooks&.emit(:tool_call, { tool_name: tool_name, params: args, tool_id: tool_id })
+
+      started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       begin
         result = @tool_runner.execute(tool_name, **kwargs)
+        duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at
+
+        # Emit tool_result hook AFTER execution
+        @hooks&.emit(:tool_result, { tool_name: tool_name, result: result.to_s, duration: duration, tool_id: tool_id })
       rescue ToolNotFoundError => e
+        duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at
         result = { error: e.message }
+
+        # Emit tool_error hook on failure
+        @hooks&.emit(:tool_error, { tool_name: tool_name, error: e.message, duration: duration, tool_id: tool_id })
       end
 
       # Send tool response back (protobuf InputEvent.tool_response format)

@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-08-14 🪝🌍 Lifecycle Hooks + Tool Emissions (GHI #22, #24)
+
+### Features
+* 🪝 **Lifecycle Logger**: All hook output prefixed with 🪝, `\n` before `session_start`/`post_turn` for clean separation.
+* 🔧 **Tool Hook Emissions**: `conversation.rb` now emits `:tool_call`, `:tool_result`, `:tool_error` hooks — previously wired but never fired!
+* 🪙 **Token display**: Fixed key path bug (`dig(:tokens,:total)` → `[:total_tokens]`), added 🪙 emoji, `B` (bytes) instead of `ch`.
+* ⏱️ **Agent uptime**: `agent.born_at`, `agent.uptime`, `agent.uptime_human` ("7.3s", "1m 23.4s").
+* 📦 **dotenv as runtime dep**: Added to gemspec + `rv_init.rb`, `.env` now auto-loaded. Env checks use `.strip` for trailing spaces.
+* 🌍 **whereami example**: 4-turn E2E demo — geolocation tool (ipinfo.io JSON), flag emoji follow-up, Ruby love, Python vs Ruby.
+  * Custom post-tool hook parses JSON and prints `📍 IP (City, Country)`.
+  * Proper status envelope `{status: "success", response: data}` with error handling.
+
+### Bug Fixes
+* 🐛 Token count always showed 0 in lifecycle logger (wrong key path).
+* 🐛 Filed GHI #24: `usageUpdate` race condition when `FULLY_IDLE` arrives first.
+
+### Tests
+* 🧪 23 new specs for `LifecycleLogger` + `Colors` (status_line, all hook events, verbose mode, ANSI/TTY safety).
+
+## [0.5.1] - 2026-08-14 📜 Add LICENSE
+
+### Features
+* 📜 **License**: Added Apache 2.0 LICENSE file to match the Python SDK.
+
 ## [0.5.0] - 2026-08-14 🔒 Declarative Policy DSL (GHI #21)
 
 ### Features
