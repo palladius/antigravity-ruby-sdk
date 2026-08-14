@@ -30,7 +30,7 @@ build:
 release:
     bundle exec rake release
     @echo "Pushing to gem.coop..."
-    RUBYGEMS_HOST=https://gem.coop/@palladius bundle exec rake release
+    GEM_HOST_API_KEY=${GEM_COOP_API_KEY} RUBYGEMS_HOST=https://gem.coop/@palladius bundle exec rake release
 # Check if localharness binary is available
 harness-check:
     bundle exec rake harness:check
