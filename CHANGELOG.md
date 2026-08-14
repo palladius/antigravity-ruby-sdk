@@ -6,7 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ## [0.5.3] - 2026-08-14
 ### Bug Fixes
+* 🐛 **GHI #24 — FULLY_IDLE race condition**: Fixed 0B responses on fast turns. Three-part fix:
+  1. `usageUpdate` no longer sets `seen_any_step` (it leaked across turns, tricking the stale guard)
+  2. Removed `elapsed` time fallback — only `stepUpdate`/`toolCall` gates FULLY_IDLE acceptance
+  3. Adaptive drain: 3s when FULLY_IDLE arrives without text (was 0.5s, too short for thinking turns)
+* 🧪 **conversation_spec.rb**: 12 unit tests covering FULLY_IDLE drain, stale rejection, usage capture, tool counting
 * 🐛 **Telegram Bot**: Fixed an issue where the `/stop` command would shut down the bot instantly without acknowledging the message offset, leading to infinite restart loops.
+* 🛡️ **Tool Policies**: Fixed an issue where `run_pre_tool` and `run_post_tool` hooks were bypassed during `conversation.rb` execution, which broke safety guards and `AgentLogger` tool logging.
 
 ## [0.5.2] - 2026-08-14 🪝🌍 Lifecycle Hooks + Tool Emissions (GHI #22, #24)
 
