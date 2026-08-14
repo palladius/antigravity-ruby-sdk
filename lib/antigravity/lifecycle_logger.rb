@@ -20,7 +20,7 @@ module Antigravity
     def self.status_line(agent)
       turns    = agent.turn_count rescue 0
       summary  = agent.session_summary rescue {}
-      tokens   = summary.dig(:tokens, :total) || 0
+      tokens   = summary[:total_tokens] || 0
       tok_str  = tokens > 999 ? "#{(tokens / 1000.0).round(1)}k" : tokens.to_s
       tok_str  = "🪙#{tok_str}"
       model    = summary[:model] || agent.model || '?'
@@ -66,7 +66,7 @@ module Antigravity
                   end
         turns = info[:turn_count] || agent.turn_count rescue 0
         summary = agent.session_summary rescue {}
-        tokens = summary.dig(:tokens, :total) || 0
+        tokens = summary[:total_tokens] || 0
         tok_str = tokens > 999 ? "#{(tokens / 1000.0).round(1)}k" : tokens.to_s
         puts C.gray("🔴 #{C.dim("session_end")}   | #{C.bold("#{turns} turns")} | 🪙#{tok_str} | #{elapsed}s")
       end
