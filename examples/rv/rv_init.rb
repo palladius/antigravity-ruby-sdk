@@ -16,6 +16,7 @@ require 'bundler/inline'
 gemfile(true) do
   source 'https://rubygems.org'
   gem 'websocket', '~> 1.2'
+  gem 'dotenv', '~> 3.0'
   # Future deps go here:
   # gem 'google-protobuf', '~> 4.0'  # Phase 4: proper protobuf
 end

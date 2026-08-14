@@ -22,6 +22,7 @@ module Antigravity
       summary  = agent.session_summary rescue {}
       tokens   = summary.dig(:tokens, :total) || 0
       tok_str  = tokens > 999 ? "#{(tokens / 1000.0).round(1)}k" : tokens.to_s
+      tok_str  = "🪙#{tok_str}"
       model    = summary[:model] || agent.model || '?'
       conv_id  = (summary[:conversation_id] || '?')[0..7]
 
@@ -67,7 +68,7 @@ module Antigravity
         summary = agent.session_summary rescue {}
         tokens = summary.dig(:tokens, :total) || 0
         tok_str = tokens > 999 ? "#{(tokens / 1000.0).round(1)}k" : tokens.to_s
-        puts C.gray("🔴 #{C.dim("session_end")}   | #{C.bold("#{turns} turns")} | #{tok_str} tok | #{elapsed}s")
+        puts C.gray("🔴 #{C.dim("session_end")}   | #{C.bold("#{turns} turns")} | 🪙#{tok_str} | #{elapsed}s")
       end
     end
 
@@ -99,12 +100,12 @@ module Antigravity
         tool_count = response.respond_to?(:tool_calls_count) ? (response.tool_calls_count || 0) : 0
         status = self.class.status_line(agent) rescue ''
 
-        parts = ["#{C.green("#{chars}ch")} #{C.dim("#{lines}L")}"]
-        parts << "#{C.magenta("#{thinking_len}ch")} think" if thinking_len > 0
+        parts = ["#{C.green("#{chars}B")} #{C.dim("#{lines}L")}"]
+        parts << "#{C.magenta("#{thinking_len}B")} think" if thinking_len > 0
         parts << "#{C.cyan("#{tool_count}")} tools" if tool_count > 0
         parts << "#{C.blue("#{elapsed}s")}"
 
-        puts C.gray("  ⬅️  #{C.dim("post_turn")} T#{logger.instance_variable_get(:@turn_count)} | #{parts.join(' | ')} | #{status}")
+        puts C.gray("\n  ⬅️  #{C.dim("post_turn")} T#{logger.instance_variable_get(:@turn_count)} | #{parts.join(' | ')} | #{status}")
         if logger.instance_variable_get(:@verbose)
           puts C.dim("     \"#{preview}\"")
         end
@@ -122,7 +123,7 @@ module Antigravity
 
       agent.hooks.on(:tool_result) do |info|
         name = info[:tool_name] || info[:name] || '?'
-        result_len = info[:result].to_s.length rescue 0
+        result_len = info[:result].to_s.bytesize rescue 0
         duration = info[:duration] ? "#{info[:duration].round(2)}s" : nil
         parts = [C.cyan(name), "#{result_len}ch"]
         parts << duration if duration

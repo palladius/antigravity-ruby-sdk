@@ -49,6 +49,26 @@ puts "  Tokens used:     #{response.usage[:total_token_count] || 'N/A'}"
 puts "  Tool calls:      #{response.tool_calls_count}"
 puts
 
+# --- Turn 2: The spicy follow-up ---
+question2 = 'And help me, why is everyone preferring Python when Ruby is obviously superior?'
+puts "🙋 Follow-up: #{question2}"
+puts
+puts '🤖 Answer:'
+puts "\e[35m#{'─' * 60}\e[0m"
+
+response2 = agent.ask(question2) do |chunk|
+  print "\e[35m#{chunk.content}\e[0m" if chunk.content
+end
+puts
+puts "\e[35m#{'─' * 60}\e[0m"
+puts
+
+puts '--- Metadata (T2) ---'
+puts "  Tokens used:     #{response2.usage[:total_token_count] || 'N/A'}"
+puts "  Tool calls:      #{response2.tool_calls_count}"
+puts "  Total turns:     #{agent.turn_count}"
+puts
+
 # Clean up
 agent.close!
 puts '✅ Done! Agent closed.'

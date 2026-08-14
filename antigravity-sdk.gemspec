@@ -26,4 +26,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency "websocket", "~> 1.2"
   spec.add_dependency "json", ">= 2.6"
   spec.add_dependency "logger", ">= 1.5"
+  spec.add_dependency "dotenv", "~> 3.0"
 end

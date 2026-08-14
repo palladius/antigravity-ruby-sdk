@@ -270,11 +270,11 @@ module Antigravity
     end
 
     def lifecycle_logger_enabled?
-      # Explicit opt-in
-      return true if ENV['ANTIGRAVITY_LIFECYCLE'] == '1'
+      # Explicit opt-in (strip handles trailing spaces in .env files)
+      return true if ENV['ANTIGRAVITY_LIFECYCLE']&.strip == '1'
       # Rails/Rack test or development
-      return true if %w[test development].include?(ENV['RAILS_ENV']&.downcase)
-      return true if %w[test development].include?(ENV['RACK_ENV']&.downcase)
+      return true if %w[test development].include?(ENV['RAILS_ENV']&.strip&.downcase)
+      return true if %w[test development].include?(ENV['RACK_ENV']&.strip&.downcase)
       # Explicit opt-out
       false
     end
