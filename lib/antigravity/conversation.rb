@@ -195,15 +195,18 @@ module Antigravity
 
         # Stop conditions (in priority order):
         # 1. Session end — always hard-stop immediately
-        # 2. Model DONE + text collected — drain briefly for trailing usage/metadata
-        # 3. Trajectory FULLY_IDLE/CANCELLED — drain briefly for trailing text/usage (GHI #24 fix)
-        #    Without this drain, fast turns can lose text deltas that arrive after FULLY_IDLE.
+        # 2. Finished (DONE or FULLY_IDLE) WITH text — short drain for trailing usage
+        # 3. Finished WITHOUT text but with steps — model was working (thinking),
+        #    text is likely still in-flight. Drain longer (3s) to catch it. (GHI #24)
+        # 4. Not finished but text started — idle timeout for more text
         if msg.key?(:sessionEndResponse)
           :stop
-        elsif finished
+        elsif finished && !text_parts.empty?
           [:idle_timeout, 0.5]
+        elsif finished && text_parts.empty?
+          # FULLY_IDLE arrived but no text yet — wait longer for trailing text
+          [:idle_timeout, 3.0]
         elsif !text_parts.empty?
-          # If assistant has sent text but no DONE/FULLY_IDLE yet, allow 3s idle timeout
           [:idle_timeout, 3.0]
         end
       end
