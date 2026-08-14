@@ -29,6 +29,15 @@ RSpec.describe Antigravity::Skill do
         expect(skill.instructions).to eq("# Just instructions, no YAML")
       end
     end
+
+    it "raises ArgumentError when YAML frontmatter has syntax errors" do
+      Dir.mktmpdir("invalid-frontmatter") do |dir|
+        File.write(File.join(dir, "SKILL.md"), "---\ninvalid: : : yaml\n---\nBody")
+        expect {
+          described_class.load(dir)
+        }.to raise_error(ArgumentError, /Invalid YAML frontmatter in/)
+      end
+    end
   end
 
   describe ".inline" do

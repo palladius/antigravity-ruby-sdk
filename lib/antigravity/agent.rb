@@ -381,10 +381,6 @@ module Antigravity
       skill
     end
 
-    def lifecycle_logger_enabled?
-      ENV['ANTIGRAVITY_LIFECYCLE'] == '1'
-    end
-
     def resolve_workspace(val)
       return nil if val.nil? || val == false
 

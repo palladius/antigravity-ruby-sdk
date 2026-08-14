@@ -33,6 +33,24 @@ RSpec.describe Antigravity::Connection::LocalConnection do
     end
   end
 
+  describe '#perform_handshake!' do
+    it 'creates a secure temporary directory using Dir.mktmpdir' do
+      connection = described_class.new(binary_path: '/fake/binary')
+      mock_io = double('io', write: nil, flush: nil)
+      connection.instance_variable_set(:@stdin, mock_io)
+      connection.instance_variable_set(:@stdout, mock_io)
+
+      allow(Antigravity::Protocol).to receive(:encode_input_config).and_return("config")
+      allow(Antigravity::Protocol).to receive(:read_length_prefixed).and_return("frame")
+      allow(Antigravity::Protocol).to receive(:decode_output_config).and_return({ port: 1234, api_key: "key" })
+      allow(connection).to receive(:connect_websocket!).and_return(true)
+
+      expect(Dir).to receive(:mktmpdir).with('antigravity-ruby-').and_return('/secure/tmp/dir')
+
+      connection.send(:perform_handshake!)
+    end
+  end
+
   # Helper to temporarily override ENV
   def with_env(overrides, &block)
     old_values = {}
