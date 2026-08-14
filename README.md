@@ -126,6 +126,38 @@ end
 
 ---
 
+## 📊 Feature Parity with [Python SDK](https://github.com/google-antigravity/antigravity-sdk-python)
+
+> Full matrix: [`docs/FEATURE_PARITY.md`](docs/FEATURE_PARITY.md) | Epic: [GHI #20](https://github.com/palladius/antigravity-ruby-sdk/issues/20)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Agent lifecycle (`connect!`, `close!`, block) | ✅ | + auto-connect on first `ask` |
+| Streaming responses | ✅ | Token-by-token via block |
+| Custom tools (declarative + dynamic) | ✅ | `Tool` DSL + `Tool::Dynamic` |
+| Agent Skills (local + GitHub + inline) | ✅ | Ruby-only: GitHub auto-clone, inline skills |
+| Workspace analysis | ✅ | Built-in file tools |
+| Guards (FileProtection, SecretMasker) | ✅ | Ruby-only feature |
+| Sidecars (AuditLogger, VulnScanner) | ✅ | Ruby-only feature |
+| Hooks (pre/post prompt, tool) | ✅ | + generic event system |
+| Logging (JSONL + .log) | ✅ | Auto-attach |
+| Declarative Policies | 🚧 | [#21](https://github.com/palladius/antigravity-ruby-sdk/issues/21) — hooks plumbing exists, DSL coming |
+| MCP Servers (Stdio + HTTP) | ❌ | Planned P0 |
+| Multimodal Input (Image, Audio, Doc) | ❌ | Planned P1 |
+| Structured Output (JSON Schema) | ❌ | Planned P1 |
+| Stateful ToolContext | ❌ | Planned P1 |
+| Session Persistence (save/resume) | ❌ | Planned P1 |
+| Multi-Agent / Subagents | ❌ | Planned P2 |
+| Triggers (background tasks) | ❌ | Planned P2 |
+| Vertex AI backend | ❌ | Planned P1 |
+| Response Cancellation | ❌ | Planned P1 |
+| Budget Limits | ❌ | Planned P1 |
+| OpenTelemetry | ❌ | Planned P2 |
+| LiteRT / Ollama backends | ❌ | Planned P3 |
+
+**Overall: ~35% parity** | 10 Ruby-only features | [Convergence plan](docs/FEATURE_PARITY.md#prioritized-gap-closure-plan)
+
+
 ## 🧪 Development
 
 ```bash
