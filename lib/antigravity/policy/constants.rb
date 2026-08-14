@@ -40,6 +40,7 @@ module Antigravity
       'killall',
       'pkill',
       'rm',
+      'xargs',
     ].freeze
 
     # ------------------------------------------------------------------
@@ -65,8 +66,12 @@ module Antigravity
       date
       echo
       hostname
+      ls
+      md5
+      md5sum
       pwd
       uname
+      wc
       which
       whoami
     ].freeze
@@ -77,9 +82,8 @@ module Antigravity
     READ_CMDS = %i[
       cat
       head
-      ls
+      strings
       tail
-      wc
     ].freeze
 
     # Safe git subcommands (read-only, no mutations)
