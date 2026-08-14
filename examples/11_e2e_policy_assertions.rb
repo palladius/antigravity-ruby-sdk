@@ -149,6 +149,16 @@ assert_denied(prod_agent, :run_command,    { command_line: 'git reset --hard' },
 assert_denied(prod_agent, :run_command,    { command_line: 'cat /etc/passwd' },
               'cat (file reader) in prod',      results)
 
+# ❌ Non-sandbox dirs that look similar — still blocked!
+assert_denied(prod_agent, :write_to_file,  { path: 'scratch2/sneaky.md', content: 'nope' },
+              'Write to scratch2/ (not a sandbox!)', results)
+assert_denied(prod_agent, :file_edit,      { path: 'scratch2/hack.rb', content: 'x' },
+              'Edit in scratch2/ (not a sandbox!)',   results)
+assert_denied(prod_agent, :write_to_file,  { path: 'tmp/data.log', content: 'x' },
+              'Write to tmp/ (not a sandbox!)',       results)
+assert_denied(prod_agent, :write_to_file,  { path: 'output/report.md', content: 'x' },
+              'Write to output/ (not a sandbox!)',    results)
+
 # ------------------------------------------------------------------
 # 6. Summary
 # ------------------------------------------------------------------

@@ -146,6 +146,63 @@ RSpec.describe Antigravity::Policy do
   end
 
   # ------------------------------------------------------------------
+  # Order independence — DSL is declarative, not imperative!
+  # ------------------------------------------------------------------
+
+  describe 'order independence' do
+    it 'deny-before-allow produces the same result as allow-before-deny' do
+      # Order A: deny first, then allow
+      policy_a = described_class.define do
+        deny :run_command, when: cmd('rm')
+        allow :run_command
+      end
+
+      # Order B: allow first, then deny
+      policy_b = described_class.define do
+        allow :run_command
+        deny :run_command, when: cmd('rm')
+      end
+
+      # Both should deny 'rm' and allow 'echo' — order is irrelevant
+      expect(policy_a.evaluate(:run_command, { command_line: 'rm file' })[:status]).to eq(:deny)
+      expect(policy_b.evaluate(:run_command, { command_line: 'rm file' })[:status]).to eq(:deny)
+      expect(policy_a.evaluate(:run_command, { command_line: 'echo hi' })[:status]).to eq(:allow)
+      expect(policy_b.evaluate(:run_command, { command_line: 'echo hi' })[:status]).to eq(:allow)
+    end
+
+    it 'allow_all before deny still denies (deny wins by precedence)' do
+      policy = described_class.define do
+        allow_all
+        deny :run_command, when: cmd('rm')
+      end
+
+      expect(policy.evaluate(:run_command, { command_line: 'rm -rf /' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'echo safe' })[:status]).to eq(:allow)
+    end
+
+    it 'deny_all before allow still allows (specific tool beats wildcard)' do
+      policy = described_class.define do
+        deny_all
+        allow :list_dir
+      end
+
+      expect(policy.evaluate(:list_dir, {})[:status]).to eq(:allow)
+      expect(policy.evaluate(:run_command, {})[:status]).to eq(:deny)
+    end
+
+    it 'conditional allow + conditional deny: deny wins (restrictiveness)' do
+      # Both have same specificity & condition, deny wins by action score
+      policy = described_class.define do
+        allow :write_to_file, when: path('scratch/*')
+        deny  :write_to_file, when: path('scratch/.env')
+      end
+
+      expect(policy.evaluate(:write_to_file, { path: 'scratch/ok.txt' })[:status]).to eq(:allow)
+      expect(policy.evaluate(:write_to_file, { path: 'scratch/.env' })[:status]).to eq(:deny)
+    end
+  end
+
+  # ------------------------------------------------------------------
   # Preset policies
   # ------------------------------------------------------------------
 
