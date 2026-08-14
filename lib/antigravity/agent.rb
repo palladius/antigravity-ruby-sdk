@@ -8,7 +8,7 @@ module Antigravity
                 :workspace, :connection, :conversation
 
     def initialize(model: nil, system_instruction: nil, tools: [],
-                   skills: [], policies: [], workspace: nil, auto_logger: true, log_file: nil, &block)
+                   skills: [], policies: [], policy: nil, workspace: nil, auto_logger: true, log_file: nil, &block)
       @model = model || Antigravity.config.default_model
       @api_key = Antigravity.config.api_key
       @system_instruction = system_instruction
@@ -30,6 +30,12 @@ module Antigravity
 
       # Load skills provided at construction (local paths or GitHub URLs)
       add_skills(skills) unless Array(skills).empty?
+
+      # Resolve policy: sugar (symbol → preset, Policy object → use directly)
+      if policy
+        resolved = policy.is_a?(Symbol) ? Policy.preset(policy) : policy
+        enforce(resolved)
+      end
 
       # Load policies
       policies.each { |p| enforce(p) }

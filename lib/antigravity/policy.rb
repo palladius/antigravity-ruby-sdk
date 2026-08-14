@@ -2,6 +2,34 @@
 
 module Antigravity
   class Policy
+    # -- Dangerous command patterns (shared across presets) --
+
+    # Catastrophic: hard-denied in ALL presets
+    CATASTROPHIC_CMDS = %w[
+      rm\ -rf\ / rm\ -rf\ /* rm\ -rf\ ~ mkfs dd\ if=/dev/zero
+      dd\ if=/dev/urandom >\ /dev/sd shutdown reboot halt
+    ].freeze
+
+    # Risky: confirmed in :default, hard-denied in :cautious
+    RISKY_CMDS = %w[rm kill\ -9 killall pkill chmod\ -R\ 777 chown\ -R].freeze
+
+    # Safe read-only shell commands (allowed even in :cautious)
+    SAFE_CMDS = %w[
+      echo cat ls pwd which head tail wc date whoami hostname uname
+      cd git\ status git\ log git\ diff git\ branch git\ remote
+    ].freeze
+
+    # Sensitive file globs (protected from unconfirmed writes)
+    SENSITIVE_FILES = %w[.env .env.* *.key *.pem *.secret id_rsa*].freeze
+
+    # Read-only harness tools (always safe)
+    READONLY_TOOLS = %i[list_dir view_file grep_search find read_url_content search_web].freeze
+
+    # Write harness tools
+    WRITE_TOOLS = %i[write_to_file file_edit].freeze
+
+    PRESET_NAMES = %i[cautious default turbo].freeze
+
     class Rule
       attr_reader :action, :tool_name, :condition, :handler
 
@@ -18,18 +46,20 @@ module Antigravity
         true
       end
 
-      # Precedence order:
-      # Specific > Wildcard
-      # Deny > Confirm > Allow
+      # Precedence order (higher = wins):
+      # 1. Tool specificity: Specific tool > Wildcard (nil)
+      # 2. Condition specificity: Has predicate > No predicate
+      # 3. Action restrictiveness: Deny > Confirm > Allow
       def precedence
         specificity = @tool_name ? 1 : 0
+        condition_score = @condition ? 1 : 0
         action_score = case @action
                        when :deny then 3
                        when :confirm then 2
                        when :allow then 1
                        else 0
                        end
-        [specificity, action_score]
+        [specificity, condition_score, action_score]
       end
     end
 
@@ -50,6 +80,75 @@ module Antigravity
     def self.deny_all
       new { deny_all }
     end
+
+    # ------------------------------------------------------------------
+    # Built-in presets
+    # ------------------------------------------------------------------
+
+    # Resolve a preset by name (symbol).
+    # @param name [Symbol] :cautious, :default, or :turbo
+    # @return [Policy]
+    def self.preset(name)
+      case name.to_sym
+      when :cautious then cautious
+      when :default  then default
+      when :turbo    then turbo
+      else
+        raise ArgumentError, "Unknown preset :#{name}. Choose from: #{PRESET_NAMES.map { |n| ":#{n}" }.join(', ')}"
+      end
+    end
+
+    # 🔒 Cautious — read-only free, confirm everything else, hard-deny destructive.
+    # Best for: untrusted environments, production agents.
+    def self.cautious
+      define do
+        deny_all
+        # Read-only tools are always safe
+        READONLY_TOOLS.each { |t| allow t }
+        # Safe shell commands only
+        allow :run_command, when: cmd(*SAFE_CMDS)
+        # Catastrophic commands: hard deny
+        deny :run_command, when: cmd(*CATASTROPHIC_CMDS)
+        # Risky commands: also hard deny in cautious
+        deny :run_command, when: cmd(*RISKY_CMDS)
+        # Everything else (writes, other shell): confirm
+        WRITE_TOOLS.each { |t| confirm t }
+        confirm :run_command
+      end
+    end
+
+    # ⚖️ Default — balanced: allow reads + writes, confirm dangerous shell, protect sensitive files.
+    # Best for: day-to-day development, pair programming with an agent.
+    def self.default
+      define do
+        deny_all
+        # Read-only: free
+        READONLY_TOOLS.each { |t| allow t }
+        # Writes: allowed, but sensitive files need confirmation
+        WRITE_TOOLS.each { |t| allow t }
+        WRITE_TOOLS.each { |t| confirm t, when: path(*SENSITIVE_FILES) }
+        # Shell: allowed, but risky commands need confirmation, catastrophic denied
+        allow :run_command
+        deny :run_command, when: cmd(*CATASTROPHIC_CMDS)
+        confirm :run_command, when: cmd(*RISKY_CMDS)
+      end
+    end
+
+    # 🚀 Turbo — wide open with seatbelts: allow everything, only hard-deny catastrophic.
+    # Best for: trusted dev environments, rapid prototyping.
+    def self.turbo
+      define do
+        allow_all
+        # Even turbo mode won't let you nuke the disk
+        deny :run_command, when: cmd(*CATASTROPHIC_CMDS)
+        # Protect sensitive files from accidental overwrites
+        WRITE_TOOLS.each { |t| confirm t, when: path(*SENSITIVE_FILES) }
+      end
+    end
+
+    # ------------------------------------------------------------------
+    # DSL methods
+    # ------------------------------------------------------------------
 
     def allow(tool_name = nil, **kwargs)
       @rules << Rule.new(:allow, tool_name, condition: kwargs[:when])
@@ -75,6 +174,10 @@ module Antigravity
       @confirm_handler = block
     end
 
+    # ------------------------------------------------------------------
+    # Predicate helpers
+    # ------------------------------------------------------------------
+
     def cmd(*patterns)
       ->(ctx) do
         args = ctx[:args]
@@ -89,10 +192,9 @@ module Antigravity
     def path(*globs)
       ->(ctx) do
         args = ctx[:args]
-        # Check common path argument names
-        path_arg = args[:path] || args['path'] || 
-                   args[:file] || args['file'] || 
-                   args[:target] || args['target'] || 
+        path_arg = args[:path] || args['path'] ||
+                   args[:file] || args['file'] ||
+                   args[:target] || args['target'] ||
                    args[:file_path] || args['file_path'] ||
                    args[:target_file] || args['target_file']
         return false unless path_arg
@@ -111,6 +213,10 @@ module Antigravity
         end
       end
     end
+
+    # ------------------------------------------------------------------
+    # Evaluation engine
+    # ------------------------------------------------------------------
 
     def evaluate(tool_name, args = {})
       matching_rules = @rules.select { |r| r.matches?(tool_name, args) }

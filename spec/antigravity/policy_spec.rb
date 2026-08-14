@@ -144,4 +144,122 @@ RSpec.describe Antigravity::Policy do
       end
     end
   end
+
+  # ------------------------------------------------------------------
+  # Preset policies
+  # ------------------------------------------------------------------
+
+  describe '.preset' do
+    it 'resolves :cautious' do
+      expect(described_class.preset(:cautious)).to be_a(described_class)
+    end
+
+    it 'resolves :default' do
+      expect(described_class.preset(:default)).to be_a(described_class)
+    end
+
+    it 'resolves :turbo' do
+      expect(described_class.preset(:turbo)).to be_a(described_class)
+    end
+
+    it 'raises on unknown preset' do
+      expect { described_class.preset(:yolo) }.to raise_error(ArgumentError, /Unknown preset :yolo/)
+    end
+  end
+
+  describe '.cautious' do
+    subject(:policy) { described_class.cautious }
+
+    it 'allows read-only tools' do
+      Antigravity::Policy::READONLY_TOOLS.each do |tool|
+        expect(policy.evaluate(tool, {})[:status]).to eq(:allow), "Expected #{tool} to be allowed"
+      end
+    end
+
+    it 'allows safe shell commands' do
+      expect(policy.evaluate(:run_command, { command_line: 'echo hello' })[:status]).to eq(:allow)
+      expect(policy.evaluate(:run_command, { command_line: 'git status' })[:status]).to eq(:allow)
+      expect(policy.evaluate(:run_command, { command_line: 'ls -la' })[:status]).to eq(:allow)
+    end
+
+    it 'hard-denies catastrophic commands' do
+      expect(policy.evaluate(:run_command, { command_line: 'rm -rf /' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'mkfs /dev/sda1' })[:status]).to eq(:deny)
+    end
+
+    it 'hard-denies risky commands' do
+      expect(policy.evaluate(:run_command, { command_line: 'rm important.txt' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'killall node' })[:status]).to eq(:deny)
+    end
+
+    it 'confirms write tools (default deny without handler)' do
+      Antigravity::Policy::WRITE_TOOLS.each do |tool|
+        expect(policy.evaluate(tool, {})[:status]).to eq(:deny), "Expected #{tool} to need confirmation (deny w/o handler)"
+      end
+    end
+
+    it 'denies unknown tools' do
+      expect(policy.evaluate(:unknown_tool, {})[:status]).to eq(:deny)
+    end
+  end
+
+  describe '.default' do
+    subject(:policy) { described_class.default }
+
+    it 'allows read-only tools' do
+      Antigravity::Policy::READONLY_TOOLS.each do |tool|
+        expect(policy.evaluate(tool, {})[:status]).to eq(:allow), "Expected #{tool} to be allowed"
+      end
+    end
+
+    it 'allows normal shell commands' do
+      expect(policy.evaluate(:run_command, { command_line: 'bundle install' })[:status]).to eq(:allow)
+      expect(policy.evaluate(:run_command, { command_line: 'ruby -v' })[:status]).to eq(:allow)
+    end
+
+    it 'allows write tools for normal files' do
+      expect(policy.evaluate(:write_to_file, { path: 'app.rb' })[:status]).to eq(:allow)
+      expect(policy.evaluate(:file_edit, { path: 'README.md' })[:status]).to eq(:allow)
+    end
+
+    it 'confirms writes to sensitive files (deny w/o handler)' do
+      expect(policy.evaluate(:write_to_file, { path: '.env' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:file_edit, { path: 'server.key' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:write_to_file, { path: '.env.production' })[:status]).to eq(:deny)
+    end
+
+    it 'hard-denies catastrophic commands' do
+      expect(policy.evaluate(:run_command, { command_line: 'rm -rf /' })[:status]).to eq(:deny)
+    end
+
+    it 'confirms risky commands (deny w/o handler)' do
+      expect(policy.evaluate(:run_command, { command_line: 'rm old_file.txt' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'killall nginx' })[:status]).to eq(:deny)
+    end
+  end
+
+  describe '.turbo' do
+    subject(:policy) { described_class.turbo }
+
+    it 'allows everything by default' do
+      expect(policy.evaluate(:list_dir, {})[:status]).to eq(:allow)
+      expect(policy.evaluate(:run_command, { command_line: 'npm install' })[:status]).to eq(:allow)
+      expect(policy.evaluate(:write_to_file, { path: 'app.rb' })[:status]).to eq(:allow)
+      expect(policy.evaluate(:unknown_custom_tool, {})[:status]).to eq(:allow)
+    end
+
+    it 'hard-denies catastrophic commands' do
+      expect(policy.evaluate(:run_command, { command_line: 'rm -rf /' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'mkfs /dev/sda' })[:status]).to eq(:deny)
+    end
+
+    it 'confirms writes to sensitive files (deny w/o handler)' do
+      expect(policy.evaluate(:write_to_file, { path: '.env' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:file_edit, { path: 'id_rsa_key' })[:status]).to eq(:deny)
+    end
+
+    it 'allows risky commands (turbo trusts the user)' do
+      expect(policy.evaluate(:run_command, { command_line: 'rm old_file.txt' })[:status]).to eq(:allow)
+    end
+  end
 end
