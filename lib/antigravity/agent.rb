@@ -8,13 +8,14 @@ module Antigravity
                 :workspace, :connection, :conversation
 
     def initialize(model: nil, system_instruction: nil, tools: [],
-                   skills: [], workspace: nil, auto_logger: true, log_file: nil, &block)
+                   skills: [], policies: [], workspace: nil, auto_logger: true, log_file: nil, &block)
       @model = model || Antigravity.config.default_model
       @api_key = Antigravity.config.api_key
       @system_instruction = system_instruction
       @workspace = workspace ? File.expand_path(workspace) : nil
       @tools = tools.dup
       @skills = []
+      @policies = []
       @sidecars = []
       @hooks = Hooks.new
       @client = Client.new
@@ -30,12 +31,22 @@ module Antigravity
       # Load skills provided at construction (local paths or GitHub URLs)
       add_skills(skills) unless Array(skills).empty?
 
+      # Load policies
+      policies.each { |p| enforce(p) }
+
       # Automagic Logger attachment unless disabled via ENV["ANTIGRAVITY_LOGGER"]=false or auto_logger: false
       if auto_logger && logger_enabled?
         attach_logger(log_file)
       end
 
       yield(self) if block_given?
+    end
+
+    def enforce(policy)
+      @policies << policy
+      before_tool_call do |tool_name, args|
+        policy.evaluate(tool_name, args)
+      end
     end
 
     # --- Class Methods ---
