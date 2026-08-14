@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-08-14
+### Bug Fixes
+* 🐛 **Telegram Bot**: Fixed an issue where the `/stop` command would shut down the bot instantly without acknowledging the message offset, leading to infinite restart loops.
+
 ## [0.5.2] - 2026-08-14 🪝🌍 Lifecycle Hooks + Tool Emissions (GHI #22, #24)
 
 ### Features

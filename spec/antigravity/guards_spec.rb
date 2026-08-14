@@ -22,7 +22,8 @@ RSpec.describe Antigravity::Guards do
       agent.attach_logger(tmp_log, silent_notice: true)
       agent.register_tool("ping", description: "Pings server") { "pong" }
 
-      agent.ask("Run ping")
+      response = agent.ask("Run ping")
+      puts "DEBUG RESPONSE: #{response.inspect}"
 
       # JSONL log: structured events
       expect(File.exist?(tmp_log)).to be true

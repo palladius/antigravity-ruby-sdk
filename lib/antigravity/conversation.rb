@@ -131,10 +131,9 @@ module Antigravity
 
           if step[:textDelta] && !step[:textDelta].empty? && is_model_step && is_target_user && !is_error_step
             text_parts << step[:textDelta]
-            chunk = Message.new(
+            chunk = Chunk.new(
               content: step[:textDelta],
-              role: :assistant,
-              delta: true
+              role: :assistant
             )
             block&.call(chunk)
           end
@@ -245,18 +244,36 @@ module Antigravity
       @hooks&.emit(:tool_call, { tool_name: tool_name, params: args, tool_id: tool_id })
 
       started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      begin
-        result = @tool_runner.execute(tool_name, **kwargs)
-        duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at
+      policy_check = @hooks ? @hooks.run_pre_tool(tool_name, args) : { allowed: true }
 
-        # Emit tool_result hook AFTER execution
+      if !policy_check[:allowed]
+        reason = policy_check[:reason]
+        # Same format as client.rb sidecar emission
+        @hooks&.emit(:tool_blocked, { tool: tool_name, reason: reason })
+        result = "❌ TOOL BLOCKED: #{reason}"
+        duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at
+        
+        # We run the post_tool hook here as well to satisfy AgentLogger's pairing
+        result = @hooks ? @hooks.run_post_tool(tool_name, args, result) : result
         @hooks&.emit(:tool_result, { tool_name: tool_name, result: result.to_s, duration: duration, tool_id: tool_id })
-      rescue ToolNotFoundError => e
-        duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at
-        result = { error: e.message }
+      else
+        begin
+          raw_result = @tool_runner.execute(tool_name, **kwargs)
+          
+          # Run post_tool filters/maskers
+          result = @hooks ? @hooks.run_post_tool(tool_name, args, raw_result) : raw_result
+          
+          duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at
 
-        # Emit tool_error hook on failure
-        @hooks&.emit(:tool_error, { tool_name: tool_name, error: e.message, duration: duration, tool_id: tool_id })
+          # Emit tool_result hook AFTER execution
+          @hooks&.emit(:tool_result, { tool_name: tool_name, result: result.to_s, duration: duration, tool_id: tool_id })
+        rescue ToolNotFoundError => e
+          duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at
+          result = { error: e.message }
+
+          # Emit tool_error hook on failure
+          @hooks&.emit(:tool_error, { tool_name: tool_name, error: e.message, duration: duration, tool_id: tool_id })
+        end
       end
 
       # Send tool response back (protobuf InputEvent.tool_response format)

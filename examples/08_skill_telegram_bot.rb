@@ -491,7 +491,11 @@ Telegram::Bot::Client.run(BOT_TOKEN) do |bot|
           bot.api.send_message(chat_id: chat_id, text: "👋 Shutting down bot... Arrivederci!")
           puts "👋 /stop received from #{chat_id} - shutting down".to_red
           sessions.each_value(&:close!)
-          exit(0)
+          
+          # We use a Thread to delay the exit, allowing the bot.listen loop 
+          # to acknowledge this update offset to the Telegram server.
+          Thread.new { sleep 1; exit(0) }
+          next
         end
       end
 
