@@ -6,6 +6,10 @@ The Antigravity Ruby SDK is an unofficial, community project. It is **not** an o
   <img src="docs/images/logo.jpg" alt="Ruby Antigravity Logo" width="350"/>
 </p>
 
+<p align="center">
+  <img src="images/tui-multiturn-demo.gif" alt="Antigravity Ruby SDK Multiturn TUI Demo" width="700"/>
+</p>
+
 [![Gem Version](https://badge.fury.io/rb/antigravity-sdk.svg)](https://rubygems.org/gems/antigravity-sdk)
 [![GitHub](https://img.shields.io/github/license/palladius/antigravity-ruby-sdk)](LICENSE)
 
