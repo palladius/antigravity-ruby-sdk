@@ -1,35 +1,13 @@
 # frozen_string_literal: true
 
+require_relative 'policy/constants'
+
 module Antigravity
   class Policy
-    # -- Dangerous command patterns (shared across presets) --
 
-    # Catastrophic: hard-denied in ALL presets
-    CATASTROPHIC_CMDS = %w[
-      rm\ -rf\ / rm\ -rf\ /* rm\ -rf\ ~ mkfs dd\ if=/dev/zero
-      dd\ if=/dev/urandom >\ /dev/sd shutdown reboot halt
-    ].freeze
-
-    # Risky: confirmed in :default, hard-denied in :cautious
-    RISKY_CMDS = %w[rm kill\ -9 killall pkill chmod\ -R\ 777 chown\ -R].freeze
-
-    # Safe read-only shell commands (allowed even in :cautious)
-    SAFE_CMDS = %w[
-      echo cat ls pwd which head tail wc date whoami hostname uname
-      cd git\ status git\ log git\ diff git\ branch git\ remote
-    ].freeze
-
-    # Sensitive file globs (protected from unconfirmed writes)
-    SENSITIVE_FILES = %w[.env .env.* *.key *.pem *.secret id_rsa*].freeze
-
-    # Read-only harness tools (always safe)
-    READONLY_TOOLS = %i[list_dir view_file grep_search find read_url_content search_web].freeze
-
-    # Write harness tools
-    WRITE_TOOLS = %i[write_to_file file_edit].freeze
-
-    PRESET_NAMES = %i[cautious default turbo].freeze
-
+    # ------------------------------------------------------------------
+    # Rule — a single allow/deny/confirm entry in a policy.
+    # ------------------------------------------------------------------
     class Rule
       attr_reader :action, :tool_name, :condition, :handler
 
@@ -63,6 +41,10 @@ module Antigravity
       end
     end
 
+    # ------------------------------------------------------------------
+    # Constructor & factory methods
+    # ------------------------------------------------------------------
+
     def initialize(&block)
       @rules = []
       @confirm_handler = nil
@@ -86,13 +68,15 @@ module Antigravity
     # ------------------------------------------------------------------
 
     # Resolve a preset by name (symbol).
-    # @param name [Symbol] :cautious, :default, or :turbo
+    # @param name [Symbol] :cautious, :default, :turbo, :test, or :auto
     # @return [Policy]
     def self.preset(name)
       case name.to_sym
       when :cautious then cautious
       when :default  then default
       when :turbo    then turbo
+      when :test     then test
+      when :auto     then auto
       else
         raise ArgumentError, "Unknown preset :#{name}. Choose from: #{PRESET_NAMES.map { |n| ":#{n}" }.join(', ')}"
       end
@@ -103,15 +87,11 @@ module Antigravity
     def self.cautious
       define do
         deny_all
-        # Read-only tools are always safe
         READONLY_TOOLS.each { |t| allow t }
-        # Safe shell commands only
-        allow :run_command, when: cmd(*SAFE_CMDS)
-        # Catastrophic commands: hard deny
+        allow :run_command, when: cmd(*SAFE_CMDS, *SAFE_GIT_CMDS)
         deny :run_command, when: cmd(*CATASTROPHIC_CMDS)
-        # Risky commands: also hard deny in cautious
         deny :run_command, when: cmd(*RISKY_CMDS)
-        # Everything else (writes, other shell): confirm
+        deny :run_command, when: cmd(*DESTRUCTIVE_GIT_CMDS)
         WRITE_TOOLS.each { |t| confirm t }
         confirm :run_command
       end
@@ -122,15 +102,13 @@ module Antigravity
     def self.default
       define do
         deny_all
-        # Read-only: free
         READONLY_TOOLS.each { |t| allow t }
-        # Writes: allowed, but sensitive files need confirmation
         WRITE_TOOLS.each { |t| allow t }
         WRITE_TOOLS.each { |t| confirm t, when: path(*SENSITIVE_FILES) }
-        # Shell: allowed, but risky commands need confirmation, catastrophic denied
         allow :run_command
         deny :run_command, when: cmd(*CATASTROPHIC_CMDS)
         confirm :run_command, when: cmd(*RISKY_CMDS)
+        confirm :run_command, when: cmd(*DESTRUCTIVE_GIT_CMDS)
       end
     end
 
@@ -139,11 +117,30 @@ module Antigravity
     def self.turbo
       define do
         allow_all
-        # Even turbo mode won't let you nuke the disk
         deny :run_command, when: cmd(*CATASTROPHIC_CMDS)
-        # Protect sensitive files from accidental overwrites
+        confirm :run_command, when: cmd(*DESTRUCTIVE_GIT_CMDS)
         WRITE_TOOLS.each { |t| confirm t, when: path(*SENSITIVE_FILES) }
       end
+    end
+
+    # 🧪 Test — permissive for test runners, but sandboxed.
+    # Best for: CI, test suites, RAILS_ENV=test.
+    def self.test
+      define do
+        allow_all
+        deny :run_command, when: cmd(*CATASTROPHIC_CMDS)
+        deny :run_command, when: cmd(*DESTRUCTIVE_GIT_CMDS)
+        confirm :run_command, when: cmd(*RISKY_CMDS)
+        WRITE_TOOLS.each { |t| confirm t, when: path(*SENSITIVE_FILES) }
+      end
+    end
+
+    # 🔮 Auto — reads RAILS_ENV, RACK_ENV, or ANTIGRAVITY_ENV and picks a preset.
+    # Falls back to :default if unrecognized or unset.
+    def self.auto
+      env = ENV['ANTIGRAVITY_ENV'] || ENV['RAILS_ENV'] || ENV['RACK_ENV']
+      preset_name = ENV_MAP.fetch(env.to_s.downcase, :default)
+      send(preset_name)
     end
 
     # ------------------------------------------------------------------

@@ -162,6 +162,14 @@ RSpec.describe Antigravity::Policy do
       expect(described_class.preset(:turbo)).to be_a(described_class)
     end
 
+    it 'resolves :test' do
+      expect(described_class.preset(:test)).to be_a(described_class)
+    end
+
+    it 'resolves :auto' do
+      expect(described_class.preset(:auto)).to be_a(described_class)
+    end
+
     it 'raises on unknown preset' do
       expect { described_class.preset(:yolo) }.to raise_error(ArgumentError, /Unknown preset :yolo/)
     end
@@ -190,6 +198,13 @@ RSpec.describe Antigravity::Policy do
     it 'hard-denies risky commands' do
       expect(policy.evaluate(:run_command, { command_line: 'rm important.txt' })[:status]).to eq(:deny)
       expect(policy.evaluate(:run_command, { command_line: 'killall node' })[:status]).to eq(:deny)
+    end
+
+    it 'hard-denies destructive git commands' do
+      expect(policy.evaluate(:run_command, { command_line: 'git reset --hard' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'git checkout .' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'git clean -fd' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'git push --force' })[:status]).to eq(:deny)
     end
 
     it 'confirms write tools (default deny without handler)' do
@@ -236,6 +251,12 @@ RSpec.describe Antigravity::Policy do
       expect(policy.evaluate(:run_command, { command_line: 'rm old_file.txt' })[:status]).to eq(:deny)
       expect(policy.evaluate(:run_command, { command_line: 'killall nginx' })[:status]).to eq(:deny)
     end
+
+    it 'confirms destructive git commands (deny w/o handler)' do
+      expect(policy.evaluate(:run_command, { command_line: 'git reset --hard' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'git push --force' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'git checkout .' })[:status]).to eq(:deny)
+    end
   end
 
   describe '.turbo' do
@@ -260,6 +281,100 @@ RSpec.describe Antigravity::Policy do
 
     it 'allows risky commands (turbo trusts the user)' do
       expect(policy.evaluate(:run_command, { command_line: 'rm old_file.txt' })[:status]).to eq(:allow)
+    end
+
+    it 'confirms destructive git commands (deny w/o handler)' do
+      expect(policy.evaluate(:run_command, { command_line: 'git reset --hard' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'git push -f origin main' })[:status]).to eq(:deny)
+    end
+  end
+
+  describe '.test' do
+    subject(:policy) { described_class.test }
+
+    it 'allows everything by default' do
+      expect(policy.evaluate(:list_dir, {})[:status]).to eq(:allow)
+      expect(policy.evaluate(:write_to_file, { path: 'test_output.txt' })[:status]).to eq(:allow)
+      expect(policy.evaluate(:run_command, { command_line: 'bundle exec rspec' })[:status]).to eq(:allow)
+    end
+
+    it 'hard-denies catastrophic commands' do
+      expect(policy.evaluate(:run_command, { command_line: 'rm -rf /' })[:status]).to eq(:deny)
+    end
+
+    it 'hard-denies destructive git commands (protect CI checkout)' do
+      expect(policy.evaluate(:run_command, { command_line: 'git reset --hard' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'git clean -fdx' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'git push --force' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'git stash drop' })[:status]).to eq(:deny)
+    end
+
+    it 'confirms risky commands (test might need rm for cleanup)' do
+      expect(policy.evaluate(:run_command, { command_line: 'rm tmp/test.log' })[:status]).to eq(:deny)
+    end
+
+    it 'confirms writes to sensitive files (deny w/o handler)' do
+      expect(policy.evaluate(:write_to_file, { path: '.env' })[:status]).to eq(:deny)
+    end
+  end
+
+  describe '.auto' do
+    it 'maps RAILS_ENV=production to :cautious behavior' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('ANTIGRAVITY_ENV').and_return(nil)
+      allow(ENV).to receive(:[]).with('RAILS_ENV').and_return('production')
+      allow(ENV).to receive(:[]).with('RACK_ENV').and_return(nil)
+
+      policy = described_class.auto
+      # Cautious denies unknown tools
+      expect(policy.evaluate(:unknown_tool, {})[:status]).to eq(:deny)
+    end
+
+    it 'maps RAILS_ENV=development to :turbo behavior' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('ANTIGRAVITY_ENV').and_return(nil)
+      allow(ENV).to receive(:[]).with('RAILS_ENV').and_return('development')
+      allow(ENV).to receive(:[]).with('RACK_ENV').and_return(nil)
+
+      policy = described_class.auto
+      # Turbo allows unknown tools
+      expect(policy.evaluate(:unknown_tool, {})[:status]).to eq(:allow)
+    end
+
+    it 'maps RAILS_ENV=test to :test behavior' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('ANTIGRAVITY_ENV').and_return(nil)
+      allow(ENV).to receive(:[]).with('RAILS_ENV').and_return('test')
+      allow(ENV).to receive(:[]).with('RACK_ENV').and_return(nil)
+
+      policy = described_class.auto
+      # Test hard-denies destructive git
+      expect(policy.evaluate(:run_command, { command_line: 'git reset --hard' })[:status]).to eq(:deny)
+      # But allows normal commands
+      expect(policy.evaluate(:run_command, { command_line: 'bundle exec rspec' })[:status]).to eq(:allow)
+    end
+
+    it 'falls back to :default when env is unset' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('ANTIGRAVITY_ENV').and_return(nil)
+      allow(ENV).to receive(:[]).with('RAILS_ENV').and_return(nil)
+      allow(ENV).to receive(:[]).with('RACK_ENV').and_return(nil)
+
+      policy = described_class.auto
+      # Default allows normal shell but denies unknown tools
+      expect(policy.evaluate(:run_command, { command_line: 'ruby -v' })[:status]).to eq(:allow)
+      expect(policy.evaluate(:unknown_tool, {})[:status]).to eq(:deny)
+    end
+
+    it 'ANTIGRAVITY_ENV takes priority over RAILS_ENV' do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('ANTIGRAVITY_ENV').and_return('production')
+      allow(ENV).to receive(:[]).with('RAILS_ENV').and_return('development')
+      allow(ENV).to receive(:[]).with('RACK_ENV').and_return(nil)
+
+      policy = described_class.auto
+      # Should be cautious (production), not turbo (development)
+      expect(policy.evaluate(:unknown_tool, {})[:status]).to eq(:deny)
     end
   end
 end
