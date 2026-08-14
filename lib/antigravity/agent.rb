@@ -12,7 +12,7 @@ module Antigravity
       @model = model || Antigravity.config.default_model
       @api_key = Antigravity.config.api_key
       @system_instruction = system_instruction
-      @workspace = File.expand_path(workspace || '.')
+      @workspace = resolve_workspace(workspace)
       @tools = tools.dup
       @skills = []
       @policies = []
@@ -69,7 +69,7 @@ module Antigravity
     end
 
     def workspace=(path)
-      @workspace = path ? File.expand_path(path) : File.expand_path('.')
+      @workspace = resolve_workspace(path)
     end
 
     # --- Connection Lifecycle ---
@@ -367,6 +367,23 @@ module Antigravity
 
     def lifecycle_logger_enabled?
       ENV['ANTIGRAVITY_LIFECYCLE'] == '1'
+    end
+
+    def resolve_workspace(val)
+      return nil if val.nil? || val == false
+
+      raw_path = case val
+                 when :here, :current, true, '.'
+                   '.'
+                 else
+                   val.to_s
+                 end
+
+      expanded = File.expand_path(raw_path)
+      expanded += '/' unless expanded.end_with?('/')
+
+      $stderr.puts "📁 Setting workspace to \e[34m#{expanded}\e[0m" rescue nil
+      expanded
     end
   end
 end
