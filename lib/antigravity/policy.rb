@@ -3,6 +3,33 @@
 require_relative 'policy/constants'
 
 module Antigravity
+  # ==========================================================================
+  # Antigravity::Policy — Declarative tool-access control for agents.
+  #
+  # ⚠️  ORDER DOES NOT MATTER!
+  #
+  # The DSL is declarative, like SQL — not imperative like a script.
+  # Rules are evaluated by PRECEDENCE, not by insertion order.
+  # You can write `allow` before `deny` or vice versa — same result.
+  #
+  # Precedence (highest wins):
+  #   1. Tool specificity:    specific tool > wildcard (nil)
+  #   2. Condition specificity: has `when:` > no `when:`
+  #   3. Restrictiveness:      deny > confirm > allow
+  #
+  # Example — these two policies behave identically:
+  #
+  #   Policy.define do          Policy.define do
+  #     allow :run_command        deny :run_command, when: cmd('rm')
+  #     deny :run_command,        allow :run_command
+  #       when: cmd('rm')       end
+  #   end
+  #
+  # In both cases, `rm` is denied (conditional deny beats unconditional
+  # allow), and everything else is allowed.
+  #
+  # See policy/constants.rb for curated command/file/tool lists.
+  # ==========================================================================
   class Policy
 
     # ------------------------------------------------------------------
