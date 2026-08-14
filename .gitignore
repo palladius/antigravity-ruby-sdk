@@ -7,3 +7,4 @@
 .env
 combined.log
 error.log
+.DS_Store

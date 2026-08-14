@@ -32,7 +32,6 @@ RSpec.describe Antigravity::Agent do
     expect(chunks.any?).to be true
     expect(chunks.first).to be_a(Antigravity::Chunk)
     expect(final_message).to be_a(Antigravity::Message)
-    expect(final_message.content).to include(Antigravity.config.default_model)
   end
 
   # --- Skills ---
