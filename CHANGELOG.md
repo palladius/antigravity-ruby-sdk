@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-08-14 📂 Workspace Indexing Hooks
+### Features
+* 📂 **Indexing lifecycle hooks**: New `:indexing_start` and `:indexing_done` hooks emitted around `initialize_session!` when a workspace is configured. Zero concurrency risk — just timing wrappers.
+* 🪝 **Lifecycle logger**: Prints `🪝 📂 indexing | /path/` and `🪝 ✅ indexed | /path/ | 0.03s` so you always know when indexing starts and finishes.
+
 ## [0.5.3] - 2026-08-14
 ### Bug Fixes
 * 🐛 **GHI #24 — FULLY_IDLE race condition**: Fixed 0B responses on fast turns. Three-part fix:

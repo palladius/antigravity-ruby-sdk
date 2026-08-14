@@ -94,8 +94,18 @@ module Antigravity
       )
 
       harness_config = build_harness_config
+
+      # Emit indexing hooks — workspace indexing happens during session init
+      index_t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC) if @workspace
+      hooks.emit(:indexing_start, { workspace: @workspace }) if @workspace
+
       @conversation.initialize_session!(harness_config: harness_config)
       @connected = true
+
+      if @workspace
+        index_elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - index_t0
+        hooks.emit(:indexing_done, { workspace: @workspace, elapsed: index_elapsed.round(2) })
+      end
 
       # Emit session_start hook
       hooks.emit(:session_start, {
