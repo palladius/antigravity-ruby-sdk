@@ -182,14 +182,13 @@ module Antigravity
         # (2s) that this can't be a stale leftover. A stale FULLY_IDLE from a previous turn sitting
         # in the WebSocket buffer was causing collect_response to return immediately with 0B text.
         if (traj = msg[:trajectoryStateUpdate])
-          elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - turn_started_at
           if traj[:state].to_s =~ /FULLY_IDLE|CANCELLED/
-            if seen_any_step || elapsed > 2.0
+            if seen_any_step
               finished = true
               finished_at = Time.now
             else
               # Stale FULLY_IDLE — skip it (likely leftover from previous turn or init)
-              @hooks&.emit(:ws_message, { _debug: 'skipped_stale_fully_idle', elapsed: elapsed.round(3), seen_any_step: seen_any_step })
+              @hooks&.emit(:ws_message, { _debug: 'skipped_stale_fully_idle', seen_any_step: seen_any_step })
             end
           end
         end
