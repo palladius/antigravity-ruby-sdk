@@ -87,7 +87,7 @@ module Antigravity
 
           unless wheel
             # Try all versions for the platform
-            versions = data['releases']&.keys&.sort_by { |v| Gem::Version.new(v) rescue v }&.reverse
+            versions = data['releases']&.keys&.sort_by { |v| Gem::Version.correct?(v) ? Gem::Version.new(v) : Gem::Version.new('0') }&.reverse
             versions&.each do |ver|
               files = data.dig('releases', ver) || []
               wheel = files.find { |u| u['filename']&.include?(platform) && u['filename']&.end_with?('.whl') }
@@ -134,7 +134,11 @@ module Antigravity
           # Wheels are just ZIP files. Extract the binary.
           # Look for: google/antigravity/bin/localharness (or language_server)
           extract_dir = Dir.mktmpdir('agy-extract-')
-          system('unzip', '-q', '-o', wheel_path, '-d', extract_dir)
+          success = system('unzip', '-q', '-o', wheel_path, '-d', extract_dir)
+          unless success
+            FileUtils.rm_rf(extract_dir)
+            raise HarnessNotFoundError, "Failed to extract wheel using unzip command"
+          end
 
           # Search for the binary inside (prefer localharness over language_server)
           candidates = Dir.glob("#{extract_dir}/**/localharness") +

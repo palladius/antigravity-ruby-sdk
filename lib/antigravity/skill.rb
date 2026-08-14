@@ -71,7 +71,11 @@ module Antigravity
 
       content = File.read(skill_file, encoding: 'UTF-8')
       if content =~ /\A(---\s*\n.*?\n?)^(---\s*$\n?)/m
-        front_matter = YAML.safe_load(Regexp.last_match(1)) || {}
+        front_matter = begin
+                         YAML.safe_load(Regexp.last_match(1)) || {}
+                       rescue Psych::SyntaxError => e
+                         raise ArgumentError, "Invalid YAML frontmatter in #{skill_file}: #{e.message}"
+                       end
         @name = front_matter["name"] || File.basename(@path)
         @description = front_matter["description"] || ""
         @metadata = front_matter.fetch("metadata", {})

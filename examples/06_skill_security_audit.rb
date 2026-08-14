@@ -67,11 +67,14 @@ puts "#{Antigravity.emoji(:workspace)} Workspace: #{workspace}"
 puts
 
 # --- Connect and review ---
+agent.before_tool_call do |tool, args|
+  puts "\n🛠️ [Tool] #{tool} #{args.inspect}"
+end
+
 agent.connect!
 puts
 
-question = "Use the code-quality-review skill to review the code in #{File.expand_path(workspace)}. " \
-           "Apply the severity-emoji skill for output formatting. Max 10 findings."
+question = "Use the code-quality-review skill to inspect the Ruby source code files in #{File.expand_path(workspace)} for code quality, Ruby idioms, and best practices. Apply the severity-emoji skill for output formatting. Max 10 findings."
 
 puts "#{Antigravity.emoji(:prompt)} Review question submitted..."
 puts

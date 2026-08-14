@@ -121,8 +121,7 @@ module Antigravity
       end
 
       def perform_handshake!
-        storage_dir = File.join(Dir.tmpdir, "antigravity-ruby-#{$$}")
-        FileUtils.mkdir_p(storage_dir)
+        storage_dir = Dir.mktmpdir('antigravity-ruby-')
 
         # Send InputConfig via stdin
         input_config = Protocol.encode_input_config(

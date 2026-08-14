@@ -22,8 +22,7 @@ module Antigravity
         return true
       end
 
-      cmd = "#{@bin_path} --port=#{@port}"
-      @stdin, @stdout, @stderr, wait_thr = Open3.popen3(cmd)
+      @stdin, @stdout, @stderr, wait_thr = Open3.popen3(@bin_path, "--port=#{@port}")
       @pid = wait_thr.pid
 
       at_exit { stop! }
