@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+### Features
+* 🛡️ **Declarative Policy DSL (Issue #21)**: Added `Antigravity::Policy` for concise security rules.
+  * Define robust `allow`, `deny`, and `confirm` rules with precedence parsing.
+  * Predicate helpers: `cmd`, `path`, and `args_match`.
+  * Agent integration: auto-wired enforcement via `Agent.new(policies: [policy])`.
+
 ## [0.4.3] - 2026-08-13 🎤🐛
 
 ### Bug Fix: Voice Messages Return Empty (GHI #18)
