@@ -75,6 +75,43 @@ module Antigravity
       @confirm_handler = block
     end
 
+    def cmd(*patterns)
+      ->(ctx) do
+        args = ctx[:args]
+        cmd_arg = args[:command_line] || args['command_line'] || args[:CommandLine] || args['CommandLine']
+        return false unless cmd_arg
+
+        cmd_arg = cmd_arg.to_s
+        patterns.any? { |p| cmd_arg.include?(p.to_s) }
+      end
+    end
+
+    def path(*globs)
+      ->(ctx) do
+        args = ctx[:args]
+        # Check common path argument names
+        path_arg = args[:path] || args['path'] || 
+                   args[:file] || args['file'] || 
+                   args[:target] || args['target'] || 
+                   args[:file_path] || args['file_path'] ||
+                   args[:target_file] || args['target_file']
+        return false unless path_arg
+
+        path_arg = path_arg.to_s
+        globs.any? { |g| File.fnmatch?(g.to_s, path_arg) }
+      end
+    end
+
+    def args_match(**matchers)
+      ->(ctx) do
+        args = ctx[:args]
+        matchers.any? do |k, v|
+          val = args[k.to_sym] || args[k.to_s]
+          val && v.match?(val.to_s)
+        end
+      end
+    end
+
     def evaluate(tool_name, args = {})
       matching_rules = @rules.select { |r| r.matches?(tool_name, args) }
       best_rule = matching_rules.max_by(&:precedence)

@@ -105,4 +105,43 @@ RSpec.describe Antigravity::Policy do
       expect(policy.evaluate(:anything, {})[:status]).to eq(:deny)
     end
   end
+  describe 'predicate helpers' do
+    describe '#cmd' do
+      it 'matches substring in command_line or CommandLine' do
+        policy = described_class.define do
+          allow_all
+          deny :run_command, when: cmd('rm -rf', :sudo)
+        end
+
+        expect(policy.evaluate(:run_command, { command_line: 'ls -l' })[:status]).to eq(:allow)
+        expect(policy.evaluate(:run_command, { command_line: 'sudo rm -rf /' })[:status]).to eq(:deny)
+        expect(policy.evaluate(:run_command, { 'CommandLine' => 'sudo ls' })[:status]).to eq(:deny)
+      end
+    end
+
+    describe '#path' do
+      it 'glob-matches path-like arguments' do
+        policy = described_class.define do
+          allow_all
+          deny :read_file, when: path('*.key', '.env*')
+        end
+
+        expect(policy.evaluate(:read_file, { path: 'test.txt' })[:status]).to eq(:allow)
+        expect(policy.evaluate(:read_file, { target: 'secret.key' })[:status]).to eq(:deny)
+        expect(policy.evaluate(:read_file, { file_path: '.env.local' })[:status]).to eq(:deny)
+      end
+    end
+
+    describe '#args_match' do
+      it 'regex-matches named arguments' do
+        policy = described_class.define do
+          allow_all
+          deny :create_file, when: args_match(content: /password/i)
+        end
+
+        expect(policy.evaluate(:create_file, { content: 'hello world' })[:status]).to eq(:allow)
+        expect(policy.evaluate(:create_file, { content: 'my Password is 123' })[:status]).to eq(:deny)
+      end
+    end
+  end
 end
