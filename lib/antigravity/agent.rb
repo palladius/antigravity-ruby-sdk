@@ -12,7 +12,7 @@ module Antigravity
       @model = model || Antigravity.config.default_model
       @api_key = Antigravity.config.api_key
       @system_instruction = system_instruction
-      @workspace = workspace ? File.expand_path(workspace) : nil
+      @workspace = File.expand_path(workspace || '.')
       @tools = tools.dup
       @skills = []
       @policies = []
@@ -66,6 +66,10 @@ module Antigravity
       ensure
         agent.close!
       end
+    end
+
+    def workspace=(path)
+      @workspace = path ? File.expand_path(path) : File.expand_path('.')
     end
 
     # --- Connection Lifecycle ---
