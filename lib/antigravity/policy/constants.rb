@@ -61,19 +61,25 @@ module Antigravity
     # ✅ Safe read-only shell commands — allowed even in :cautious.
     # ------------------------------------------------------------------
     SAFE_CMDS = %i[
-      cat
       cd
       date
       echo
-      head
       hostname
-      ls
       pwd
-      tail
       uname
-      wc
       which
       whoami
+    ].freeze
+
+    # ⚠️  File-reading shell commands — can bypass view_file deny rules!
+    # Allowed in :default/:turbo/:test, but NOT in :cautious.
+    # If you deny `view_file` for a path, `cat` can circumvent it.
+    READ_CMDS = %i[
+      cat
+      head
+      ls
+      tail
+      wc
     ].freeze
 
     # Safe git subcommands (read-only, no mutations)

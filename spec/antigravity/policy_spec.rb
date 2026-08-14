@@ -187,7 +187,15 @@ RSpec.describe Antigravity::Policy do
     it 'allows safe shell commands' do
       expect(policy.evaluate(:run_command, { command_line: 'echo hello' })[:status]).to eq(:allow)
       expect(policy.evaluate(:run_command, { command_line: 'git status' })[:status]).to eq(:allow)
-      expect(policy.evaluate(:run_command, { command_line: 'ls -la' })[:status]).to eq(:allow)
+      expect(policy.evaluate(:run_command, { command_line: 'pwd' })[:status]).to eq(:allow)
+    end
+
+    it 'blocks file-reading commands to prevent view_file bypass' do
+      # cat/head/tail/ls can bypass view_file deny rules, so they need confirmation
+      expect(policy.evaluate(:run_command, { command_line: 'cat secret.key' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'head -20 .env' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'tail -f /var/log/auth.log' })[:status]).to eq(:deny)
+      expect(policy.evaluate(:run_command, { command_line: 'ls -la /root' })[:status]).to eq(:deny)
     end
 
     it 'hard-denies catastrophic commands' do

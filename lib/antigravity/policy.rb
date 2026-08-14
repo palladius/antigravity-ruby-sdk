@@ -84,6 +84,7 @@ module Antigravity
 
     # 🔒 Cautious — read-only free, confirm everything else, hard-deny destructive.
     # Best for: untrusted environments, production agents.
+    # NOTE: cat/head/tail/ls NOT in safe list — they can bypass view_file deny rules.
     def self.cautious
       define do
         deny_all
