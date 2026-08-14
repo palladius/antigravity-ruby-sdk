@@ -28,6 +28,21 @@ All notable changes to this project will be documented in this file.
 * 53 unit tests (order independence, presets, predicates, sandbox dirs).
 * 34 e2e assertions in `examples/11_e2e_policy_assertions.rb` (custom policy + prod sandbox).
 
+## [0.4.4] - 2026-08-14 🪝🌈
+
+### Lifecycle Hooks & Observability (GHI #22)
+* 🪝 **Session lifecycle hooks**: `on(:session_start)` and `on(:session_end)` events emitted from `connect!`/`close!` with model, conversation_id, turn_count metadata.
+* 🌈 **`Antigravity::Colors`**: lightweight ANSI color module (no deps, TTY-safe). Used internally and available for examples.
+* 📊 **`Antigravity::LifecycleLogger`**: auto-attachable colorful logger that prints compact status lines on every hook event -- inspired by Cloud Code's status bar.
+  * `ANTIGRAVITY_LIFECYCLE=1` to enable, or auto-enabled when `RAILS_ENV=test` or `RAILS_ENV=development`.
+  * `ANTIGRAVITY_LIFECYCLE_VERBOSE=1` for response content previews.
+  * Prints: `🟢 session_start | model=... | conv=...`, `➡️ pre_turn T1 | "prompt..."`, `⬅️ post_turn T1 | 42ch 1L | 0.8s`, `🔴 session_end | 3 turns | 1.2k tok | 4.5s`.
+
+### Feature Parity Tracking (GHI #20)
+* 📊 Added [`docs/FEATURE_PARITY.md`](docs/FEATURE_PARITY.md) -- 85-feature matrix comparing Ruby vs Python SDK (~35% parity, 10 Ruby-unique features).
+* 📊 Added compact parity status table to README.
+* 🛡️ Filed GHI #21 (Declarative Policy Engine) and GHI #22 (Lifecycle Hooks) as sub-issues of epic #20.
+
 ## [0.4.3] - 2026-08-13 🎤🐛
 
 ### Bug Fix: Voice Messages Return Empty (GHI #18)

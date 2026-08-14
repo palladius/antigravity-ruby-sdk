@@ -1,0 +1,14 @@
+{
+  "track_id": "policy_dsl_20260814",
+  "type": "feature",
+  "status": "new",
+  "github_issue": 21,
+  "description": "Declarative Policy DSL — Rails-like tool call policy engine",
+  "created_at": "2026-08-14T10:26:00+02:00",
+  "updated_at": "2026-08-14T10:26:00+02:00",
+  "worktree": {
+    "path": ".worktrees/issue-21-policy-dsl",
+    "branch": "feature/issue-21-policy-dsl"
+  },
+  "active_questions": []
+}

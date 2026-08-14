@@ -6,6 +6,10 @@ The Antigravity Ruby SDK is an unofficial, community project. It is **not** an o
   <img src="docs/images/logo.jpg" alt="Ruby Antigravity Logo" width="350"/>
 </p>
 
+<p align="center">
+  <img src="images/tui-multiturn-demo.gif" alt="Antigravity Ruby SDK Multiturn TUI Demo" width="700"/>
+</p>
+
 [![Gem Version](https://badge.fury.io/rb/antigravity-sdk.svg)](https://rubygems.org/gems/antigravity-sdk)
 [![GitHub](https://img.shields.io/github/license/palladius/antigravity-ruby-sdk)](LICENSE)
 
@@ -211,6 +215,39 @@ agent.hooks.run_pre_tool(:write_to_file, path: 'app.rb', content: '...')
 | *(unset)* | ⚖️ `:default` |
 
 See [`lib/antigravity/policy.rb`](lib/antigravity/policy.rb) and [`lib/antigravity/policy/constants.rb`](lib/antigravity/policy/constants.rb) for the full implementation.
+
+---
+
+## 📊 Feature Parity with [Python SDK](https://github.com/google-antigravity/antigravity-sdk-python)
+
+> Full matrix: [`docs/FEATURE_PARITY.md`](docs/FEATURE_PARITY.md) | Epic: [GHI #20](https://github.com/palladius/antigravity-ruby-sdk/issues/20)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Agent lifecycle (`connect!`, `close!`, block) | ✅ | + auto-connect on first `ask` |
+| Streaming responses | ✅ | Token-by-token via block |
+| Custom tools (declarative + dynamic) | ✅ | `Tool` DSL + `Tool::Dynamic` |
+| Agent Skills (local + GitHub + inline) | ✅ | Ruby-only: GitHub auto-clone, inline skills |
+| Workspace analysis | ✅ | Built-in file tools |
+| Guards (FileProtection, SecretMasker) | ✅ | Ruby-only feature |
+| Sidecars (AuditLogger, VulnScanner) | ✅ | Ruby-only feature |
+| Hooks (pre/post prompt, tool) | ✅ | + generic event system |
+| Logging (JSONL + .log) | ✅ | Auto-attach |
+| Declarative Policies | ✅ | [#21](https://github.com/palladius/antigravity-ruby-sdk/issues/21) — DSL, 5 presets, sandbox dirs |
+| MCP Servers (Stdio + HTTP) | ❌ | Planned P0 |
+| Multimodal Input (Image, Audio, Doc) | ❌ | Planned P1 |
+| Structured Output (JSON Schema) | ❌ | Planned P1 |
+| Stateful ToolContext | ❌ | Planned P1 |
+| Session Persistence (save/resume) | ❌ | Planned P1 |
+| Multi-Agent / Subagents | ❌ | Planned P2 |
+| Triggers (background tasks) | ❌ | Planned P2 |
+| Vertex AI backend | ❌ | Planned P1 |
+| Response Cancellation | ❌ | Planned P1 |
+| Budget Limits | ❌ | Planned P1 |
+| OpenTelemetry | ❌ | Planned P2 |
+| LiteRT / Ollama backends | ❌ | Planned P3 |
+
+**Overall: ~40% parity** | 10 Ruby-only features | [Convergence plan](docs/FEATURE_PARITY.md#prioritized-gap-closure-plan)
 
 ## 🧪 Development
 

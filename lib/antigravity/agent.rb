@@ -73,6 +73,12 @@ module Antigravity
     def connect!
       return self if @connected
 
+      # Auto-attach lifecycle logger if enabled via env
+      if lifecycle_logger_enabled? && !@lifecycle_attached
+        LifecycleLogger.attach!(self, verbose: ENV['ANTIGRAVITY_LIFECYCLE_VERBOSE'] == '1')
+        @lifecycle_attached = true
+      end
+
       @connection = Connection::LocalConnection.new
       @connection.connect!
 
@@ -85,6 +91,16 @@ module Antigravity
       harness_config = build_harness_config
       @conversation.initialize_session!(harness_config: harness_config)
       @connected = true
+
+      # Emit session_start hook
+      hooks.emit(:session_start, {
+        model: @model,
+        conversation_id: conversation_id,
+        workspace: @workspace,
+        skills_count: @skills.length,
+        tools_count: @tools.length,
+      })
+
       self
     end
 
@@ -93,6 +109,14 @@ module Antigravity
     end
 
     def close!
+      # Emit session_end hook before teardown
+      if @connected
+        hooks.emit(:session_end, {
+          turn_count: turn_count,
+          conversation_id: conversation_id,
+        })
+      end
+
       @connected = false
       @connection&.disconnect!
       @connection = nil
@@ -241,6 +265,16 @@ module Antigravity
       true
     end
 
+    def lifecycle_logger_enabled?
+      # Explicit opt-in
+      return true if ENV['ANTIGRAVITY_LIFECYCLE'] == '1'
+      # Rails/Rack test or development
+      return true if %w[test development].include?(ENV['RAILS_ENV']&.downcase)
+      return true if %w[test development].include?(ENV['RACK_ENV']&.downcase)
+      # Explicit opt-out
+      false
+    end
+
     def build_harness_config
       api_key = ENV.fetch('GEMINI_API_KEY') {
         raise ConfigError, 'GEMINI_API_KEY environment variable is required'
@@ -325,6 +359,10 @@ module Antigravity
       skill = Skill.load(skill_path)
       @skills << skill
       skill
+    end
+
+    def lifecycle_logger_enabled?
+      ENV['ANTIGRAVITY_LIFECYCLE'] == '1'
     end
   end
 end
