@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Example: Simple LLM Chat with a custom tool.
+# Example 04: Simple LLM Chat — no workspace, no tools, just a question.
 #
 # Run with rv (stateless, no gem install needed!):
 #   rv run ruby examples/04_simple_llm_chat.rb
@@ -13,8 +13,6 @@
 
 require_relative 'rv/rv_init'
 
-SEP = "\e[33m#{'─' * 60}\e[0m"
-
 puts '💎 Antigravity Ruby SDK — Simple LLM Chat'
 puts '=' * 45
 puts
@@ -24,99 +22,32 @@ agent = Antigravity::Agent.new(
   system_instruction: 'You are a passionate Ruby developer. Keep answers concise (3-4 sentences max).'
 )
 
-# Register a geolocation tool to exercise the tool hooks
-agent.register_tool("whereami", description: "Returns the user's approximate location based on their IP address as JSON") do
-  require 'net/http'
-  require 'json'
-  begin
-    raw = Net::HTTP.get(URI('https://ipinfo.io/json'))
-    data = JSON.parse(raw)
-    #puts "\e[33m  🌍 [Ruby-side] Got #{raw.bytesize}B from ipinfo.io\e[0m"
-    { status: 'success', response: data }.to_json
-  rescue StandardError => e
-    puts "\e[31m  💥 [Ruby-side] #{e.class}: #{e.message}\e[0m"
-    { status: 'error', error: e.message }.to_json
-  end
-end
-
-# Custom post-tool hook: pretty-print whereami results
-agent.hooks.on(:tool_result) do |info|
-  next unless info[:tool_name] == 'whereami'
-  require 'json'
-  data = JSON.parse(info[:result]) rescue nil
-  next unless data&.dig('status') == 'success'
-  r = data['response']
-  puts "\e[33m  📍 #{r['ip']} (#{r['city']}, #{r['country']})\e[0m"
-end
-
 # Connect to the localharness binary
 print '🔌 Connecting to harness... '
 agent.connect!
 puts 'done!'
 puts
 
-# --- Turn 1: Tool call! 🌍 ---
-question = 'Use the whereami tool and tell me something fun about where I am!'
+# Ask a simple question — streaming the response
+question = 'What makes Ruby the best programming language?'
 puts "🙋 Question: #{question}"
 puts
 puts '🤖 Answer:'
-puts SEP
+sep = "\e[36m#{'─' * 60}\e[0m"
+puts sep
 
 response = agent.ask(question) do |chunk|
-  print "\e[33m#{chunk.content}\e[0m" if chunk.content
-end
-puts
-puts SEP
-puts
-
-puts '--- Metadata ---'
-puts "  Tokens used:     #{response.usage[:total_token_count] || 'N/A'}"
-puts "  Tool calls:      #{response.tool_calls_count}"
-puts "  Total turns:     #{agent.turn_count}"
-puts
-
-# --- Turn 2: Follow-up (no tool, just context from T1) ---
-question2 = 'Now just tell me the country where I am, preceded by its flag emoji. One line only.'
-puts "🙋 Follow-up: #{question2}"
-puts
-puts '🤖 Answer:'
-puts SEP
-
-response2 = agent.ask(question2) do |chunk|
   print "\e[36m#{chunk.content}\e[0m" if chunk.content
 end
 puts
-puts SEP
+puts sep
 puts
 
-# --- Turn 3: Ruby love ---
-question3 = 'What makes Ruby the best programming language?'
-puts "🙋 T3: #{question3}"
+# Show metadata
+puts '--- Metadata ---'
+puts "  Tokens used:     #{response.usage[:total_token_count] || 'N/A'}"
+puts "  Tool calls:      #{response.tool_calls_count}"
 puts
-puts '🤖 Answer:'
-puts SEP
-
-response3 = agent.ask(question3) do |chunk|
-  print "\e[35m#{chunk.content}\e[0m" if chunk.content
-end
-puts
-puts SEP
-puts
-
-# --- Turn 4: The spicy follow-up ---
-question4 = 'And help me, why is everyone preferring Python when Ruby is obviously superior?'
-puts "🙋 T4: #{question4}"
-puts
-puts '🤖 Answer:'
-puts SEP
-
-response4 = agent.ask(question4) do |chunk|
-  print "\e[34m#{chunk.content}\e[0m" if chunk.content
-end
-puts
-puts SEP
-puts
-
 
 # Clean up
 uptime = agent.uptime_human
