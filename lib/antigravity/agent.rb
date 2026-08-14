@@ -5,7 +5,7 @@ module Antigravity
 
     attr_accessor :model, :system_instruction, :api_key
     attr_reader :tools, :skills, :hooks, :sidecars, :client, :logger_guard,
-                :workspace, :connection, :conversation
+                :workspace, :connection, :conversation, :policy, :policies
 
     def initialize(model: nil, system_instruction: nil, tools: [],
                    skills: [], policies: [], policy: nil, workspace: nil, auto_logger: true, log_file: nil, &block)
