@@ -87,6 +87,12 @@ Agent.list_skills("~/git/skillume/sre-extension/")
 # => ["/path/to/anomaly-detection", "/path/to/cloud-logging", ...]
 ```
 
+Here, for example, we are using an inline skill for custom severity emojis (`severity-emoji`) alongside a local code quality audit skill (`code-quality-review`):
+
+<p align="center">
+  <img src="images/tui-security-audit-cropped.gif" alt="Code Quality & Security Audit Skill Demo" width="850"/>
+</p>
+
 ---
 
 ## 📂 Workspace Analysis
