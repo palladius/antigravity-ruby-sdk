@@ -93,6 +93,8 @@ module Antigravity
         deny :run_command, when: cmd(*RISKY_CMDS)
         deny :run_command, when: cmd(*DESTRUCTIVE_GIT_CMDS)
         WRITE_TOOLS.each { |t| confirm t }
+        # 📂 Sandbox dirs: always writable, even in production
+        WRITE_TOOLS.each { |t| allow t, when: path(*SANDBOX_DIRS) }
         confirm :run_command
       end
     end

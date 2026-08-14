@@ -98,6 +98,15 @@ module Antigravity
     ].freeze
 
     # ------------------------------------------------------------------
+    # 📂 Sandbox directories — always writable, even in production.
+    # Throwaway / output dirs where agents can freely write.
+    # ------------------------------------------------------------------
+    SANDBOX_DIRS = [
+      'out/*',
+      'scratch/*',
+    ].freeze
+
+    # ------------------------------------------------------------------
     # 🔧 Tool classifications
     # ------------------------------------------------------------------
 

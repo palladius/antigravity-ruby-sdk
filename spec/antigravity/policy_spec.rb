@@ -216,6 +216,13 @@ RSpec.describe Antigravity::Policy do
     it 'denies unknown tools' do
       expect(policy.evaluate(:unknown_tool, {})[:status]).to eq(:deny)
     end
+
+    it 'allows writes to sandbox dirs (scratch/, out/) even in cautious' do
+      expect(policy.evaluate(:write_to_file, { path: 'scratch/notes.txt' })[:status]).to eq(:allow)
+      expect(policy.evaluate(:write_to_file, { path: 'out/report.json' })[:status]).to eq(:allow)
+      expect(policy.evaluate(:file_edit, { path: 'scratch/draft.rb' })[:status]).to eq(:allow)
+      expect(policy.evaluate(:file_edit, { path: 'out/data.csv' })[:status]).to eq(:allow)
+    end
   end
 
   describe '.default' do
