@@ -65,6 +65,10 @@ rv-skill-sre-postmortem DIR=".":
 rv-skill-telegram:
     rv run ruby examples/08_skill_telegram_bot.rb
 
+# E2E test for hooks, tools, and multi-turn (whereami + 4 turns)
+rv-e2e-hooks:
+    rv run ruby examples/05_hooks_tools_e2e.rb
+
 # E2E test for telegram bot agent pipeline (no Telegram needed!)
 rv-e2e-telegram:
     rv run ruby examples/08_e2e_telegram_bot.rb
