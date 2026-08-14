@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 * ⏱️ **Agent uptime**: `agent.born_at`, `agent.uptime`, `agent.uptime_human` ("7.3s", "1m 23.4s").
 * 📦 **dotenv as runtime dep**: Added to gemspec + `rv_init.rb`, `.env` now auto-loaded. Env checks use `.strip` for trailing spaces.
 * 🌍 **whereami example**: 4-turn E2E demo — geolocation tool (ipinfo.io JSON), flag emoji follow-up, Ruby love, Python vs Ruby.
+* 📦 **gem.coop registry**: Configured `just release` to double-publish to RubyGems and the new gem.coop alternative registry!
   * Custom post-tool hook parses JSON and prints `📍 IP (City, Country)`.
   * Proper status envelope `{status: "success", response: data}` with error handling.
 

@@ -291,6 +291,20 @@ See `.env.dist` for all available options.
 
 ![Telegram voice transcription](image-1.png)
 
+## 📦 Publishing to gem.coop
+
+This gem can be published to the co-op RubyGems alternative [gem.coop](https://gem.coop/). 
+
+To push a release, obtain an API key from `gem.coop` and pass it to the push/release commands:
+
+```bash
+# Push a specific gem file
+GEM_HOST_API_KEY=your_api_key_here gem push antigravity-sdk-VERSION.gem --host https://gem.coop/@palladius
+
+# Or use rake release to tag and push automatically
+GEM_HOST_API_KEY=your_api_key_here RUBYGEMS_HOST=https://gem.coop/@palladius rake release
+```
+
 ## 🔗 Related Projects
 
 | Project | Language | Link |
@@ -299,6 +313,7 @@ See `.env.dist` for all available options.
 | **Antigravity Java SDK** (unofficial) | Java | [glaforge/antigravity-java-sdk](https://github.com/glaforge/antigravity-java-sdk) |
 | **Antigravity Ruby SDK** (this repo) | Ruby | [palladius/antigravity-ruby-sdk](https://github.com/palladius/antigravity-ruby-sdk) |
 | **antigravity-sdk gem** | RubyGems | [rubygems.org/gems/antigravity-sdk](https://rubygems.org/gems/antigravity-sdk) |
+| **antigravity-sdk gem (co-op)** | gem.coop | [gem.coop/@palladius/antigravity-sdk](https://gem.coop/@palladius/antigravity-sdk) |
 
 ---
 

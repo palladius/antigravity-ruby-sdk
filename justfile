@@ -1,3 +1,5 @@
+set dotenv-load
+
 # List available just tasks
 default:
     @just -l
@@ -24,10 +26,11 @@ examples:
 build:
     bundle exec rake build
 
-# Push gem package to RubyGems.org
+# Push gem package to RubyGems.org and gem.coop
 release:
     bundle exec rake release
-
+    @echo "Pushing to gem.coop..."
+    RUBYGEMS_HOST=https://gem.coop/@palladius bundle exec rake release
 # Check if localharness binary is available
 harness-check:
     bundle exec rake harness:check
