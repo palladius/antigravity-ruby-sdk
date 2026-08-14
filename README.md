@@ -127,6 +127,94 @@ agent = Antigravity::Agent.new do |a|
   a.after_tool_call(&Antigravity::Guards::SecretMasker.new)
 end
 ```
+---
+
+## 🔒 Declarative Policy DSL
+
+Control what your agent can and can't do with a beautiful, Rails-like DSL:
+
+```ruby
+agent = Antigravity::Agent.new(policy: :default)   # Use a preset
+agent = Antigravity::Agent.new(policy: :cautious)   # Locked down for prod
+agent = Antigravity::Agent.new(policy: :turbo)      # Wide open for dev
+agent = Antigravity::Agent.new(policy: :auto)       # Picks from RAILS_ENV!
+```
+
+Or define a custom policy:
+
+```ruby
+policy = Antigravity::Policy.define do
+  deny_all
+  allow :view_file
+  allow :grep_search
+  allow :run_command, when: cmd('echo', 'git status', 'bundle exec rspec')
+  allow :write_to_file
+  deny  :write_to_file, when: path('.env', '*.key', '*.pem')
+  deny  :run_command,   when: cmd('rm', 'git reset --hard')
+end
+
+agent = Antigravity::Agent.new(policy: policy)
+```
+
+### ⚠️ Order does NOT matter!
+
+The DSL is **declarative** — like SQL, not like a script.
+Rules are resolved by **precedence**, not by insertion order.
+These two policies behave **identically**:
+
+```ruby
+# Order A                           # Order B
+Policy.define do                    Policy.define do
+  allow :run_command                  deny :run_command, when: cmd('rm')
+  deny :run_command,                  allow :run_command
+    when: cmd('rm')                 end
+end
+```
+
+Precedence (highest wins):
+
+1. **Tool specificity**: `deny :run_command` beats `deny_all`
+2. **Condition specificity**: `deny :run_command, when: cmd('rm')` beats `deny :run_command`
+3. **Restrictiveness**: `deny` beats `confirm` beats `allow`
+
+### 📋 Presets
+
+| Preset | Shell | Writes | `rm` | `git reset --hard` | Best for |
+|--------|-------|--------|------|---------------------|----------|
+| 🔒 `:cautious` | Safe only (`echo`, `pwd`) | Confirm | ❌ Deny | ❌ Deny | Production |
+| ⚖️ `:default` | Allow | Allow | ⚠️ Confirm | ⚠️ Confirm | Day-to-day dev |
+| 🚀 `:turbo` | Allow | Allow | Allow | ⚠️ Confirm | Rapid prototyping |
+| 🧪 `:test` | Allow | Allow | ⚠️ Confirm | ❌ Deny | CI / test suites |
+| 🔮 `:auto` | — | — | — | — | Reads `RAILS_ENV` |
+
+### 📂 Sandbox directories
+
+`scratch/` and `out/` are **always writable**, even in `:cautious` / production.
+Use them as throwaway output dirs:
+
+```ruby
+# In production — this works!
+agent.hooks.run_pre_tool(:write_to_file, path: 'scratch/debug.log', content: '...')
+# => { allowed: true }
+
+# But this is blocked:
+agent.hooks.run_pre_tool(:write_to_file, path: 'app.rb', content: '...')
+# => { allowed: false, reason: "Denied by policy" }
+```
+
+### 🔮 Auto-mapping from RAILS_ENV
+
+`policy: :auto` reads `ANTIGRAVITY_ENV` → `RAILS_ENV` → `RACK_ENV`:
+
+| Environment | Preset |
+|-------------|--------|
+| `development` / `dev` | 🚀 `:turbo` |
+| `test` | 🧪 `:test` |
+| `staging` | ⚖️ `:default` |
+| `production` / `prod` | 🔒 `:cautious` |
+| *(unset)* | ⚖️ `:default` |
+
+See [`lib/antigravity/policy.rb`](lib/antigravity/policy.rb) and [`lib/antigravity/policy/constants.rb`](lib/antigravity/policy/constants.rb) for the full implementation.
 
 ---
 
@@ -145,7 +233,7 @@ end
 | Sidecars (AuditLogger, VulnScanner) | ✅ | Ruby-only feature |
 | Hooks (pre/post prompt, tool) | ✅ | + generic event system |
 | Logging (JSONL + .log) | ✅ | Auto-attach |
-| Declarative Policies | 🚧 | [#21](https://github.com/palladius/antigravity-ruby-sdk/issues/21) — hooks plumbing exists, DSL coming |
+| Declarative Policies | ✅ | [#21](https://github.com/palladius/antigravity-ruby-sdk/issues/21) — DSL, 5 presets, sandbox dirs |
 | MCP Servers (Stdio + HTTP) | ❌ | Planned P0 |
 | Multimodal Input (Image, Audio, Doc) | ❌ | Planned P1 |
 | Structured Output (JSON Schema) | ❌ | Planned P1 |
@@ -159,8 +247,7 @@ end
 | OpenTelemetry | ❌ | Planned P2 |
 | LiteRT / Ollama backends | ❌ | Planned P3 |
 
-**Overall: ~35% parity** | 10 Ruby-only features | [Convergence plan](docs/FEATURE_PARITY.md#prioritized-gap-closure-plan)
-
+**Overall: ~40% parity** | 10 Ruby-only features | [Convergence plan](docs/FEATURE_PARITY.md#prioritized-gap-closure-plan)
 
 ## 🧪 Development
 

@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+## [0.5.0] - 2026-08-14 🔒 Declarative Policy DSL (GHI #21)
+
+### Features
+* 🛡️ **Declarative Policy DSL**: `Antigravity::Policy` — Rails-like DSL for agent tool-access control.
+  * `allow`, `deny`, `confirm` rules with predicate helpers: `cmd()`, `path()`, `args_match()`.
+  * **Order does NOT matter** — rules resolved by precedence, not insertion order.
+  * Agent sugar: `Agent.new(policy: :default)` or `Agent.new(policy: my_policy)`.
+* 📋 **5 built-in presets**: `:cautious`, `:default`, `:turbo`, `:test`, `:auto`.
+  * `:auto` reads `ANTIGRAVITY_ENV` → `RAILS_ENV` → `RACK_ENV` to pick the right preset.
+* 📂 **Sandbox directories**: `scratch/` and `out/` always writable, even in `:cautious` / production.
+* 🔥 **Destructive git protection**: `git reset --hard`, `git push --force`, `git clean -fdx`, `git stash drop` — confirmed or denied depending on preset.
+* 🕵️ **File-reader bypass prevention**: `cat`, `head`, `tail`, `strings` separated into `READ_CMDS` — blocked in `:cautious` to prevent `view_file` deny bypass.
+
+### Refactor
+* Extracted all curated command/file/tool lists into `lib/antigravity/policy/constants.rb` — one entry per line for easy PR review.
+
+### Docs
+* README: full Policy DSL section with preset table, sandbox docs, `RAILS_ENV` mapping, and order-independence explanation.
+* `policy.rb`: prominent docblock explaining declarative precedence model.
+
+### Tests
+* 53 unit tests (order independence, presets, predicates, sandbox dirs).
+* 34 e2e assertions in `examples/11_e2e_policy_assertions.rb` (custom policy + prod sandbox).
+
 ## [0.4.4] - 2026-08-14 🪝🌈
 
 ### Lifecycle Hooks & Observability (GHI #22)
