@@ -70,5 +70,6 @@ puts "  Total turns:     #{agent.turn_count}"
 puts
 
 # Clean up
+uptime = agent.uptime_human
 agent.close!
-puts '✅ Done! Agent closed.'
+puts "✅ Done! Agent closed after #{uptime}."

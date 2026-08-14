@@ -5,7 +5,7 @@ module Antigravity
 
     attr_accessor :model, :system_instruction, :api_key
     attr_reader :tools, :skills, :hooks, :sidecars, :client, :logger_guard,
-                :workspace, :connection, :conversation, :policy, :policies
+                :workspace, :connection, :conversation, :policy, :policies, :born_at
 
     def initialize(model: nil, system_instruction: nil, tools: [],
                    skills: [], policies: [], policy: nil, workspace: nil, auto_logger: true, log_file: nil, &block)
@@ -23,6 +23,7 @@ module Antigravity
       @connection = nil
       @conversation = nil
       @connected = false
+      @born_at = Time.now
 
       # Register pre-provided tools into the tool runner
       @tool_runner = ToolRunner.new
@@ -162,6 +163,21 @@ module Antigravity
       return {} unless @conversation
 
       @conversation.session_summary(model: @model)
+    end
+
+    # Seconds since agent was created
+    def uptime
+      Time.now - @born_at
+    end
+
+    # Human-readable uptime: "1m 23s", "45s", "2m 5s"
+    def uptime_human
+      secs = uptime.round
+      if secs >= 60
+        "#{secs / 60}m #{secs % 60}s"
+      else
+        "#{secs}s"
+      end
     end
 
     # --- Tool Registration ---

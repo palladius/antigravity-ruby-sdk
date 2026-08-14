@@ -55,7 +55,7 @@ module Antigravity
         logger.instance_variable_set(:@session_start_time, Process.clock_gettime(Process::CLOCK_MONOTONIC))
         model = info[:model] || agent.model || '?'
         conv_id = (info[:conversation_id] || '?')[0..11]
-        puts C.gray("🟢 #{C.dim("session_start")} | model=#{C.cyan(model)} | conv=#{C.cyan(conv_id)}")
+        puts C.gray("🪝🟢 #{C.dim("session_start")} | model=#{C.cyan(model)} | conv=#{C.cyan(conv_id)}")
       end
 
       agent.hooks.on(:session_end) do |info|
@@ -68,7 +68,7 @@ module Antigravity
         summary = agent.session_summary rescue {}
         tokens = summary[:total_tokens] || 0
         tok_str = tokens > 999 ? "#{(tokens / 1000.0).round(1)}k" : tokens.to_s
-        puts C.gray("🔴 #{C.dim("session_end")}   | #{C.bold("#{turns} turns")} | 🪙#{tok_str} | #{elapsed}s")
+        puts C.gray("🪝🔴 #{C.dim("session_end")}   | #{C.bold("#{turns} turns")} | 🪙#{tok_str} | #{elapsed}s")
       end
     end
 
@@ -82,7 +82,7 @@ module Antigravity
         preview = text.to_s[0..60].gsub("\n", ' ')
         preview += '...' if text.to_s.length > 60
         status = self.class.status_line(agent) rescue C.dim("T#{count}")
-        puts C.gray("  ➡️  #{C.dim("pre_turn")}  T#{count} | #{C.yellow("\"#{preview}\"")} | #{status}")
+        puts C.gray("🪝 ➡️  #{C.dim("pre_turn")}  T#{count} | #{C.yellow("\"#{preview}\"")} | #{status}")
       end
 
       agent.hooks.after_response do |response|
@@ -105,7 +105,7 @@ module Antigravity
         parts << "#{C.cyan("#{tool_count}")} tools" if tool_count > 0
         parts << "#{C.blue("#{elapsed}s")}"
 
-        puts C.gray("\n  ⬅️  #{C.dim("post_turn")} T#{logger.instance_variable_get(:@turn_count)} | #{parts.join(' | ')} | #{status}")
+        puts C.gray("\n🪝 ⬅️  #{C.dim("post_turn")} T#{logger.instance_variable_get(:@turn_count)} | #{parts.join(' | ')} | #{status}")
         if logger.instance_variable_get(:@verbose)
           puts C.dim("     \"#{preview}\"")
         end
