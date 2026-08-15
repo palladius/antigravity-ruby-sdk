@@ -1,4 +1,4 @@
 - [ ] **Track: Add MCP Server Support** *Link: [conductor/tracks/mcp_support_20260811/index.md](./tracks/mcp_support_20260811/index.md)*
 - [ ] **Track: Extract Channel Transport Layer** *Link: [conductor/tracks/channel_refactor_20260812/index.md](./tracks/channel_refactor_20260812/index.md)*
 - [ ] **Track: Declarative Policy DSL (GHI #21)** *Link: [conductor/tracks/policy_dsl_20260814/index.md](./tracks/policy_dsl_20260814/index.md)*
-- [ ] **Track: Reusable Workflow Maintenance Prompts** *Link: [conductor/tracks/workflow_prompts_20260815/index.md](./tracks/workflow_prompts_20260815/index.md)*
+- [x] **Track: Reusable Workflow Maintenance Prompts** *Link: [conductor/tracks/workflow_prompts_20260815/index.md](./tracks/workflow_prompts_20260815/index.md)*
