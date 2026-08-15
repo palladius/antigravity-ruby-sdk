@@ -34,4 +34,5 @@ Antigravity overall: "🛰️"
 
 * **`.env` Protection**: Never edit or commit `.env` files.
 * **Testing**: Run `just test` before submitting changes.
+* **Documentation Sync**: When adding or updating SDK functionality, always ensure `docs/USER_GUIDE.md` and `skills/using-antigravity-ruby-sdk/SKILL.md` are updated accordingly.
 * **Release**: Update `VERSION` / `CHANGELOG.md`, then run `just release`.

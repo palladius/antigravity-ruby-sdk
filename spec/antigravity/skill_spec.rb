@@ -14,6 +14,14 @@ RSpec.describe Antigravity::Skill do
       expect(skill.path).to end_with("single-skill")
     end
 
+    it "loads the built-in repository skill using-antigravity-ruby-sdk" do
+      sdk_skill_path = File.expand_path("../../skills/using-antigravity-ruby-sdk", __dir__)
+      skill = described_class.load(sdk_skill_path)
+      expect(skill.name).to eq("using-antigravity-ruby-sdk")
+      expect(skill.description).to include("Antigravity Ruby SDK")
+      expect(skill.instructions).to include("Core Concepts & Architecture")
+    end
+
     it "raises when SKILL.md is missing" do
       expect {
         described_class.load(File.join(fixtures, "multi-skills/skills/not-a-skill"))

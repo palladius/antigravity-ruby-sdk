@@ -87,6 +87,15 @@ Agent.list_skills("~/git/skillume/sre-extension/")
 # => ["/path/to/anomaly-detection", "/path/to/cloud-logging", ...]
 ```
 
+### 🌐 Installing Skills via CLI (`npx skills`)
+
+You can also install and manage skills using standard CLI tools:
+
+```bash
+# Add the SDK skill to your workspace
+npx skills add palladius/antigravity-ruby-sdk/skills/using-antigravity-ruby-sdk
+```
+
 Here, for example, we are using an inline skill for custom severity emojis (`severity-emoji`) alongside a local code quality audit skill (`code-quality-review`):
 
 <p align="center">
