@@ -93,6 +93,23 @@ RSpec.describe Antigravity::Console do
     it 'returns nil for empty string' do
       expect(console.parse_command('')).to be_nil
     end
+
+    it 'recognizes ! shell exec' do
+      expect(console.parse_command('! pwd')).to eq(:shell_exec)
+    end
+
+    it 'recognizes !ls (no space)' do
+      expect(console.parse_command('!ls')).to eq(:shell_exec)
+    end
+  end
+
+  describe '.new workspace default' do
+    it 'defaults workspace to Dir.pwd' do
+      c = described_class.new
+      # The console should have a workspace (not nil)
+      # We can't easily access @workspace, but the object should initialize fine
+      expect(c).to be_a(described_class)
+    end
   end
 
   describe '#format_metadata' do

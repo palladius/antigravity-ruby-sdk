@@ -25,7 +25,7 @@ module Antigravity
 
     def initialize(system_instruction: nil, workspace: nil, model: nil)
       @system_instruction = system_instruction || 'You are a helpful AI assistant. Be concise.'
-      @workspace = workspace
+      @workspace = workspace || Dir.pwd
       @model = model
       @thinking_expanded = false
       @agent = nil
@@ -73,12 +73,14 @@ module Antigravity
 
     # Parse special commands (returns symbol or nil for regular text)
     def parse_command(input)
-      case input.strip.downcase
+      stripped = input.strip
+      case stripped.downcase
       when '/quit', '/exit', '/q' then :quit
       when '/think', '/t'        then :toggle_thinking
       when '/help', '/h', '/?'   then :help
       when '/verbose', '/v'      then :toggle_verbose
       when '/clear'              then :clear
+      when /^!\s*/               then :shell_exec
       else nil
       end
     end
@@ -101,6 +103,7 @@ module Antigravity
         │  /help              Show this help             │
         │  /quit              Exit console               │
         │  /clear             Clear screen               │
+        │  ! <cmd>            Run shell command           │
         │                                                │
         │  🤔 Thinking: gray italic                      │
         │  💬 Response: bold cyan                         │
@@ -284,6 +287,12 @@ module Antigravity
           next
         when :toggle_verbose
           puts "#{DIM_STYLE}  (verbose toggle -- not yet implemented)#{RESET}"
+          next
+        when :shell_exec
+          shell_cmd = input.strip.sub(/^!\s*/, '')
+          puts "#{TOOL_STYLE}  ⚡ #{shell_cmd}#{RESET}"
+          system(shell_cmd)
+          puts
           next
         end
 
