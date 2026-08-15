@@ -36,3 +36,12 @@ Antigravity overall: "🛰️"
 * **Testing**: Run `just test` before submitting changes.
 * **Documentation Sync**: When adding or updating SDK functionality, always ensure `docs/USER_GUIDE.md` and `skills/using-antigravity-ruby-sdk/SKILL.md` are updated accordingly.
 * **Release**: Update `VERSION` / `CHANGELOG.md`, then run `just release`.
+
+## 🔄 Maintenance Prompts & Workflow Shortcuts
+
+When requested to perform maintenance audits, run the corresponding prompt file:
+
+* ☀️ **Daily AI Job**: Read and execute [`docs/prompts/daily-ai-job.md`](file:///Users/ricc/.gemini/antigravity/worktrees/antigravity-ruby-sdk/fix_ruby_security_findings/docs/prompts/daily-ai-job.md) (or `just daily-ai-job`).
+* 🛡️ **Vulnerability Audit**: Read and execute [`docs/prompts/search-for-vulnerabilities.md`](file:///Users/ricc/.gemini/antigravity/worktrees/antigravity-ruby-sdk/fix_ruby_security_findings/docs/prompts/search-for-vulnerabilities.md).
+* 🔄 **Docs Sync Check**: Read and execute [`docs/prompts/verify-functionality-and-docs-in-sync.md`](file:///Users/ricc/.gemini/antigravity/worktrees/antigravity-ruby-sdk/fix_ruby_security_findings/docs/prompts/verify-functionality-and-docs-in-sync.md).
+* 💎 **Ruby Elegance Audit**: Read and execute [`docs/prompts/assert-ruby-elegance-and-beauty-are-preserved.md`](file:///Users/ricc/.gemini/antigravity/worktrees/antigravity-ruby-sdk/fix_ruby_security_findings/docs/prompts/assert-ruby-elegance-and-beauty-are-preserved.md).
