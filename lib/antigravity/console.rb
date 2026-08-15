@@ -18,7 +18,7 @@ module Antigravity
     TOOL_STYLE     = "\e[33m"    # yellow
     DIM_STYLE      = "\e[2m"     # dim
     RESET          = "\e[0m"
-    PROMPT         = "\e[1;35mrichard>\e[0m "  # bold magenta — "Ri-shar" a la francaise
+    PROMPT         = "\e[31m\u2666\e[0m\e[1;35magy>\e[0m "  # red diamond + bold magenta agy>
     MAX_COLLAPSED  = 76  # max chars for collapsed thinking line
 
     attr_reader :thinking_expanded, :system_instruction
