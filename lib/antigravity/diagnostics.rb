@@ -103,7 +103,7 @@ module Antigravity
     # Returns a structured hash of all diagnostic data
     def self.summary
       config = Antigravity.config
-      api_key = config.api_key&.strip
+      api_key = config.api_key&.strip.to_s
 
       # Detect API key source
       api_key_source = if ENV['GEMINI_API_KEY'] && !ENV['GEMINI_API_KEY'].empty?
