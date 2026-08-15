@@ -250,10 +250,10 @@ module Antigravity
       #   (echo q1 ; echo q2 ; echo q3) | just rv-console
       if !$stdin.tty? && !$stdin.eof?
         $stdin.each_line do |line|
-          prompt = line.strip
-          next if prompt.empty?
-          puts "#{DIM_STYLE}  📨 #{prompt}#{RESET}"
-          process_prompt(prompt)
+          input = line.strip
+          next if input.empty?
+          puts "#{DIM_STYLE}  📨 #{input}#{RESET}"
+          dispatch_input(input)
         end
         return
       end
@@ -268,36 +268,37 @@ module Antigravity
         input = input.strip
         next if input.empty?
 
-        # Check for commands
-        cmd = parse_command(input)
-        case cmd
-        when :quit
-          break
-        when :toggle_thinking
-          toggle_thinking!
-          state = @thinking_expanded ? 'EXPANDED 🔍' : 'COLLAPSED 📦'
-          puts "#{DIM_STYLE}  🤔 Thinking display: #{state}#{RESET}"
-          next
-        when :help
-          puts help_text
-          next
-        when :clear
-          print "\e[2J\e[H"
-          print_banner
-          next
-        when :toggle_verbose
-          puts "#{DIM_STYLE}  (verbose toggle -- not yet implemented)#{RESET}"
-          next
-        when :shell_exec
-          shell_cmd = input.strip.sub(/^!\s*/, '')
-          puts "#{TOOL_STYLE}  ⚡ #{shell_cmd}#{RESET}"
-          system(shell_cmd)
-          puts
-          next
-        end
+        break if dispatch_input(input) == :quit
+      end
+    end
 
+    # Dispatch a single input line: handle commands or send to LLM.
+    # Returns :quit if the session should end, nil otherwise.
+    def dispatch_input(input)
+      cmd = parse_command(input)
+      case cmd
+      when :quit
+        return :quit
+      when :toggle_thinking
+        toggle_thinking!
+        state = @thinking_expanded ? 'EXPANDED 🔍' : 'COLLAPSED 📦'
+        puts "#{DIM_STYLE}  🤔 Thinking display: #{state}#{RESET}"
+      when :help
+        puts help_text
+      when :clear
+        print "\e[2J\e[H"
+        print_banner
+      when :toggle_verbose
+        puts "#{DIM_STYLE}  (verbose toggle -- not yet implemented)#{RESET}"
+      when :shell_exec
+        shell_cmd = input.strip.sub(/^!\s*/, '')
+        puts "#{TOOL_STYLE}  ⚡ #{shell_cmd}#{RESET}"
+        system(shell_cmd)
+        puts
+      else
         process_prompt(input)
       end
+      nil
     end
 
     def process_prompt(prompt)
