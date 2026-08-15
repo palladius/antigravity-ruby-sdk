@@ -23,8 +23,14 @@ module Antigravity
 
     attr_reader :thinking_expanded, :system_instruction
 
+    CONSOLE_SYSTEM_INSTRUCTION = <<~PROMPT.freeze
+      You are Richard, an interactive AI assistant running in the Antigravity Ruby SDK console.
+      Be concise and helpful. You have access to filesystem tools (list_dir, view_file, grep_search).
+      When asked about your workspace or current directory, report it from your system context.
+    PROMPT
+
     def initialize(system_instruction: nil, workspace: nil, model: nil, policy: nil)
-      @system_instruction = system_instruction || 'You are a helpful AI assistant. Be concise.'
+      @system_instruction = system_instruction || CONSOLE_SYSTEM_INSTRUCTION.strip
       @workspace = workspace || Dir.pwd
       @model = model || 'default'
       @policy = policy || :console
