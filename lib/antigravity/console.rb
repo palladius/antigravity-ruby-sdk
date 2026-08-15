@@ -27,11 +27,26 @@ module Antigravity
       @system_instruction = system_instruction || 'You are a helpful AI assistant. Be concise.'
       @workspace = workspace || Dir.pwd
       @model = model
-      @policy = policy  # nil → :auto (reads env)
+      @policy = policy  # nil → :console (strict interactive)
       @thinking_expanded = false
       @agent = nil
       @turn_count = 0
       @tool_start_times = {}
+    end
+
+    # Convenience hash for /irb introspection
+    def config
+      {
+        version: Antigravity::VERSION,
+        workspace: @workspace,
+        policy: @policy || :console,
+        model: @model,
+        thinking: @thinking_expanded ? :expanded : :collapsed,
+        turn_count: @turn_count,
+        conv_id: @agent&.conversation&.conversation_id,
+        ruby: RUBY_VERSION,
+        pid: Process.pid,
+      }
     end
 
     # Toggle thinking expansion (collapsed 1-line vs full)
@@ -353,6 +368,41 @@ module Antigravity
     def irb_loop
       puts "\e[1;31m  💊 So you chose the RED pill, Neo!\e[0m"
       puts "#{DIM_STYLE}  💎 Type 'exit' or Ctrl-D to return to Richard.#{RESET}"
+      puts "#{DIM_STYLE}  💎 Type @irb_help for available objects.#{RESET}"
+
+      # Prepare @irb_help before capturing binding
+      @irb_help = <<~HELP
+
+        \e[1;35m💎 Richard IRB — Available Objects\e[0m
+
+        \e[1m📦 Instance Variables\e[0m
+          @agent             Antigravity::Agent instance (connected)
+          @workspace         Current working directory (String)
+          @policy            Policy preset symbol (:console, :turbo, ...)
+          @model             Model name (String or nil)
+          @thinking_expanded Thinking display state (true/false)
+          @turn_count        Number of LLM turns so far (Integer)
+          @system_instruction System prompt (String)
+          @irb_help          This help text
+
+        \e[1m🔧 Methods\e[0m
+          config             Hash with full session state
+          toggle_thinking!   Flip thinking expanded/collapsed
+          help_text          Richard /help output
+
+        \e[1m💡 Examples\e[0m
+          config                          # full session state
+          @agent.class                    # => Antigravity::Agent
+          @agent.conversation.class       # => Antigravity::Conversation
+          @workspace                      # => "/Users/ricc/..."
+          @policy                         # => :console
+          Antigravity::VERSION            # => "0.6.0"
+          Antigravity::Policy::SAFE_CMDS  # => [:cd, :date, ...]
+          @turn_count                     # => 3
+          ENV['GEMINI_API_KEY']&.slice(0,8) # safe peek at key
+
+        \e[2mType 'exit' to return to Richard.\e[0m
+      HELP
       irb_binding = binding  # share console instance context
       loop do
         input = Readline.readline(IRB_PROMPT, true)
@@ -361,6 +411,12 @@ module Antigravity
         input = input.strip
         next if input.empty?
         break if %w[exit quit].include?(input.downcase)
+
+        # Pretty-print help (avoid inspect noise)
+        if %w[@irb_help help].include?(input.downcase)
+          puts @irb_help
+          next
+        end
 
         # Intercept slash commands — user muscle memory from Richard
         if input.start_with?('/')
