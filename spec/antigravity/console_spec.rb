@@ -1,0 +1,124 @@
+# frozen_string_literal: true
+
+require 'spec_helper'
+
+RSpec.describe Antigravity::Console do
+  describe '.new' do
+    it 'initializes with default settings' do
+      console = described_class.new
+      expect(console.thinking_expanded).to be false
+    end
+
+    it 'accepts system_instruction' do
+      console = described_class.new(system_instruction: 'Be a pirate')
+      expect(console.system_instruction).to eq('Be a pirate')
+    end
+  end
+
+  describe '#thinking_expanded' do
+    it 'defaults to collapsed (false)' do
+      console = described_class.new
+      expect(console.thinking_expanded).to be false
+    end
+
+    it 'can be toggled' do
+      console = described_class.new
+      console.toggle_thinking!
+      expect(console.thinking_expanded).to be true
+      console.toggle_thinking!
+      expect(console.thinking_expanded).to be false
+    end
+  end
+
+  describe '#format_thinking' do
+    let(:console) { described_class.new }
+
+    context 'when collapsed' do
+      it 'truncates to 1 line at 76 chars + ...' do
+        long_think = 'a' * 200
+        formatted = console.format_thinking(long_think)
+        # Should be truncated — no newlines, ends with ...
+        expect(formatted).not_to include("\n")
+        expect(formatted.gsub(/\e\[[0-9;]*m/, '')).to end_with('...')
+      end
+
+      it 'shows short thinking without truncation' do
+        formatted = console.format_thinking('quick thought')
+        plain = formatted.gsub(/\e\[[0-9;]*m/, '')
+        expect(plain).to include('quick thought')
+        expect(plain).not_to end_with('...')
+      end
+    end
+
+    context 'when expanded' do
+      it 'shows full thinking text' do
+        console.toggle_thinking!  # expand
+        long_think = "line 1\nline 2\nline 3"
+        formatted = console.format_thinking(long_think)
+        plain = formatted.gsub(/\e\[[0-9;]*m/, '')
+        expect(plain).to include('line 1')
+        expect(plain).to include('line 3')
+      end
+    end
+
+    it 'renders in gray italic ANSI' do
+      formatted = console.format_thinking('thinking...')
+      expect(formatted).to include("\e[3;90m")  # italic + gray
+    end
+  end
+
+  describe '#parse_command' do
+    let(:console) { described_class.new }
+
+    it 'recognizes /quit' do
+      expect(console.parse_command('/quit')).to eq(:quit)
+    end
+
+    it 'recognizes /exit' do
+      expect(console.parse_command('/exit')).to eq(:quit)
+    end
+
+    it 'recognizes /think' do
+      expect(console.parse_command('/think')).to eq(:toggle_thinking)
+    end
+
+    it 'recognizes /help' do
+      expect(console.parse_command('/help')).to eq(:help)
+    end
+
+    it 'returns nil for regular text' do
+      expect(console.parse_command('hello there')).to be_nil
+    end
+
+    it 'returns nil for empty string' do
+      expect(console.parse_command('')).to be_nil
+    end
+  end
+
+  describe '#format_metadata' do
+    let(:console) { described_class.new }
+
+    it 'formats token count and timing' do
+      usage = { total_token_count: 1234, prompt_token_count: 500, candidates_token_count: 200 }
+      result = console.format_metadata(usage: usage, thinking_size: 456, tool_calls: 2, elapsed: 3.7)
+      plain = result.gsub(/\e\[[0-9;]*m/, '')
+      expect(plain).to include('1234')
+      expect(plain).to include('456')
+      expect(plain).to include('3.7')
+    end
+  end
+
+  describe '#help_text' do
+    let(:console) { described_class.new }
+
+    it 'includes Ctrl-O hint' do
+      help = console.help_text
+      expect(help).to include('Ctrl-O')
+    end
+
+    it 'includes /quit command' do
+      help = console.help_text
+      expect(help).to include('/quit')
+    end
+  end
+end

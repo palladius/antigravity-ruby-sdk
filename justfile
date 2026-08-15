@@ -53,6 +53,14 @@ rv-doctor:
 rv-doctor-verbose:
     rv run ruby examples/rv/rv_init.rb --verbose
 
+# Interactive console REPL — thinking in gray, response in bold cyan
+rv-console:
+    rv run ruby examples/10_console.rb
+
+# Interactive console with workspace
+rv-console-workspace DIR=".":
+    rv run ruby examples/10_console.rb {{DIR}}
+
 # Simple LLM chat — no workspace, fast
 rv-chat:
     rv run ruby examples/04_simple_llm_chat.rb

@@ -138,9 +138,15 @@ module Antigravity
             block&.call(chunk)
           end
 
-          # Thinking delta
+          # Thinking delta — stream it as a thinking chunk
           if step[:thinkingDelta] && !step[:thinkingDelta].empty?
             thinking_parts << step[:thinkingDelta]
+            thinking_chunk = Chunk.new(
+              content: '',
+              thinking: step[:thinkingDelta],
+              role: :assistant
+            )
+            block&.call(thinking_chunk)
           end
 
           # Custom tool action

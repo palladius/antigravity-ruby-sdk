@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-15 🧠 Thinking Tokens + Interactive Console (GHI #8)
+### Features
+* 🧠 **Thinking in Chunks**: `Message#thinking?` and `#content?` predicates. Streaming block now receives thinking chunks (gray italic) alongside content chunks (bold cyan).
+* 💎 **`Antigravity::Console`**: Interactive REPL with readline, history, tab completion.
+  - Thinking rendered in gray italic, collapsed to 1 line by default (76 chars + `...`)
+  - Response streamed in bold cyan
+  - `/think` to toggle thinking expansion, `/help`, `/quit`, `/clear`
+  - Hint: "Use Ctrl-O to expand thinking and tool execution"
+* 📦 **`just rv-console`**: New justfile target for interactive console. `rv-console-workspace DIR` for workspace mode.
+
+### Tests
+* 9 new tests: `chunk_thinking_spec.rb` (thinking/content predicates)
+* 17 new tests: `console_spec.rb` (REPL, formatting, commands)
+* **253 total tests, 0 failures** (was 208)
+
 ## [0.5.5] - 2026-08-15 🔍 SDK Diagnostics (GHI #12)
 ### Features
 * 🔍 **`Antigravity::Diagnostics`**: New module probing environment, API key, harness binary, gems, timeouts, and (with `--verbose`) Gemini API model count.
