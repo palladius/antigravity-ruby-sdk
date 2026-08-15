@@ -32,7 +32,22 @@ Ruby SDK                                localharness (Go engine)        Gemini A
 
 ## 2. Basic Agent Usage
 
-### Standard Chat & Block Block-based Lifecycle
+### One-Liner Quick Prompting
+
+```ruby
+require 'antigravity'
+
+# Quick 1-line query (auto-connects and closes)
+response = Antigravity.ask('What is the square root of 256?')
+puts response.content
+
+# 1-line streaming with policy preset
+Antigravity.ask('Explain Ruby in 2 sentences', policy: :cautious) do |chunk|
+  print chunk.content if chunk.content
+end
+```
+
+### Standard Chat & Block-based Lifecycle
 
 ```ruby
 require 'antigravity'
