@@ -18,7 +18,7 @@ module Antigravity
     TOOL_STYLE     = "\e[33m"    # yellow
     DIM_STYLE      = "\e[2m"     # dim
     RESET          = "\e[0m"
-    PROMPT         = "\e[1;35magy>\e[0m "  # bold magenta
+    PROMPT         = "\e[1;35mrichard>\e[0m "  # bold magenta — "Ri-shar" a la francaise
     MAX_COLLAPSED  = 76  # max chars for collapsed thinking line
 
     attr_reader :thinking_expanded, :system_instruction
@@ -96,7 +96,7 @@ module Antigravity
     # Help text shown on /help or startup
     def help_text
       <<~HELP
-        #{THINKING_STYLE}╭─ Antigravity Console ─────────────────────────╮
+        #{THINKING_STYLE}╭─ Richard (Antigravity Console) ────────────────╮
         │  /think  or Ctrl-O  Toggle thinking expansion │
         │  /help              Show this help             │
         │  /quit              Exit console               │
@@ -125,7 +125,7 @@ module Antigravity
 
     def print_banner
       puts
-      puts "\e[1;35m💎 Antigravity Console v#{Antigravity::VERSION}\e[0m"
+      puts "\e[1;35m💎 Richard v#{Antigravity::VERSION}\e[0m #{DIM_STYLE}(Antigravity Console)#{RESET}"
       puts "\e[2m   Type a question, or /help for commands.#{RESET}"
       puts "\e[2m   🤔 #{THINKING_STYLE}Thinking#{RESET} #{DIM_STYLE}|#{RESET} 💬 #{CONTENT_STYLE}Response#{RESET} #{DIM_STYLE}|#{RESET} 💾 #{TOOL_STYLE}Tools#{RESET}"
       puts "\e[2m   Use Ctrl-O to expand thinking and tool execution#{RESET}"
@@ -243,10 +243,14 @@ module Antigravity
       $VERBOSE = old_verbose
 
       # Read from stdin pipe if available (non-interactive mode)
+      # Each line becomes a separate turn for multi-turn piped sessions:
+      #   (echo q1 ; echo q2 ; echo q3) | just rv-console
       if !$stdin.tty? && !$stdin.eof?
-        pipe_input = $stdin.read.strip
-        unless pipe_input.empty?
-          process_prompt(pipe_input)
+        $stdin.each_line do |line|
+          prompt = line.strip
+          next if prompt.empty?
+          puts "#{DIM_STYLE}  📨 #{prompt}#{RESET}"
+          process_prompt(prompt)
         end
         return
       end

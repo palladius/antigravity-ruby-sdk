@@ -160,20 +160,22 @@ module Antigravity
             unless step[:customTool]
               tool_calls_count += 1
 
-              # 🔍 Protocol sniffer: capture ALL keys from tool steps
-              # This helps us discover tool-specific fields (toolName, functionCall, etc.)
-              known_keys = %i[source target state stepIndex text textDelta thinkingDelta
-                              cascadeId trajectoryId errorMessage customTool]
-              extra_keys = step.keys - known_keys
-              tool_text = step[:textDelta] || step[:text] || ''
+              tool_text = (step[:textDelta] || step[:text] || '').strip
 
-              @hooks&.emit(:tool_call, {
-                tool_name: step[:toolName] || step[:name] || step[:functionName] || 'harness_tool',
-                params: { action: tool_text.strip[0..80] },
-                builtin: true,
-                _raw_extra_keys: extra_keys,
-                _raw_step_keys: step.keys
-              })
+              # Smart tool name extraction from textDelta content
+              # Examples: "Web search for prime counts" -> WebSearch("prime counts")
+              #           "Read /etc/hosts" -> Read("/etc/hosts")
+              #           "Running `ls -la`" -> RunCommand("ls -la")
+              tool_name, tool_params = parse_builtin_tool_text(tool_text)
+
+              # Skip empty/meaningless tool steps
+              unless tool_name.empty?
+                @hooks&.emit(:tool_call, {
+                  tool_name: tool_name,
+                  params: { action: tool_params },
+                  builtin: true
+                })
+              end
             end
           end
 
@@ -316,6 +318,46 @@ module Antigravity
         }
       }
       @ws.send_json(tool_response)
+    end
+
+    # Parse textDelta from builtin tool steps to extract a meaningful name + params.
+    # The harness sends freeform text like "Web search for prime counts",
+    # "Read /etc/hosts", "Running `ls -la`", etc. We parse these into
+    # structured (name, params) pairs for pretty console rendering.
+    #
+    # Returns: [tool_name, params_string]
+    def parse_builtin_tool_text(text)
+      return ['', ''] if text.nil? || text.strip.empty?
+
+      case text.strip
+      # Web search: "Web search for X" or "Searching the web for X"
+      when /\b(?:web\s*search|search(?:ing)?(?:\s+the\s+web)?)\s+(?:for\s+)?(.+)/i
+        ['WebSearch', $1.strip[0..60]]
+      # File read: "Read /path/to/file" or "Reading file /path"
+      when /\b(?:read(?:ing)?)\s+(?:file\s+)?([\/~].+)/i
+        ['Read', $1.strip.split.first[0..60]]
+      # File write: "Write to /path" or "Writing /path"
+      when /\b(?:writ(?:e|ing))\s+(?:to\s+)?([\/~].+)/i
+        ['Write', $1.strip.split.first[0..60]]
+      # Edit: "Edit /path" or "Editing file"
+      when /\b(?:edit(?:ing)?)\s+(?:file\s+)?([\/~].+)/i
+        ['Edit', $1.strip.split.first[0..60]]
+      # List directory: "List /path" or "Listing directory"
+      when /\b(?:list(?:ing)?)\s+(?:dir(?:ectory)?\s+)?([\/~].+)/i
+        ['ListDir', $1.strip.split.first[0..60]]
+      # Run command: "Running `cmd`" or "Run command: cmd"
+      when /\b(?:runn?(?:ing)?)\s+(?:command:?\s+)?[`"]?(.+?)[`"]?\s*$/i
+        ['RunCommand', $1.strip[0..60]]
+      # Grep/search: "Searching for X in /path" or "Grep"
+      when /\b(?:grep|search(?:ing)?)\s+(?:for\s+)?(.+)/i
+        ['Search', $1.strip[0..60]]
+      # Generic: use first word as tool name, rest as params
+      else
+        words = text.strip.split(/\s+/, 2)
+        name = words[0].to_s.gsub(/[^a-zA-Z0-9_]/, '').capitalize
+        params = words[1].to_s[0..60]
+        name.empty? ? ['', ''] : [name, params]
+      end
     end
 
     def parse_step(step)

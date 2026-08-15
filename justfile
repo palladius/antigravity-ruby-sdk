@@ -96,5 +96,9 @@ rv-e2e-telegram-debug:
 rv-e2e-nanobanana:
     rv run ruby examples/09_e2e_nanobanana.rb
 
+# E2E test for Richard console multi-turn piped input
+rv-e2e-multiturn-console:
+    rv run ruby examples/11_e2e_console_pipe.rb
+
 # Run all rv examples (excludes telegram — it's a long-running daemon)
 rv-examples: rv-chat rv-workspace rv-skill-audit rv-skill-sre-postmortem
