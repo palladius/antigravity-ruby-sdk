@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-08-15 🔍 SDK Diagnostics (GHI #12)
+### Features
+* 🔍 **`Antigravity::Diagnostics`**: New module probing environment, API key, harness binary, gems, timeouts, and (with `--verbose`) Gemini API model count.
+* 💎 **`just rv-doctor`**: Colorful one-shot diagnostic report. `rv-doctor-verbose` adds live Gemini API model probing (found 50 models!).
+* 📦 **`rv_init.rb` upgrade**: Now runs full diagnostics when invoked standalone.
+
 ## [0.5.4] - 2026-08-14 📂 Workspace Indexing Hooks
 ### Features
 * 📂 **Indexing lifecycle hooks**: New `:indexing_start` and `:indexing_done` hooks emitted around `initialize_session!` when a workspace is configured. Zero concurrency risk — just timing wrappers.

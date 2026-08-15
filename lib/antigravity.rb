@@ -29,6 +29,7 @@ require_relative "antigravity/connection/local_connection"
 require_relative "antigravity/conversation"
 require_relative "antigravity/colors"
 require_relative "antigravity/lifecycle_logger"
+require_relative "antigravity/diagnostics"
 require_relative "antigravity/agent"
 
 module Antigravity

@@ -45,6 +45,14 @@ harness-update:
 
 # --- rv tasks (stateless, no gem install needed — like `uv run`) ---
 
+# SDK diagnostics — environment, API key, harness, gems
+rv-doctor:
+    rv run ruby examples/rv/rv_init.rb
+
+# SDK diagnostics with Gemini API model probing
+rv-doctor-verbose:
+    rv run ruby examples/rv/rv_init.rb --verbose
+
 # Simple LLM chat — no workspace, fast
 rv-chat:
     rv run ruby examples/04_simple_llm_chat.rb
