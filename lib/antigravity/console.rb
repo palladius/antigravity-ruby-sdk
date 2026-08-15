@@ -26,8 +26,8 @@ module Antigravity
     def initialize(system_instruction: nil, workspace: nil, model: nil, policy: nil)
       @system_instruction = system_instruction || 'You are a helpful AI assistant. Be concise.'
       @workspace = workspace || Dir.pwd
-      @model = model
-      @policy = policy  # nil → :console (strict interactive)
+      @model = model || 'default'
+      @policy = policy || :console
       @thinking_expanded = false
       @agent = nil
       @turn_count = 0
@@ -39,14 +39,22 @@ module Antigravity
       {
         version: Antigravity::VERSION,
         workspace: @workspace,
-        policy: @policy || :console,
+        policy: @policy,
         model: @model,
         thinking: @thinking_expanded ? :expanded : :collapsed,
         turn_count: @turn_count,
         conv_id: @agent&.conversation&.conversation_id,
+        api_key: mask_secret(ENV['GEMINI_API_KEY']),
         ruby: RUBY_VERSION,
         pid: Process.pid,
       }
+    end
+
+    # Mask a secret string: show first 4 + last 4, stars in between
+    def mask_secret(str)
+      return nil if str.nil? || str.empty?
+      return '****' if str.length < 10
+      "#{str[0..3]}#{'*' * [str.length - 8, 4].max}#{str[-4..]}"
     end
 
     # Toggle thinking expansion (collapsed 1-line vs full)
@@ -174,12 +182,11 @@ module Antigravity
       print "#{DIM_STYLE}🔌 Connecting to harness...#{RESET} "
       opts = { system_instruction: @system_instruction }
       opts[:workspace] = @workspace if @workspace
-      opts[:model] = @model if @model
-      opts[:policy] = @policy || :console
+      opts[:model] = @model if @model && @model != 'default'
+      opts[:policy] = @policy
       @agent = Antigravity::Agent.new(**opts)
       @agent.connect!
-      policy_name = @policy || :console
-      puts "#{Colors.green('connected!')} #{DIM_STYLE}(#{@agent.conversation&.conversation_id&.slice(0, 8)}) 🛡️ policy:#{policy_name}#{RESET}"
+      puts "#{Colors.green('connected!')} #{DIM_STYLE}(#{@agent.conversation&.conversation_id&.slice(0, 8)}) 🛡️ policy:#{@policy}#{RESET}"
       puts
     end
 
@@ -393,13 +400,11 @@ module Antigravity
         \e[1m💡 Examples\e[0m
           config                          # full session state
           @agent.class                    # => Antigravity::Agent
-          @agent.conversation.class       # => Antigravity::Conversation
           @workspace                      # => "/Users/ricc/..."
           @policy                         # => :console
           Antigravity::VERSION            # => "0.6.0"
           Antigravity::Policy::SAFE_CMDS  # => [:cd, :date, ...]
-          @turn_count                     # => 3
-          ENV['GEMINI_API_KEY']&.slice(0,8) # safe peek at key
+          mask_secret('AIzaSy...xyz123')  # => "AIza****z123"
 
         \e[2mType 'exit' to return to Richard.\e[0m
       HELP
