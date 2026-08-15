@@ -1,9 +1,11 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# 🎬 VHS Demo Script — Simulates the Richard console for recording.
-# Showcases: chat, web search, /help, ! cmd, r! eval, /irb (Matrix mode),
-# smart setters (cd, set_policy), config introspection, /policy.
+# 🎬 VHS FAKE Demo Script — Simulates the Richard console for recording.
+# ⚠️  This is a SIMULATED demo. For the real thing, use: vhs demo/richard_real.tape
+#
+# Showcases: chat, ! cmd, r! eval, /irb (Matrix mode),
+# smart setters (cd, set_policy), config introspection.
 #
 # Usage: ruby demo/vhs_fake_console.rb
 
@@ -55,8 +57,10 @@ end
 WS = '/Users/ricc/git/antigravity-ruby-sdk-t001'
 
 # ═══════════════════════════════════════════════════════════════
-# ACT 1: Banner
+# ACT 1: Disclaimer + Banner
 # ═══════════════════════════════════════════════════════════════
+puts "#{DIM}[This is a simulated demo. Commands are scripted for demonstration purposes.]#{RESET}"
+puts "#{DIM}[For a real session, run: vhs demo/richard_real.tape]#{RESET}"
 puts
 puts "#{MAGENTA}💎 Richard v0.6.0#{RESET} #{DIM}(Antigravity Console)#{RESET}"
 puts "#{DIM}   Type a question, or /help for commands.#{RESET}"
