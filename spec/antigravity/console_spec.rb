@@ -120,5 +120,39 @@ RSpec.describe Antigravity::Console do
       help = console.help_text
       expect(help).to include('/quit')
     end
+
+    it 'includes Tools color hint' do
+      help = console.help_text
+      expect(help).to include('Tools')
+    end
+  end
+
+  describe '#format_tool_call' do
+    let(:console) { described_class.new }
+
+    it 'shows tool name and params' do
+      formatted = console.format_tool_call('read_file', '/etc/hosts')
+      plain = formatted.gsub(/\e\[[0-9;]*m/, '')
+      expect(plain).to include('read_file')
+      expect(plain).to include('/etc/hosts')
+    end
+
+    it 'renders in yellow ANSI' do
+      formatted = console.format_tool_call('run_command', 'ls -la')
+      expect(formatted).to include("\e[33m")  # yellow
+    end
+
+    it 'truncates long params when collapsed' do
+      long_params = 'x' * 200
+      formatted = console.format_tool_call('some_tool', long_params)
+      plain = formatted.gsub(/\e\[[0-9;]*m/, '')
+      expect(plain).to end_with('...')
+    end
+
+    it 'shows elapsed time when provided' do
+      formatted = console.format_tool_call('read_file', '/etc/hosts', elapsed: 2.3)
+      plain = formatted.gsub(/\e\[[0-9;]*m/, '')
+      expect(plain).to include('2.3s')
+    end
   end
 end

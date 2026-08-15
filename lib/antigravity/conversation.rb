@@ -155,9 +155,18 @@ module Antigravity
             handle_custom_tool(step)
           end
 
-          # Harness built-in tool actions count
+          # Harness built-in tool actions count + hook
           if step_record[:target] == :environment && step_record[:source] == :model
-            tool_calls_count += 1 unless step[:customTool]
+            unless step[:customTool]
+              tool_calls_count += 1
+              # Emit hook for built-in tools so Console can render them
+              tool_text = step[:textDelta] || step[:text] || ''
+              @hooks&.emit(:tool_call, {
+                tool_name: 'harness_tool',
+                params: { action: tool_text.strip[0..80] },
+                builtin: true
+              })
+            end
           end
 
           # Finished? Model response to user with DONE state AND text collected.

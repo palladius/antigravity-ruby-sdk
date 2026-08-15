@@ -2,6 +2,7 @@
 
 # Interactive REPL console for Antigravity SDK.
 # Renders thinking in gray italic, responses in bold cyan.
+# Tool calls shown inline. Ctrl-O toggles thinking expansion.
 #
 # Usage:
 #   console = Antigravity::Console.new
@@ -14,6 +15,7 @@ module Antigravity
   class Console
     THINKING_STYLE = "\e[3;90m"  # italic + gray
     CONTENT_STYLE  = "\e[1;36m"  # bold + cyan
+    TOOL_STYLE     = "\e[33m"    # yellow
     DIM_STYLE      = "\e[2m"     # dim
     RESET          = "\e[0m"
     PROMPT         = "\e[1;35magy>\e[0m "  # bold magenta
@@ -28,6 +30,7 @@ module Antigravity
       @thinking_expanded = false
       @agent = nil
       @turn_count = 0
+      @tool_start_times = {}
     end
 
     # Toggle thinking expansion (collapsed 1-line vs full)
@@ -55,6 +58,19 @@ module Antigravity
       end
     end
 
+    # Format a tool call for inline display (collapsed or expanded)
+    def format_tool_call(name, params_preview, elapsed: nil)
+      elapsed_str = elapsed ? " #{DIM_STYLE}[#{elapsed}s]#{RESET}" : ''
+      if @thinking_expanded
+        "#{TOOL_STYLE}  🔧 #{name}(#{params_preview})#{elapsed_str}#{RESET}"
+      else
+        # Collapsed: tool name only, truncated
+        short = "#{name}(#{params_preview})"
+        short = short[0..MAX_COLLAPSED] + '...' if short.length > MAX_COLLAPSED
+        "#{TOOL_STYLE}  🔧 #{short}#{elapsed_str}#{RESET}"
+      end
+    end
+
     # Parse special commands (returns symbol or nil for regular text)
     def parse_command(input)
       case input.strip.downcase
@@ -74,7 +90,7 @@ module Antigravity
       cand_tok = usage[:candidates_token_count] || 0
       think_str = thinking_size > 0 ? " | 🧠 #{thinking_size}B" : ''
       tool_str = tool_calls > 0 ? " | 🔧 #{tool_calls} tools" : ''
-      "#{DIM_STYLE}  🪙 #{tok} tok (#{prompt_tok}→#{cand_tok})#{think_str}#{tool_str} | ⏱️ #{elapsed}s#{RESET}"
+      "#{DIM_STYLE}  🪙 #{tok} tok (#{prompt_tok}->#{cand_tok})#{think_str}#{tool_str} | ⏱️ #{elapsed}s#{RESET}"
     end
 
     # Help text shown on /help or startup
@@ -89,6 +105,7 @@ module Antigravity
         │  Thinking: gray italic (use Ctrl-O to expand   │
         │  thinking and tool execution)                  │
         │  Response: bold cyan                           │
+        │  Tools:    yellow                              │
         ╰────────────────────────────────────────────────╯#{RESET}
       HELP
     end
@@ -97,6 +114,7 @@ module Antigravity
     def start!
       print_banner
       setup_agent!
+      setup_tool_hooks!
       setup_ctrl_o!
       repl_loop
     ensure
@@ -110,7 +128,7 @@ module Antigravity
       puts
       puts "\e[1;35m💎 Antigravity Console v#{Antigravity::VERSION}\e[0m"
       puts "\e[2m   Type a question, or /help for commands.#{RESET}"
-      puts "\e[2m   #{THINKING_STYLE}Thinking: gray italic#{RESET} #{DIM_STYLE}|#{RESET} #{CONTENT_STYLE}Response: bold cyan#{RESET}"
+      puts "\e[2m   #{THINKING_STYLE}Thinking: gray italic#{RESET} #{DIM_STYLE}|#{RESET} #{CONTENT_STYLE}Response: bold cyan#{RESET} #{DIM_STYLE}|#{RESET} #{TOOL_STYLE}Tools: yellow#{RESET}"
       puts "\e[2m   Use Ctrl-O to expand thinking and tool execution#{RESET}"
       puts
     end
@@ -126,15 +144,104 @@ module Antigravity
       puts
     end
 
-    # Set up Ctrl-O signal trap to toggle thinking
+    # Hook into agent's tool lifecycle for inline rendering
+    # Conversation emits: tool_name, params, result, duration, tool_id
+    def setup_tool_hooks!
+      return unless @agent&.hooks
+
+      @agent.hooks.on(:tool_call) do |info|
+        name = info[:tool_name] || '?'
+        # Format params into a short preview
+        params_raw = info[:params]
+        params_str = case params_raw
+                     when Hash then params_raw.values.first.to_s
+                     when String then params_raw
+                     else params_raw.to_s
+                     end
+        params_preview = params_str[0..60]
+        params_preview += '...' if params_str.length > 60
+        puts format_tool_call(name, params_preview)
+      end
+
+      @agent.hooks.on(:tool_result) do |info|
+        name = info[:tool_name] || '?'
+        result_str = info[:result].to_s
+        result_size = result_str.bytesize
+        duration = info[:duration]
+        elapsed_str = duration ? " #{DIM_STYLE}[#{duration.round(1)}s]#{RESET}" : ''
+
+        # Show result preview (first meaningful line, truncated)
+        preview = result_str.split("\n").reject(&:empty?).first.to_s
+        preview = preview[0..MAX_COLLAPSED] + '...' if preview.length > MAX_COLLAPSED
+
+        if @thinking_expanded
+          puts "#{TOOL_STYLE}  ✅ #{name}#{elapsed_str} #{DIM_STYLE}| #{result_size}B#{RESET}"
+          puts "#{DIM_STYLE}     -> #{preview}#{RESET}" unless preview.empty?
+        else
+          # Collapsed: single line with result preview
+          short_preview = preview[0..40]
+          short_preview += '...' if preview.length > 40
+          puts "#{TOOL_STYLE}  ✅ #{name}#{elapsed_str}: #{DIM_STYLE}#{short_preview}#{RESET}"
+        end
+      end
+
+      @agent.hooks.on(:tool_error) do |info|
+        name = info[:tool_name] || '?'
+        error = info[:error] || 'unknown error'
+        puts "\e[31m  💥 #{name} -- #{error.to_s[0..80]}#{RESET}"
+      end
+    end
+
+    # Set up Ctrl-O keybinding via Reline
     def setup_ctrl_o!
-      # Ctrl-O = ASCII 15 — we use IO.console raw mode in the readline thread
-      # For simplicity, use /think command as primary and mention Ctrl-O in help
-      # (true Ctrl-O requires raw terminal which conflicts with readline)
+      require 'reline'
+
+      # Ctrl-O = "\x0F" (ASCII 15)
+      # Bind it to toggle thinking expansion
+      Reline::LineEditor.prepend(Module.new do
+        # We can't easily inject into Reline's key dispatch,
+        # so we use a SIGQUIT-like approach with IO
+      end)
+
+      # Alternative: use a thread to watch for Ctrl-O on raw stdin
+      # This works alongside Reline because we only intercept Ctrl-O
+      @ctrl_o_thread = Thread.new do
+        Thread.current.name = 'ctrl-o-watcher'
+        loop do
+          # Check if Ctrl-O toggle was requested via a signal file
+          toggle_file = '/tmp/.antigravity_toggle_think'
+          if File.exist?(toggle_file)
+            File.delete(toggle_file) rescue nil
+            toggle_thinking!
+            state = @thinking_expanded ? 'EXPANDED' : 'COLLAPSED'
+            $stderr.print "\r#{DIM_STYLE}  🧠 Thinking: #{state}#{RESET}\n"
+          end
+          sleep 0.5
+        rescue => e
+          break
+        end
+      end
+
+      # For Reline-based Ctrl-O, we add a custom key binding
+      # Reline.add_dialog_proc doesn't help here, but we can
+      # use trap on a custom signal. Most pragmatic: SIGUSR1
+      trap('USR1') do
+        toggle_thinking!
+        state = @thinking_expanded ? 'EXPANDED' : 'COLLAPSED'
+        $stderr.write "\r#{DIM_STYLE}  🧠 Thinking: #{state} (Ctrl-O)#{RESET}\n"
+      end
+    rescue => e
+      # If Reline or signal setup fails, /think still works
     end
 
     def repl_loop
       require 'readline'
+
+      # Suppress reline stdlib warning
+      old_verbose = $VERBOSE
+      $VERBOSE = nil
+      require 'reline'
+      $VERBOSE = old_verbose
 
       # Read from stdin pipe if available (non-interactive mode)
       if !$stdin.tty? && !$stdin.eof?
@@ -173,7 +280,7 @@ module Antigravity
           print_banner
           next
         when :toggle_verbose
-          puts "#{DIM_STYLE}  (verbose toggle — not yet implemented)#{RESET}"
+          puts "#{DIM_STYLE}  (verbose toggle -- not yet implemented)#{RESET}"
           next
         end
 
@@ -183,7 +290,6 @@ module Antigravity
 
     def process_prompt(prompt)
       @turn_count += 1
-      puts "#{DIM_STYLE}  T#{@turn_count} ─────────────────────────────#{RESET}"
 
       thinking_buf = []
       content_buf = []
