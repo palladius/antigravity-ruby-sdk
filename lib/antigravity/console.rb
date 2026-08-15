@@ -259,7 +259,11 @@ module Antigravity
       end
 
       # Interactive mode with readline
-      Readline.completion_proc = proc { |s| ['/help', '/think', '/quit', '/clear'].grep(/^#{Regexp.escape(s)}/) }
+      Readline.completion_proc = proc { |s| ['/help', '/think', '/quit', '/clear', '!'].grep(/^#{Regexp.escape(s)}/) }
+
+      # Ctrl-O binding: macro that types "/think" and submits (Enter)
+      # \C-o = Ctrl-O, \C-j = newline/accept-line
+      Readline.parse_and_bind('"\C-o": "/think\C-j"')
 
       loop do
         input = Readline.readline(PROMPT, true)
