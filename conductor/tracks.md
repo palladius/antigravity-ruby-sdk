@@ -1,4 +1,3 @@
 - [ ] **Track: Add MCP Server Support** *Link: [conductor/tracks/mcp_support_20260811/index.md](./tracks/mcp_support_20260811/index.md)*
 - [ ] **Track: Extract Channel Transport Layer** *Link: [conductor/tracks/channel_refactor_20260812/index.md](./tracks/channel_refactor_20260812/index.md)*
 - [ ] **Track: Declarative Policy DSL (GHI #21)** *Link: [conductor/tracks/policy_dsl_20260814/index.md](./tracks/policy_dsl_20260814/index.md)*
-- [x] **Track: Add Antigravity Ruby SDK Agent Skill & Maintain Docs Rule** *Link: [conductor/tracks/add_sdk_skill_20260814/index.md](./tracks/add_sdk_skill_20260814/index.md)*
