@@ -57,6 +57,41 @@ module Antigravity
       "#{str[0..3]}#{'*' * [str.length - 8, 4].max}#{str[-4..]}"
     end
 
+    # ─── Smart Setters (propagate to agent) ───────────────────
+
+    # Change workspace and notify agent
+    def set_workspace(path)
+      expanded = File.expand_path(path)
+      unless Dir.exist?(expanded)
+        puts "\e[31m  ❌ Directory not found: #{expanded}\e[0m"
+        return @workspace
+      end
+      @workspace = expanded
+      @agent&.workspace = expanded if @agent.respond_to?(:workspace=)
+      puts "\e[2m  📂 Workspace → #{expanded}\e[0m"
+      @workspace
+    end
+    alias_method :cd, :set_workspace
+
+    # Change policy
+    def set_policy(name)
+      @policy = name.to_sym
+      puts "\e[2m  🛡️ Policy → #{@policy}\e[0m"
+      @policy
+    end
+
+    # Change model
+    def set_model(name)
+      @model = name.to_s
+      puts "\e[2m  🤖 Model → #{@model}\e[0m"
+      @model
+    end
+
+    # Shell exec from IRB (convenience)
+    def shell(cmd)
+      system(cmd)
+    end
+
     # Toggle thinking expansion (collapsed 1-line vs full)
     def toggle_thinking!
       @thinking_expanded = !@thinking_expanded
@@ -392,16 +427,26 @@ module Antigravity
           @system_instruction System prompt (String)
           @irb_help          This help text
 
-        \e[1m🔧 Methods\e[0m
+        \e[1m🔧 Methods (Smart Setters)\e[0m
           config             Hash with full session state
+          cd '/path'         Change workspace (validates dir)
+          set_workspace '~/' Same as cd
+          set_policy :turbo  Change safety policy
+          set_model 'gemini-2.5-flash'  Change model
           toggle_thinking!   Flip thinking expanded/collapsed
-          help_text          Richard /help output
+          shell 'cmd'        Run shell command
+          mask_secret 'key'  Mask a secret string
+
+        \e[1m⌘ Shortcuts\e[0m
+          help               This help text
+          `cmd`              Shell exec via Ruby backticks
 
         \e[1m💡 Examples\e[0m
           config                          # full session state
+          cd '~/git/sakura'               # change workspace
+          set_policy :turbo               # switch policy
           @agent.class                    # => Antigravity::Agent
           @workspace                      # => "/Users/ricc/..."
-          @policy                         # => :console
           Antigravity::VERSION            # => "0.6.0"
           Antigravity::Policy::SAFE_CMDS  # => [:cd, :date, ...]
           mask_secret('AIzaSy...xyz123')  # => "AIza****z123"
