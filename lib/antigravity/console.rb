@@ -351,7 +351,8 @@ module Antigravity
     IRB_PROMPT = "\e[31m💎\e[0mirb> "
 
     def irb_loop
-      puts "#{DIM_STYLE}  💎 Entering Ruby mode. Type 'exit' or Ctrl-D to return to Richard.#{RESET}"
+      puts "\e[1;31m  💊 So you chose the RED pill, Neo!\e[0m"
+      puts "#{DIM_STYLE}  💎 Type 'exit' or Ctrl-D to return to Richard.#{RESET}"
       irb_binding = binding  # share console instance context
       loop do
         input = Readline.readline(IRB_PROMPT, true)
@@ -368,7 +369,7 @@ module Antigravity
           puts "\e[31m  ❌ #{e.class}: #{e.message}#{RESET}"
         end
       end
-      puts "#{DIM_STYLE}  💎 Back to Richard.#{RESET}"
+      puts "\e[1;37m  Welcome... to the real world, Neo. 🕶️\e[0m"
     end
 
     def show_policy_info
