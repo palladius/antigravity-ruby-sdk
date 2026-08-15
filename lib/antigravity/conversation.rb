@@ -159,12 +159,20 @@ module Antigravity
           if step_record[:target] == :environment && step_record[:source] == :model
             unless step[:customTool]
               tool_calls_count += 1
-              # Emit hook for built-in tools so Console can render them
+
+              # 🔍 Protocol sniffer: capture ALL keys from tool steps
+              # This helps us discover tool-specific fields (toolName, functionCall, etc.)
+              known_keys = %i[source target state stepIndex text textDelta thinkingDelta
+                              cascadeId trajectoryId errorMessage customTool]
+              extra_keys = step.keys - known_keys
               tool_text = step[:textDelta] || step[:text] || ''
+
               @hooks&.emit(:tool_call, {
-                tool_name: 'harness_tool',
+                tool_name: step[:toolName] || step[:name] || step[:functionName] || 'harness_tool',
                 params: { action: tool_text.strip[0..80] },
-                builtin: true
+                builtin: true,
+                _raw_extra_keys: extra_keys,
+                _raw_step_keys: step.keys
               })
             end
           end

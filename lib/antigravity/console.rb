@@ -44,7 +44,7 @@ module Antigravity
 
       if @thinking_expanded
         # Full thinking, each line in gray italic
-        lines = text.split("\n").map { |l| "#{THINKING_STYLE}  🧠 #{l}#{RESET}" }
+        lines = text.split("\n").map { |l| "#{THINKING_STYLE}  🤔 #{l}#{RESET}" }
         lines.join("\n")
       else
         # Collapsed: 1 line, truncated at MAX_COLLAPSED chars
@@ -54,7 +54,7 @@ module Antigravity
                   else
                     clean
                   end
-        "#{THINKING_STYLE}  🧠 #{display}#{RESET}"
+        "#{THINKING_STYLE}  🤔 #{display}#{RESET}"
       end
     end
 
@@ -62,12 +62,12 @@ module Antigravity
     def format_tool_call(name, params_preview, elapsed: nil)
       elapsed_str = elapsed ? " #{DIM_STYLE}[#{elapsed}s]#{RESET}" : ''
       if @thinking_expanded
-        "#{TOOL_STYLE}  🔧 #{name}(#{params_preview})#{elapsed_str}#{RESET}"
+        "#{TOOL_STYLE}  💾 #{name}(#{params_preview})#{elapsed_str}#{RESET}"
       else
-        # Collapsed: tool name only, truncated
+        # Collapsed: tool name + params, truncated, agy-style
         short = "#{name}(#{params_preview})"
         short = short[0..MAX_COLLAPSED] + '...' if short.length > MAX_COLLAPSED
-        "#{TOOL_STYLE}  🔧 #{short}#{elapsed_str}#{RESET}"
+        "#{TOOL_STYLE}  💾 #{short}#{elapsed_str} #{DIM_STYLE}(ctrl+o to expand)#{RESET}"
       end
     end
 
@@ -89,7 +89,7 @@ module Antigravity
       prompt_tok = usage[:prompt_token_count] || 0
       cand_tok = usage[:candidates_token_count] || 0
       think_str = thinking_size > 0 ? " | 🧠 #{thinking_size}B" : ''
-      tool_str = tool_calls > 0 ? " | 🔧 #{tool_calls} tools" : ''
+      tool_str = tool_calls > 0 ? " | 💾 #{tool_calls} tools" : ''
       "#{DIM_STYLE}  🪙 #{tok} tok (#{prompt_tok}->#{cand_tok})#{think_str}#{tool_str} | ⏱️ #{elapsed}s#{RESET}"
     end
 
@@ -102,10 +102,9 @@ module Antigravity
         │  /quit              Exit console               │
         │  /clear             Clear screen               │
         │                                                │
-        │  Thinking: gray italic (use Ctrl-O to expand   │
-        │  thinking and tool execution)                  │
-        │  Response: bold cyan                           │
-        │  Tools:    yellow                              │
+        │  🤔 Thinking: gray italic                      │
+        │  💬 Response: bold cyan                         │
+        │  💾 Tools:    yellow (ctrl+o to expand)         │
         ╰────────────────────────────────────────────────╯#{RESET}
       HELP
     end
@@ -128,7 +127,7 @@ module Antigravity
       puts
       puts "\e[1;35m💎 Antigravity Console v#{Antigravity::VERSION}\e[0m"
       puts "\e[2m   Type a question, or /help for commands.#{RESET}"
-      puts "\e[2m   #{THINKING_STYLE}Thinking: gray italic#{RESET} #{DIM_STYLE}|#{RESET} #{CONTENT_STYLE}Response: bold cyan#{RESET} #{DIM_STYLE}|#{RESET} #{TOOL_STYLE}Tools: yellow#{RESET}"
+      puts "\e[2m   🤔 #{THINKING_STYLE}Thinking#{RESET} #{DIM_STYLE}|#{RESET} 💬 #{CONTENT_STYLE}Response#{RESET} #{DIM_STYLE}|#{RESET} 💾 #{TOOL_STYLE}Tools#{RESET}"
       puts "\e[2m   Use Ctrl-O to expand thinking and tool execution#{RESET}"
       puts
     end
@@ -176,12 +175,12 @@ module Antigravity
 
         if @thinking_expanded
           puts "#{TOOL_STYLE}  ✅ #{name}#{elapsed_str} #{DIM_STYLE}| #{result_size}B#{RESET}"
-          puts "#{DIM_STYLE}     -> #{preview}#{RESET}" unless preview.empty?
+          puts "#{DIM_STYLE}     ↪ #{preview}#{RESET}" unless preview.empty?
         else
           # Collapsed: single line with result preview
           short_preview = preview[0..40]
           short_preview += '...' if preview.length > 40
-          puts "#{TOOL_STYLE}  ✅ #{name}#{elapsed_str}: #{DIM_STYLE}#{short_preview}#{RESET}"
+          puts "\e[32m  ● #{RESET}#{TOOL_STYLE}#{name}#{elapsed_str}: #{DIM_STYLE}#{short_preview}#{RESET}"
         end
       end
 
@@ -269,8 +268,8 @@ module Antigravity
           break
         when :toggle_thinking
           toggle_thinking!
-          state = @thinking_expanded ? 'EXPANDED' : 'COLLAPSED'
-          puts "#{DIM_STYLE}  🧠 Thinking display: #{state}#{RESET}"
+          state = @thinking_expanded ? 'EXPANDED 🔍' : 'COLLAPSED 📦'
+          puts "#{DIM_STYLE}  🤔 Thinking display: #{state}#{RESET}"
           next
         when :help
           puts help_text
@@ -309,7 +308,7 @@ module Antigravity
             display = combined.gsub("\n", ' ').strip
             display = display[-MAX_COLLAPSED..] || display  # show tail
             display = display[0..MAX_COLLAPSED] + '...' if display.length > MAX_COLLAPSED
-            print "\r\e[K#{THINKING_STYLE}  🧠 #{display}#{RESET}"
+            print "\r\e[K#{THINKING_STYLE}  🤔 #{display}#{RESET}"
             thinking_line_printed = true
           end
         end

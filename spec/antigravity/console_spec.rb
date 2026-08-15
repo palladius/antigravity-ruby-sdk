@@ -146,7 +146,8 @@ RSpec.describe Antigravity::Console do
       long_params = 'x' * 200
       formatted = console.format_tool_call('some_tool', long_params)
       plain = formatted.gsub(/\e\[[0-9;]*m/, '')
-      expect(plain).to end_with('...')
+      expect(plain).to include('...')
+      expect(plain).to include('ctrl+o to expand')
     end
 
     it 'shows elapsed time when provided' do
