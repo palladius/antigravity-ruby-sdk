@@ -118,6 +118,10 @@ RSpec.describe Antigravity::Console do
     it 'recognizes /policy' do
       expect(console.parse_command('/policy')).to eq(:show_policy)
     end
+
+    it 'recognizes /irb' do
+      expect(console.parse_command('/irb')).to eq(:irb_mode)
+    end
   end
 
   describe '.new workspace default' do

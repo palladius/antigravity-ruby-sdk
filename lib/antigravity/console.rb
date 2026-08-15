@@ -82,6 +82,7 @@ module Antigravity
       when '/verbose', '/v'      then :toggle_verbose
       when '/clear'              then :clear
       when '/policy'             then :show_policy
+      when '/irb'                then :irb_mode
       when /^r!\s*/              then :ruby_eval
       when /^!\s*/               then :shell_exec
       else nil
@@ -113,6 +114,7 @@ module Antigravity
         │  /quit              Exit console               │
         │  /clear             Clear screen               │
         │  /policy            Show active safety policy   │
+        │  /irb               Enter Ruby sub-REPL         │
         │                                                │
         │  ⌘ Shortcuts                                    │
         │  ! <cmd>            Shell exec  (! ls -la)      │
@@ -216,7 +218,11 @@ module Antigravity
 
     # Set up Ctrl-O keybinding via Reline
     def setup_ctrl_o!
+      # Suppress reline stdlib warning (Ruby 3.4 → 3.5 transition)
+      old_verbose = $VERBOSE
+      $VERBOSE = nil
       require 'reline'
+      $VERBOSE = old_verbose
 
       # Ctrl-O = "\x0F" (ASCII 15)
       # Bind it to toggle thinking expansion
@@ -332,10 +338,37 @@ module Antigravity
         end
       when :show_policy
         show_policy_info
+      when :irb_mode
+        irb_loop
       else
         process_prompt(input)
       end
       nil
+    end
+
+    # Persistent Ruby sub-REPL. Every line is eval'd.
+    # Exit with 'exit', 'quit', or Ctrl-D to return to Richard.
+    IRB_PROMPT = "\e[31m💎\e[0mirb> "
+
+    def irb_loop
+      puts "#{DIM_STYLE}  💎 Entering Ruby mode. Type 'exit' or Ctrl-D to return to Richard.#{RESET}"
+      irb_binding = binding  # share console instance context
+      loop do
+        input = Readline.readline(IRB_PROMPT, true)
+        break if input.nil?  # Ctrl-D
+
+        input = input.strip
+        next if input.empty?
+        break if %w[exit quit].include?(input.downcase)
+
+        begin
+          result = eval(input, irb_binding, '(irb)', 1)  # rubocop:disable Security/Eval
+          puts "#{CONTENT_STYLE}  => #{result.inspect}#{RESET}"
+        rescue => e
+          puts "\e[31m  ❌ #{e.class}: #{e.message}#{RESET}"
+        end
+      end
+      puts "#{DIM_STYLE}  💎 Back to Richard.#{RESET}"
     end
 
     def show_policy_info
