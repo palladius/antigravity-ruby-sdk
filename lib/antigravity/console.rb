@@ -362,9 +362,17 @@ module Antigravity
         next if input.empty?
         break if %w[exit quit].include?(input.downcase)
 
+        # Intercept slash commands — user muscle memory from Richard
+        if input.start_with?('/')
+          puts "#{DIM_STYLE}  💎 '#{input}' is a Richard command, not Ruby. Type 'exit' to go back.#{RESET}"
+          next
+        end
+
         begin
           result = eval(input, irb_binding, '(irb)', 1)  # rubocop:disable Security/Eval
           puts "#{CONTENT_STYLE}  => #{result.inspect}#{RESET}"
+        rescue SyntaxError => e
+          puts "\e[31m  ❌ SyntaxError: #{e.message.lines.first&.strip}#{RESET}"
         rescue => e
           puts "\e[31m  ❌ #{e.class}: #{e.message}#{RESET}"
         end
