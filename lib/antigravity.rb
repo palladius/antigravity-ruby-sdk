@@ -40,5 +40,24 @@ module Antigravity
     def config
       @config ||= Config.new
     end
+
+    # One-liner top-level prompt helper
+    #   Antigravity.ask("What is 2+2?")
+    #   Antigravity.ask("Explain Ruby", policy: :cautious) { |chunk| print chunk.content }
+    def ask(prompt, **kwargs, &block)
+      Agent.ask(prompt, **kwargs, &block)
+    end
+
+    # Top-level tool definition helper
+    #   Antigravity.tool(:weather, desc: "Get city weather") { |city:| "22°C in #{city}" }
+    def tool(name, desc: "", params: {}, &block)
+      Tool.define(name, desc: desc, params: params, &block)
+    end
+
+    # Top-level policy definition helper
+    #   Antigravity.policy { allow :read_file }
+    def policy(&block)
+      Policy.define(&block)
+    end
   end
 end
