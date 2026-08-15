@@ -61,13 +61,13 @@ Enter
 Sleep 2s
 
 # 🟢🔴 Policy visualization with emoji!
-Type@50ms "Antigravity::Policy::SAFE_CMDS.map { |c| '🟢 ' + c.to_s }"
+Type "Antigravity::Policy::SAFE_CMDS.each { |c| puts '  🟢 ' + c.to_s }"
 Enter
 Sleep 2s
 
-Type@50ms "Antigravity::Policy::CATASTROPHIC_CMDS.map { |c| '🔴 ' + c.to_s }"
+Type "Antigravity::Policy::CATASTROPHIC_CMDS.each { |c| puts '  🔴 ' + c.to_s }"
 Enter
-Sleep 3s
+Sleep 2s
 
 # Smart setters
 Type "cd '~/git'"

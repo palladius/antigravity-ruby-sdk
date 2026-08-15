@@ -326,7 +326,8 @@ module Antigravity
       # Add workspaces if specified
       if @workspace
         expanded = File.expand_path(@workspace)
-        $stderr.puts "\u231B Indexing workspace: #{expanded} — this may take a moment..."
+        short = tilde_path(expanded)
+        $stderr.puts "📂 Indexing workspace \e[33m#{short}/\e[0m — this may take a moment..."
         config[:config][:workspaces] = [
           {
             filesystemWorkspace: {
@@ -410,8 +411,14 @@ module Antigravity
       expanded = File.expand_path(raw_path)
       expanded += '/' unless expanded.end_with?('/')
 
-      $stderr.puts "📁 Setting workspace to \e[34m#{expanded}\e[0m" rescue nil
+      $stderr.puts "📂 Workspace → \e[33m#{tilde_path(expanded)}/\e[0m" rescue nil
       expanded
+    end
+
+    # Shorten /Users/ricc/foo to ~/foo for cleaner output
+    def tilde_path(path)
+      home = Dir.home
+      path.start_with?(home) ? path.sub(home, '~') : path
     end
   end
 end
