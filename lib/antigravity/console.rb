@@ -32,7 +32,7 @@ module Antigravity
     def initialize(system_instruction: nil, workspace: nil, model: nil, policy: nil)
       @system_instruction = system_instruction || CONSOLE_SYSTEM_INSTRUCTION.strip
       @workspace = workspace || Dir.pwd
-      @model = model || 'default'
+      @model = model || Antigravity.config.default_model
       @policy = policy || :console
       @thinking_expanded = false
       @agent = nil

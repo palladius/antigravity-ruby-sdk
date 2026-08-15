@@ -13,6 +13,17 @@ RSpec.describe Antigravity::Console do
       console = described_class.new(system_instruction: 'Be a pirate')
       expect(console.system_instruction).to eq('Be a pirate')
     end
+
+    it 'resolves model to actual Gemini model name, never "default"' do
+      console = described_class.new
+      expect(console.config[:model]).not_to eq('default')
+      expect(console.config[:model]).to match(/gemini/i)
+    end
+
+    it 'uses explicit model when provided' do
+      console = described_class.new(model: 'gemini-2.5-pro')
+      expect(console.config[:model]).to eq('gemini-2.5-pro')
+    end
   end
 
   describe '#thinking_expanded' do

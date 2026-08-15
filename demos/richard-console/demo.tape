@@ -1,6 +1,6 @@
-# 🎬 Richard Console Demo — REAL VHS Tape
-# Drives the ACTUAL console. LLM responses are non-deterministic
-# but we don't care — the demo is about the console features!
+# 🎬 Richard Console Demo — REAL VHS Tape v2
+# Drives the ACTUAL console with live Gemini API.
+# Now with: 🟢/🔴 policy visualization + shorter LLM pause
 #
 # Usage: cd ~/git/antigravity-ruby-sdk && vhs demos/richard-console/demo.tape
 
@@ -26,11 +26,11 @@ Enter
 Sleep 10s
 
 # ═══════════════════════════════════════════════════════════
-# ACT 2: Quick LLM chat (we don't care what it says)
+# ACT 2: Quick LLM chat (shorter pause)
 # ═══════════════════════════════════════════════════════════
 Type "Hello! What can you do?"
 Enter
-Sleep 12s
+Sleep 8s
 
 # ═══════════════════════════════════════════════════════════
 # ACT 3: Shell + Ruby eval (deterministic!)
@@ -43,10 +43,6 @@ Type "r! Antigravity::VERSION"
 Enter
 Sleep 2s
 
-Type "r! RUBY_VERSION"
-Enter
-Sleep 2s
-
 # ═══════════════════════════════════════════════════════════
 # ACT 4: /irb — THE MATRIX (100% deterministic!)
 # ═══════════════════════════════════════════════════════════
@@ -54,7 +50,7 @@ Type "/irb"
 Enter
 Sleep 2s
 
-# Full config hash
+# Full config hash (now shows REAL model name!)
 Type "config"
 Enter
 Sleep 2s
@@ -64,14 +60,14 @@ Type "config.select { |k,_| [:version, :workspace, :model].include?(k) }"
 Enter
 Sleep 2s
 
-# Policy introspection
-Type "Antigravity::Policy::SAFE_CMDS"
+# 🟢🔴 Policy visualization with emoji!
+Type@50ms "Antigravity::Policy::SAFE_CMDS.map { |c| '🟢 ' + c.to_s }"
 Enter
 Sleep 2s
 
-Type "Antigravity::Policy::CATASTROPHIC_CMDS"
+Type@50ms "Antigravity::Policy::CATASTROPHIC_CMDS.map { |c| '🔴 ' + c.to_s }"
 Enter
-Sleep 2s
+Sleep 3s
 
 # Smart setters
 Type "cd '~/git'"

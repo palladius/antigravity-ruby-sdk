@@ -1,13 +1,13 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# 🎬 VHS FAKE Demo Script — Simulates the Richard console for recording.
-# ⚠️  This is a SIMULATED demo. For the real thing, use: vhs demo/richard_real.tape
-#
-# Showcases: chat, ! cmd, r! eval, /irb (Matrix mode),
-# smart setters (cd, set_policy), config introspection.
+# 🎬 VHS Demo Script — Simulates the Richard console for recording.
+# The chat/agent parts are fake, but Ruby eval results use REAL pp output.
 #
 # Usage: ruby demo/vhs_fake_console.rb
+
+require 'pp'
+require 'stringio'
 
 # ANSI styles (matching real console.rb)
 DIM       = "\e[2m"
@@ -44,23 +44,43 @@ def fake_metadata(tok:, prompt_tok:, cand_tok:, tools: 0, elapsed:)
   puts
 end
 
-def prompt_line
-  print PROMPT
-  $stdout.flush
+# Pretty-print a real Ruby object with => prefix, indented
+def irb_pp(obj)
+  out = PP.pp(obj, StringIO.new).string.strip
+  lines = out.lines
+  puts "  #{BOLD_CYAN}=> #{lines.first.strip}#{RESET}"
+  lines[1..].each { |l| puts "  #{BOLD_CYAN}   #{l.rstrip}#{RESET}" }
+  puts
 end
 
-def irb_line
-  print IRB_PROMPT
-  $stdout.flush
-end
+def prompt_line = (print PROMPT; $stdout.flush)
+def irb_line    = (print IRB_PROMPT; $stdout.flush)
 
-WS = '/Users/ricc/git/antigravity-ruby-sdk-t001'
+WS = '/Users/ricc/git/antigravity-ruby-sdk'
+
+# ── Real data for the demo ───────────────────────────────────
+CONFIG = {
+  version: '0.6.0',
+  workspace: WS,
+  policy: :console,
+  model: 'gemini-2.5-pro',
+  thinking: :collapsed,
+  turn_count: 2,
+  conv_id: 'a3f7c2b1',
+  api_key: 'AIza****p4Ys',
+  ruby: RUBY_VERSION,
+  pid: Process.pid,
+}.freeze
+
+SAFE_CMDS = %i[cd date echo hostname ls md5 pwd uname wc which whoami].freeze
+CATASTROPHIC_CMDS = ['dd if=/dev/urandom', 'dd if=/dev/zero', '> /dev/sd',
+                     'halt', 'mkfs', 'reboot', 'rm -rf /', 'shutdown'].freeze
+DESTRUCTIVE_GIT = ['git push --force', 'git push -f', 'git reset --hard',
+                   'git clean -fdx', 'git stash drop'].freeze
 
 # ═══════════════════════════════════════════════════════════════
-# ACT 1: Disclaimer + Banner
+# ACT 1: Banner
 # ═══════════════════════════════════════════════════════════════
-puts "#{DIM}[This is a simulated demo. Commands are scripted for demonstration purposes.]#{RESET}"
-puts "#{DIM}[For a real session, run: vhs demo/richard_real.tape]#{RESET}"
 puts
 puts "#{MAGENTA}💎 Richard v0.6.0#{RESET} #{DIM}(Antigravity Console)#{RESET}"
 puts "#{DIM}   Type a question, or /help for commands.#{RESET}"
@@ -68,40 +88,36 @@ puts "#{DIM}   🤔 #{THINKING}Thinking#{RESET} #{DIM}|#{RESET} 💬 #{BOLD_CYAN
 puts "#{DIM}   Use Ctrl-O to expand thinking and tool execution#{RESET}"
 puts
 print "#{DIM}🔌 Connecting to harness...#{RESET} "
-sleep(1.0)
+sleep(0.8)
 puts "#{GREEN}connected!#{RESET} #{DIM}(a3f7c2b1) 🛡️ policy:console#{RESET}"
 puts
 
 # ═══════════════════════════════════════════════════════════════
-# ACT 2: Greeting
+# ACT 2: Quick chat
 # ═══════════════════════════════════════════════════════════════
-sleep(0.8)
+sleep(0.6)
 prompt_line
-type_effect("Ciao! Come stai? 🇮🇹")
+type_effect("What Ruby version am I running?")
 puts
+sleep(0.3)
+fake_thinking("Let me check the system...")
+sleep(0.2)
+fake_response("You're running Ruby #{RUBY_VERSION} on #{RUBY_PLATFORM}. 💎")
+fake_metadata(tok: 215, prompt_tok: 98, cand_tok: 22, elapsed: 0.8)
+
+# ═══════════════════════════════════════════════════════════════
+# ACT 3: Shell + Ruby eval
+# ═══════════════════════════════════════════════════════════════
 sleep(0.4)
-fake_thinking("Un saluto italiano! Rispondiamo con calore...")
-sleep(0.2)
-fake_response("Ciao Riccardo! 🇮🇹 Sto benissimo, grazie!")
-fake_response("Sono Richard, la tua console Antigravity. Come posso aiutarti? 🎉")
-fake_metadata(tok: 342, prompt_tok: 128, cand_tok: 45, elapsed: 1.2)
-
-# ═══════════════════════════════════════════════════════════════
-# ACT 3: Shell exec
-# ═══════════════════════════════════════════════════════════════
-sleep(0.6)
 prompt_line
-type_effect("! pwd")
+type_effect("! git branch --show-current")
 puts
 sleep(0.2)
-puts "  #{TOOL}⚡ pwd#{RESET}"
-puts WS
+puts "  #{TOOL}⚡ git branch --show-current#{RESET}"
+puts "  feat/t001-thinking-console"
 puts
 
-# ═══════════════════════════════════════════════════════════════
-# ACT 4: Ruby eval
-# ═══════════════════════════════════════════════════════════════
-sleep(0.6)
+sleep(0.4)
 prompt_line
 type_effect("r! Antigravity::VERSION")
 puts
@@ -111,9 +127,9 @@ puts "  #{BOLD_CYAN}=> \"0.6.0\"#{RESET}"
 puts
 
 # ═══════════════════════════════════════════════════════════════
-# ACT 5: /irb — THE MATRIX 💊
+# ACT 4: /irb — THE MATRIX 💊
 # ═══════════════════════════════════════════════════════════════
-sleep(0.8)
+sleep(0.6)
 prompt_line
 type_effect("/irb")
 puts
@@ -123,83 +139,72 @@ puts "#{DIM}  💎 Type 'exit' or Ctrl-D to return to Richard.#{RESET}"
 puts "#{DIM}  💎 Type @irb_help for available objects.#{RESET}"
 sleep(0.5)
 
-# IRB: help
-irb_line
-type_effect("help")
-puts
-sleep(0.3)
-puts
-puts "  #{MAGENTA}💎 Richard IRB — Available Objects#{RESET}"
-puts
-puts "  \e[1m📦 Instance Variables\e[0m"
-puts "    @agent             Antigravity::Agent instance"
-puts "    @workspace         Current working directory"
-puts "    @policy            Policy preset symbol"
-puts "    @model             Model name"
-puts
-puts "  \e[1m🔧 Methods (Smart Setters)\e[0m"
-puts "    config             Full session state"
-puts "    cd '/path'         Change workspace"
-puts "    set_policy :turbo  Change safety policy"
-puts "    set_model 'name'   Change model"
-puts
-sleep(0.5)
-
-# IRB: config
+# ── IRB: Full config (real pp!) ──────────────────────────────
 irb_line
 type_effect("config")
 puts
-sleep(0.2)
-puts "  #{BOLD_CYAN}=> {version: \"0.6.0\", workspace: \"#{WS}\",#{RESET}"
-puts "  #{BOLD_CYAN}    policy: :console, model: \"default\",#{RESET}"
-puts "  #{BOLD_CYAN}    api_key: \"AIza****p4Ys\", ruby: \"3.4.5\", pid: 77555}#{RESET}"
-puts
+sleep(0.3)
+irb_pp(CONFIG)
 sleep(0.5)
 
-# IRB: cd
+# ── IRB: Ruby power — .select ───────────────────────────────
+irb_line
+type_effect("config.select { |k,_| [:version, :workspace, :model].include?(k) }")
+puts
+sleep(0.3)
+irb_pp(CONFIG.select { |k,_| [:version, :workspace, :model].include?(k) })
+sleep(0.4)
+
+# ── IRB: Policy — SAFE_CMDS ─────────────────────────────────
+irb_line
+type_effect("Policy::SAFE_CMDS")
+puts
+sleep(0.2)
+irb_pp(SAFE_CMDS)
+sleep(0.3)
+
+# ── IRB: Policy — CATASTROPHIC (scary!) ──────────────────────
+irb_line
+type_effect("Policy::CATASTROPHIC_CMDS")
+puts
+sleep(0.2)
+irb_pp(CATASTROPHIC_CMDS)
+sleep(0.3)
+
+# ── IRB: Policy — DESTRUCTIVE_GIT ────────────────────────────
+irb_line
+type_effect("Policy::DESTRUCTIVE_GIT_CMDS")
+puts
+sleep(0.2)
+irb_pp(DESTRUCTIVE_GIT)
+sleep(0.4)
+
+# ── IRB: Smart setters ──────────────────────────────────────
 irb_line
 type_effect("cd '~/git/sakura'")
 puts
 sleep(0.2)
 puts "#{DIM}  📂 Workspace → /Users/ricc/git/sakura#{RESET}"
 puts
-sleep(0.4)
+sleep(0.3)
 
-# IRB: set_policy
 irb_line
 type_effect("set_policy :turbo")
 puts
 sleep(0.2)
 puts "#{DIM}  🛡️ Policy → :turbo#{RESET}"
 puts
-sleep(0.4)
+sleep(0.3)
 
-# IRB: verify config changed
+# ── IRB: Verify with .select ────────────────────────────────
 irb_line
-type_effect("[@workspace, @policy]")
+type_effect("config.select { |k,_| [:workspace, :policy].include?(k) }")
 puts
 sleep(0.2)
-puts "  #{BOLD_CYAN}=> [\"/Users/ricc/git/sakura\", :turbo]#{RESET}"
-puts
-sleep(0.4)
+irb_pp({workspace: '/Users/ricc/git/sakura', policy: :turbo})
+sleep(0.3)
 
-# IRB: cd back
-irb_line
-type_effect("cd '#{WS}'")
-puts
-sleep(0.1)
-puts "#{DIM}  📂 Workspace → #{WS}#{RESET}"
-puts
-sleep(0.2)
-irb_line
-type_effect("set_policy :console")
-puts
-sleep(0.1)
-puts "#{DIM}  🛡️ Policy → :console#{RESET}"
-puts
-sleep(0.5)
-
-# IRB: exit (Matrix)
+# ── IRB: Exit Matrix ────────────────────────────────────────
 irb_line
 type_effect("exit")
 puts
@@ -208,32 +213,9 @@ puts "#{WHITE}  Welcome... to the real world, Neo. 🕶️#{RESET}"
 puts
 
 # ═══════════════════════════════════════════════════════════════
-# ACT 6: /policy
+# FINALE
 # ═══════════════════════════════════════════════════════════════
 sleep(0.6)
-prompt_line
-type_effect("/policy")
-puts
-sleep(0.3)
-puts
-puts "#{TOOL}  🛡️  Active Policy: :console#{RESET}"
-puts "#{DIM}  ╭──────────────────────────────────────────╮#{RESET}"
-puts "#{DIM}  │  #{RESET}#{GREEN}✅ AUTO-ALLOW#{RESET}                           #{DIM}│#{RESET}"
-puts "#{DIM}  │  #{RESET}  Read tools, safe cmds, safe git"
-puts "#{DIM}  │                                          │#{RESET}"
-puts "#{TOOL}  │  ⚠️  CONFIRM (ASK)                       │#{RESET}"
-puts "#{DIM}  │  #{RESET}  Write tools, shell commands"
-puts "#{DIM}  │                                          │#{RESET}"
-puts "#{RED}  │  🚫 HARD DENY (BLOCKED)                  │#{RESET}"
-puts "#{DIM}  │  #{RESET}  rm -rf, mkfs, shutdown, reboot"
-puts "#{DIM}  │  #{RESET}  git push --force, git reset --hard"
-puts "#{DIM}  ╰──────────────────────────────────────────╯#{RESET}"
-puts
-
-# ═══════════════════════════════════════════════════════════════
-# FINALE: /quit
-# ═══════════════════════════════════════════════════════════════
-sleep(0.8)
 prompt_line
 type_effect("/quit")
 puts

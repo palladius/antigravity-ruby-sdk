@@ -64,7 +64,7 @@ just rv-skill-sre-postmortem    # SRE post-mortem from GitHub skills
 Remember `rails console` and `irb`? We got inspired by those to create ***Richard*** (pronounced *Ri-shar*, a la francaise 🇫🇷) — a full-featured interactive REPL for your Antigravity agents.
 
 <p align="center">
-  <img src="demos/richard-console/demo.gif" alt="Richard Console Demo" width="700"/>
+  <img src="demo/richard_demo.gif" alt="Richard Console Demo" width="700"/>
 </p>
 
 ```bash
