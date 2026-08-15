@@ -101,14 +101,56 @@ RSpec.describe Antigravity::Console do
     it 'recognizes !ls (no space)' do
       expect(console.parse_command('!ls')).to eq(:shell_exec)
     end
+
+    it 'recognizes r! ruby eval' do
+      expect(console.parse_command('r! 2+2')).to eq(:ruby_eval)
+    end
+
+    it 'recognizes r!self.inspect (no space)' do
+      expect(console.parse_command('r!self.inspect')).to eq(:ruby_eval)
+    end
+
+    it 'prioritizes r! over !' do
+      # r! must match before ! for ruby eval
+      expect(console.parse_command('r! puts "hi"')).to eq(:ruby_eval)
+    end
+
+    it 'recognizes /policy' do
+      expect(console.parse_command('/policy')).to eq(:show_policy)
+    end
   end
 
   describe '.new workspace default' do
     it 'defaults workspace to Dir.pwd' do
       c = described_class.new
-      # The console should have a workspace (not nil)
-      # We can't easily access @workspace, but the object should initialize fine
       expect(c).to be_a(described_class)
+    end
+  end
+
+  describe 'console policy' do
+    it 'denies rm -rf' do
+      policy = Antigravity::Policy.console
+      result = policy.evaluate(:run_command, { command_line: 'rm -rf scratch/' })
+      expect(result[:status]).to eq(:deny)
+    end
+
+    it 'allows ls' do
+      policy = Antigravity::Policy.console
+      result = policy.evaluate(:run_command, { command_line: 'ls -la' })
+      expect(result[:status]).to eq(:allow)
+    end
+
+    it 'allows view_file' do
+      policy = Antigravity::Policy.console
+      result = policy.evaluate(:view_file, { path: '/etc/hosts' })
+      expect(result[:status]).to eq(:allow)
+    end
+
+    it 'does not auto-allow write_to_file (requires confirmation)' do
+      policy = Antigravity::Policy.console
+      result = policy.evaluate(:write_to_file, { path: '/tmp/test.txt' })
+      # Without a confirm handler, confirm rules resolve to :deny (safe default)
+      expect(result[:status]).not_to eq(:allow)
     end
   end
 

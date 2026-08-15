@@ -23,10 +23,11 @@ module Antigravity
 
     attr_reader :thinking_expanded, :system_instruction
 
-    def initialize(system_instruction: nil, workspace: nil, model: nil)
+    def initialize(system_instruction: nil, workspace: nil, model: nil, policy: nil)
       @system_instruction = system_instruction || 'You are a helpful AI assistant. Be concise.'
       @workspace = workspace || Dir.pwd
       @model = model
+      @policy = policy  # nil → :auto (reads env)
       @thinking_expanded = false
       @agent = nil
       @turn_count = 0
@@ -80,6 +81,8 @@ module Antigravity
       when '/help', '/h', '/?'   then :help
       when '/verbose', '/v'      then :toggle_verbose
       when '/clear'              then :clear
+      when '/policy'             then :show_policy
+      when /^r!\s*/              then :ruby_eval
       when /^!\s*/               then :shell_exec
       else nil
       end
@@ -95,19 +98,34 @@ module Antigravity
       "#{DIM_STYLE}  🪙 #{tok} tok (#{prompt_tok}->#{cand_tok})#{think_str}#{tool_str} | ⏱️ #{elapsed}s#{RESET}"
     end
 
-    # Help text shown on /help or startup
+    # Help text — dynamic, shows current workspace/policy/state
     def help_text
+      policy_name = @policy || :console
+      think_state = @thinking_expanded ? 'EXPANDED 🔍' : 'COLLAPSED 📦'
+      ws = @workspace || Dir.pwd
+      conv_id = @agent&.conversation&.conversation_id&.slice(0, 8) || '?'
       <<~HELP
-        #{THINKING_STYLE}╭─ Richard (Antigravity Console) ────────────────╮
+        #{THINKING_STYLE}╭─ Richard v#{Antigravity::VERSION} (Antigravity Console) ────╮
+        │                                                │
+        │  ⌘ Commands                                    │
         │  /think  or Ctrl-O  Toggle thinking expansion │
         │  /help              Show this help             │
         │  /quit              Exit console               │
         │  /clear             Clear screen               │
-        │  ! <cmd>            Run shell command           │
+        │  /policy            Show active safety policy   │
         │                                                │
-        │  🤔 Thinking: gray italic                      │
-        │  💬 Response: bold cyan                         │
-        │  💾 Tools:    yellow (ctrl+o to expand)         │
+        │  ⌘ Shortcuts                                    │
+        │  ! <cmd>            Shell exec  (! ls -la)      │
+        │  r! <expr>          Ruby eval   (r! 2+2)        │
+        │                                                │
+        │  ⌘ Legend                                       │
+        │  🤔 Thinking  💬 Response  💾 Tools  ⚡ Shell   │
+        │                                                │
+        │  ⌘ Session                                      │
+        │  📂 #{ws[0..38].ljust(39)}│
+        │  🛡️  policy:#{policy_name.to_s.ljust(31)}│
+        │  🤔 thinking: #{think_state.ljust(27)}│
+        │  🎫 conv: #{conv_id.ljust(33)}│
         ╰────────────────────────────────────────────────╯#{RESET}
       HELP
     end
@@ -140,9 +158,11 @@ module Antigravity
       opts = { system_instruction: @system_instruction }
       opts[:workspace] = @workspace if @workspace
       opts[:model] = @model if @model
+      opts[:policy] = @policy || :console
       @agent = Antigravity::Agent.new(**opts)
       @agent.connect!
-      puts "#{Colors.green('connected!')} #{DIM_STYLE}(#{@agent.conversation&.conversation_id&.slice(0, 8)})#{RESET}"
+      policy_name = @policy || :console
+      puts "#{Colors.green('connected!')} #{DIM_STYLE}(#{@agent.conversation&.conversation_id&.slice(0, 8)}) 🛡️ policy:#{policy_name}#{RESET}"
       puts
     end
 
@@ -299,10 +319,44 @@ module Antigravity
         puts "#{TOOL_STYLE}  ⚡ #{shell_cmd}#{RESET}"
         system(shell_cmd)
         puts
+      when :ruby_eval
+        expr = input.strip.sub(/^r!\s*/i, '')
+        puts "#{TOOL_STYLE}  💎 #{expr}#{RESET}"
+        begin
+          result = eval(expr, binding, '(richard)', 1)  # rubocop:disable Security/Eval
+          puts "#{CONTENT_STYLE}  => #{result.inspect}#{RESET}"
+        rescue => e
+          puts "\e[31m  ❌ #{e.class}: #{e.message}#{RESET}"
+        end
+      when :show_policy
+        show_policy_info
       else
         process_prompt(input)
       end
       nil
+    end
+
+    def show_policy_info
+      policy_name = @policy || :console
+      puts
+      puts "#{TOOL_STYLE}  🛡️  Active Policy: :#{policy_name}#{RESET}"
+      puts "#{DIM_STYLE}  ╭──────────────────────────────────────────╮#{RESET}"
+      puts "#{DIM_STYLE}  │  ✅ AUTO-ALLOW                           │#{RESET}"
+      puts "#{DIM_STYLE}  │  #{RESET}  Read tools (view_file, grep, list_dir)"
+      puts "#{DIM_STYLE}  │  #{RESET}  Safe cmds (ls, pwd, echo, cat, head...)"
+      puts "#{DIM_STYLE}  │  #{RESET}  Safe git (status, log, diff, branch)"
+      puts "#{DIM_STYLE}  │                                          │#{RESET}"
+      puts "#{TOOL_STYLE}  │  ⚠️  CONFIRM (ASK)                       │#{RESET}"
+      puts "#{DIM_STYLE}  │  #{RESET}  Write tools (file_edit, write_to_file)"
+      puts "#{DIM_STYLE}  │  #{RESET}  All other shell commands"
+      puts "#{DIM_STYLE}  │                                          │#{RESET}"
+      puts "\e[31m  │  🚫 HARD DENY (BLOCKED)                  │#{RESET}"
+      puts "#{DIM_STYLE}  │  #{RESET}  rm -rf, mkfs, dd, shutdown, reboot"
+      puts "#{DIM_STYLE}  │  #{RESET}  git push --force, git reset --hard"
+      puts "#{DIM_STYLE}  ╰──────────────────────────────────────────╯#{RESET}"
+      puts "#{DIM_STYLE}  📂 workspace: #{@workspace || Dir.pwd}#{RESET}"
+      puts "#{DIM_STYLE}  Override: Console.new(policy: :turbo)#{RESET}"
+      puts
     end
 
     def process_prompt(prompt)
