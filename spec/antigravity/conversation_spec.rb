@@ -308,4 +308,54 @@ RSpec.describe Antigravity::Conversation do
       expect(conv.turn_count).to eq(2)
     end
   end
+
+  describe '#parse_builtin_tool_text' do
+    # parse_builtin_tool_text is private, so we test via send
+    let(:conv) do
+      ws = double('ws')
+      allow(ws).to receive(:connected?).and_return(true)
+      described_class.new(ws_client: ws, tool_runner: nil, hooks: nil)
+    end
+
+    it 'parses "Web search for prime counts" as WebSearch' do
+      name, params = conv.send(:parse_builtin_tool_text, 'Web search for prime counts')
+      expect(name).to eq('WebSearch')
+      expect(params).to include('prime counts')
+    end
+
+    it 'parses "Read /etc/hosts" as Read' do
+      name, params = conv.send(:parse_builtin_tool_text, 'Read /etc/hosts')
+      expect(name).to eq('Read')
+      expect(params).to include('/etc/hosts')
+    end
+
+    it 'parses "Running `ls -la`" as RunCommand' do
+      name, params = conv.send(:parse_builtin_tool_text, 'Running `ls -la`')
+      expect(name).to eq('RunCommand')
+      expect(params).to include('ls -la')
+    end
+
+    it 'parses "Edit /path/to/file.rb" as Edit' do
+      name, params = conv.send(:parse_builtin_tool_text, 'Edit /path/to/file.rb')
+      expect(name).to eq('Edit')
+      expect(params).to include('/path/to/file.rb')
+    end
+
+    it 'parses "Grep patterns in /src" as Search' do
+      name, params = conv.send(:parse_builtin_tool_text, 'Grep patterns in /src')
+      expect(name).to eq('Search')
+      expect(params).to include('patterns')
+    end
+
+    it 'returns empty for nil/blank text' do
+      name, params = conv.send(:parse_builtin_tool_text, '')
+      expect(name).to eq('')
+    end
+
+    it 'handles generic text by capitalizing first word' do
+      name, params = conv.send(:parse_builtin_tool_text, 'Analyzing code quality')
+      expect(name).to eq('Analyzing')
+      expect(params).to include('code quality')
+    end
+  end
 end

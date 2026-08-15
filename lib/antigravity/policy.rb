@@ -100,6 +100,7 @@ module Antigravity
     def self.preset(name)
       case name.to_sym
       when :cautious then cautious
+      when :console  then console
       when :default  then default
       when :turbo    then turbo
       when :test     then test
@@ -162,6 +163,30 @@ module Antigravity
         deny :run_command, when: cmd(*DESTRUCTIVE_GIT_CMDS)
         confirm :run_command, when: cmd(*RISKY_CMDS)
         WRITE_TOOLS.each { |t| confirm t, when: path(*SENSITIVE_FILES) }
+      end
+    end
+
+    # 🎮 Console — interactive REPL mode. Reads free, ASK for everything else.
+    # The user is at the keyboard, so confirm is fast. Safety first.
+    # Best for: ♦agy> interactive console sessions.
+    def self.console
+      define do
+        deny_all
+
+        # Reads: always free
+        READONLY_TOOLS.each { |t| allow t }
+        allow :run_command, when: cmd(*SAFE_CMDS, *SAFE_GIT_CMDS, *READ_CMDS)
+
+        # Writes: ASK (user is at keyboard, fast confirm)
+        WRITE_TOOLS.each { |t| confirm t }
+        WRITE_TOOLS.each { |t| allow t, when: path(*SANDBOX_DIRS) }
+
+        # Shell: ASK by default, DENY catastrophic + rm -rf (always!)
+        deny :run_command, when: cmd(*CATASTROPHIC_CMDS)
+        deny :run_command, when: cmd(*DESTRUCTIVE_GIT_CMDS)
+        deny :run_command, when: cmd('rm -rf')  # ALWAYS blocked in console
+        deny :run_command, when: cmd(*RISKY_CMDS)
+        confirm :run_command
       end
     end
 

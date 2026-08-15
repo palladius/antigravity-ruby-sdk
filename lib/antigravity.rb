@@ -30,6 +30,7 @@ require_relative "antigravity/conversation"
 require_relative "antigravity/colors"
 require_relative "antigravity/lifecycle_logger"
 require_relative "antigravity/diagnostics"
+require_relative "antigravity/console"
 require_relative "antigravity/agent"
 
 module Antigravity

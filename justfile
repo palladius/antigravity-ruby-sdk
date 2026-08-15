@@ -53,6 +53,14 @@ rv-doctor:
 rv-doctor-verbose:
     rv run ruby examples/rv/rv_init.rb --verbose
 
+# Interactive console REPL — thinking in gray, response in bold cyan
+rv-console:
+    rv run ruby examples/10_console.rb
+
+# Interactive console with workspace
+rv-console-workspace DIR=".":
+    rv run ruby examples/10_console.rb {{DIR}}
+
 # Simple LLM chat — no workspace, fast
 rv-chat:
     rv run ruby examples/04_simple_llm_chat.rb
@@ -87,6 +95,10 @@ rv-e2e-telegram-debug:
 # E2E test for nanobanana image generation pipeline
 rv-e2e-nanobanana:
     rv run ruby examples/09_e2e_nanobanana.rb
+
+# E2E test for Richard console multi-turn piped input
+rv-e2e-multiturn-console:
+    rv run ruby examples/11_e2e_console_pipe.rb
 
 # Run all rv examples (excludes telegram — it's a long-running daemon)
 rv-examples: rv-chat rv-workspace rv-skill-audit rv-skill-sre-postmortem
