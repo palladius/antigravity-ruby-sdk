@@ -1,3 +1,5 @@
-- [ ] **Track: Add MCP Server Support** *Link: [conductor/tracks/mcp_support_20260811/index.md](./tracks/mcp_support_20260811/index.md)*
-- [ ] **Track: Extract Channel Transport Layer** *Link: [conductor/tracks/channel_refactor_20260812/index.md](./tracks/channel_refactor_20260812/index.md)*
-- [ ] **Track: Declarative Policy DSL (GHI #21)** *Link: [conductor/tracks/policy_dsl_20260814/index.md](./tracks/policy_dsl_20260814/index.md)*
+# Tracks Registry
+
+| ID | Title | Status | GHI | Priority |
+|----|-------|--------|-----|----------|
+| T001 | 🧠 Thinking Tokens + Interactive Console | IN PROGRESS | #8 | P2 |

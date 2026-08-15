@@ -1,20 +1,12 @@
 # Product Guidelines
 
 ## Voice & Tone
-
-- **Technical but approachable**: Documentation reads like a senior Ruby developer explaining to a peer
-- **Concise**: Prefer code examples over prose
-- **Opinionated**: Follow Ruby conventions and the "Omakase" philosophy
-
-## Code Style
-
-- Follow RuboCop defaults with minor project-specific overrides
-- Use block syntax (`Agent.open { |a| ... }`) as the primary API pattern
-- Prefer keyword arguments for configuration
-- Use `snake_case` for methods, `CamelCase` for classes
+- Developer-first, Ruby-idiomatic
+- Colorful terminal output with emojis (gitmoji conventions)
+- Terse but informative error messages
 
 ## UX Principles
-
-- **Sensible defaults**: Everything should work with minimal configuration
-- **Progressive disclosure**: Simple things are simple, complex things are possible
-- **Fail loudly**: Clear error messages with actionable guidance
+- **POLA** (Principle of Least Astonishment): Show what's happening during long operations
+- **Colorful printfs**: Every user-facing output should be emoji-rich and colorful
+- **Streaming by default**: Never buffer when you can stream
+- **Zero-config**: Work out of the box with `rv run`
