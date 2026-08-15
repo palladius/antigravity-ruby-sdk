@@ -1,6 +1,7 @@
-# 🎬 Richard Console Demo — REAL VHS Tape v2
+# 🎬 Richard Console Demo — REAL VHS Tape v5
 # Drives the ACTUAL console with live Gemini API.
-# Now with: 🟢/🔴 policy visualization + shorter LLM pause
+# RULE: NO SINGLE QUOTES in Type commands! VHS eats them.
+# Use Ruby %() syntax instead.
 #
 # Usage: cd ~/git/antigravity-ruby-sdk && vhs demos/richard-console/demo.tape
 
@@ -60,17 +61,17 @@ Type "config.select { |k,_| [:version, :workspace, :model].include?(k) }"
 Enter
 Sleep 2s
 
-# 🟢🔴 Policy visualization with emoji!
-Type "Antigravity::Policy::SAFE_CMDS.each { |c| puts '  🟢 ' + c.to_s }"
+# 🟢🔴 Policy visualization — %() avoids VHS single-quote bug!
+Type "Antigravity::Policy::SAFE_CMDS.each { |c| puts %(  🟢 ) + c.to_s }"
 Enter
-Sleep 2s
+Sleep 3s
 
-Type "Antigravity::Policy::CATASTROPHIC_CMDS.each { |c| puts '  🔴 ' + c.to_s }"
+Type "Antigravity::Policy::CATASTROPHIC_CMDS.each { |c| puts %(  🔴 ) + c.to_s }"
 Enter
-Sleep 2s
+Sleep 3s
 
-# Smart setters
-Type "cd '~/git'"
+# Smart setters — %() for cd too!
+Type "cd %(~/git)"
 Enter
 Sleep 1s
 
@@ -83,7 +84,7 @@ Enter
 Sleep 2s
 
 # Reset
-Type "cd '~/git/antigravity-ruby-sdk'"
+Type "cd %(~/git/antigravity-ruby-sdk)"
 Enter
 Sleep 1s
 
