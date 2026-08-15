@@ -7,6 +7,7 @@ RSpec.describe "Workflow Maintenance Prompts" do
 
   let(:expected_prompts) do
     %w[
+      daily-ai-job.md
       search-for-vulnerabilities.md
       verify-functionality-and-docs-in-sync.md
       assert-ruby-elegance-and-beauty-are-preserved.md

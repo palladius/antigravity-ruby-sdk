@@ -82,3 +82,9 @@ rv-e2e-nanobanana:
 
 # Run all rv examples (excludes telegram — it's a long-running daemon)
 rv-examples: rv-chat rv-workspace rv-skill-audit rv-skill-sre-postmortem
+
+# Run the daily AI maintenance & audit job
+daily-ai-job:
+    @echo "☀️ Running Daily AI Job..."
+    just test
+    just rv-skill-audit lib
