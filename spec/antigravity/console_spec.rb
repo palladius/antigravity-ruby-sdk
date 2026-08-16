@@ -230,4 +230,70 @@ RSpec.describe Antigravity::Console do
       expect(plain).to include('2.3s')
     end
   end
+
+  describe '#workspace_scan' do
+    let(:console) { described_class.new }
+    let(:tmpdir) { Dir.mktmpdir('ws-scan-test') }
+
+    after { FileUtils.remove_entry(tmpdir) }
+
+    it 'returns a hash with file_count and size keys' do
+      result = console.send(:workspace_scan, tmpdir)
+      expect(result).to be_a(Hash)
+      expect(result).to have_key(:file_count)
+      expect(result).to have_key(:size)
+    end
+
+    it 'counts files correctly' do
+      FileUtils.touch(File.join(tmpdir, 'a.rb'))
+      FileUtils.touch(File.join(tmpdir, 'b.rb'))
+      FileUtils.mkdir_p(File.join(tmpdir, 'sub'))
+      FileUtils.touch(File.join(tmpdir, 'sub', 'c.rb'))
+      result = console.send(:workspace_scan, tmpdir)
+      expect(result[:file_count]).to eq(3)
+    end
+
+    it 'detects Gemfile as Ruby stack' do
+      File.write(File.join(tmpdir, 'Gemfile'), 'source "https://rubygems.org"')
+      result = console.send(:workspace_scan, tmpdir)
+      expect(result[:detected]).to include(a_string_matching(/Gemfile.*Ruby/i))
+    end
+
+    it 'detects package.json as Node stack' do
+      File.write(File.join(tmpdir, 'package.json'), '{}')
+      result = console.send(:workspace_scan, tmpdir)
+      expect(result[:detected]).to include(a_string_matching(/package\.json.*Node/i))
+    end
+
+    it 'detects GEMINI.md' do
+      File.write(File.join(tmpdir, 'GEMINI.md'), '# Rules')
+      result = console.send(:workspace_scan, tmpdir)
+      expect(result[:detected]).to include(a_string_matching(/GEMINI\.md/))
+    end
+
+    it 'detects .gemini/ directory' do
+      FileUtils.mkdir_p(File.join(tmpdir, '.gemini'))
+      File.write(File.join(tmpdir, '.gemini', 'settings.json'), '{}')
+      result = console.send(:workspace_scan, tmpdir)
+      expect(result[:detected]).to include(a_string_matching(/\.gemini/))
+    end
+
+    it 'detects git branch' do
+      system("cd #{tmpdir} && git init -q && git checkout -q -b test-branch 2>/dev/null && git commit -q --allow-empty -m init 2>/dev/null")
+      result = console.send(:workspace_scan, tmpdir)
+      expect(result[:git_branch]).to eq('test-branch')
+    end
+
+    it 'reads VERSION file' do
+      File.write(File.join(tmpdir, 'VERSION'), '1.2.3')
+      result = console.send(:workspace_scan, tmpdir)
+      expect(result[:detected]).to include(a_string_matching(/VERSION.*1\.2\.3/))
+    end
+
+    it 'returns empty detected for bare directory' do
+      result = console.send(:workspace_scan, tmpdir)
+      expect(result[:detected]).to be_empty
+    end
+  end
 end
+
