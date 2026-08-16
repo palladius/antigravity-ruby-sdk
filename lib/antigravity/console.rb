@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'shellwords'
 # Interactive REPL console for Antigravity SDK.
 # Renders thinking in gray italic, responses in bold cyan.
 # Tool calls shown inline. Ctrl-O toggles thinking expansion.
@@ -35,6 +36,7 @@ module Antigravity
       @model = model || Antigravity.config.default_model
       @policy = policy || :console
       @thinking_expanded = false
+      @workspace_analysis = true
       @agent = nil
       @turn_count = 0
       @tool_start_times = {}
@@ -48,6 +50,7 @@ module Antigravity
         policy: @policy,
         model: @model,
         thinking: @thinking_expanded ? :expanded : :collapsed,
+        workspace_analysis: @workspace_analysis,
         turn_count: @turn_count,
         conv_id: @agent&.conversation&.conversation_id,
         api_key: mask_secret(ENV['GEMINI_API_KEY']),
@@ -75,10 +78,20 @@ module Antigravity
       @workspace = expanded
       @agent&.workspace = expanded if @agent.respond_to?(:workspace=)
       puts "\e[2m  📂 Workspace → #{expanded}\e[0m"
+      scan = workspace_scan(expanded)
+      print_workspace_scan(scan)
+      workspace_llm_analysis!(expanded, scan)
       @workspace
     end
     alias_method :cd, :set_workspace
 
+    # Toggle LLM workspace analysis on cd
+    def set_workspace_analysis(enabled = true)
+      @workspace_analysis = !!enabled
+      state = @workspace_analysis ? 'ON 🤖' : 'OFF'
+      puts "\e[2m  🔬 Workspace analysis: #{state}\e[0m"
+      @workspace_analysis
+    end
     # Change policy
     def set_policy(name)
       @policy = name.to_sym
@@ -575,5 +588,112 @@ module Antigravity
       )
       puts
     end
+
+    # ─── Workspace Discovery ─────────────────────────────────
+
+    # Well-known files to detect with labels
+    WELL_KNOWN_FILES = {
+      'Gemfile'          => '💎 Ruby',
+      'package.json'     => '📦 Node.js',
+      'pyproject.toml'   => '🐍 Python (uv/poetry)',
+      'requirements.txt' => '🐍 Python',
+      'go.mod'           => '🐹 Go',
+      'Cargo.toml'       => '🦀 Rust',
+      'GEMINI.md'        => '🤖 Agent rules',
+      'AGENTS.md'        => '🤖 Agent rules',
+      'justfile'         => '⚙️ Just',
+      'Makefile'         => '⚙️ Make',
+      'Rakefile'         => '⚙️ Rake',
+      'Dockerfile'       => '🐳 Docker',
+      'docker-compose.yml' => '🐳 Docker Compose',
+    }.freeze
+
+    # Scan a workspace directory and return a summary hash.
+    # Purely deterministic — no LLM calls.
+    def workspace_scan(path)
+      detected = []
+
+      # File count (excluding hidden dirs like .git)
+      file_count = Dir.glob(File.join(path, '**', '*'), File::FNM_DOTMATCH)
+                      .count { |f| File.file?(f) && !f.include?('/.git/') }
+
+      # Size (human-readable)
+      size = `du -sh #{Shellwords.escape(path)} 2>/dev/null`.split("\t").first&.strip || '?'
+
+      # Detect well-known files
+      WELL_KNOWN_FILES.each do |filename, label|
+        full = File.join(path, filename)
+        detected << "#{filename} (#{label})" if File.exist?(full)
+      end
+
+      # Detect .gemini/ directory
+      gemini_dir = File.join(path, '.gemini')
+      if Dir.exist?(gemini_dir)
+        settings = File.exist?(File.join(gemini_dir, 'settings.json'))
+        detected << ".gemini/ (#{settings ? 'settings.json found' : 'configured'})"
+      end
+
+      # Detect .agents/ directory
+      agents_dir = File.join(path, '.agents')
+      detected << '.agents/ (agent skills)' if Dir.exist?(agents_dir)
+
+      # Read VERSION file
+      version_file = File.join(path, 'VERSION')
+      if File.exist?(version_file)
+        ver = File.read(version_file).strip
+        detected << "VERSION: #{ver}"
+      end
+
+      # Git branch
+      git_branch = nil
+      git_dir = File.join(path, '.git')
+      if Dir.exist?(git_dir)
+        git_branch = `cd #{Shellwords.escape(path)} && git rev-parse --abbrev-ref HEAD 2>/dev/null`.strip
+        git_branch = nil if git_branch.empty?
+      end
+
+      {
+        file_count: file_count,
+        size: size,
+        detected: detected,
+        git_branch: git_branch,
+      }
+    end
+
+    # Pretty-print workspace scan results to console
+    def print_workspace_scan(scan)
+      parts = ["#{scan[:file_count]} files", scan[:size]]
+      parts << "branch:#{scan[:git_branch]}" if scan[:git_branch]
+      puts "#{DIM_STYLE}  📊 #{parts.join(' | ')}#{RESET}"
+
+      scan[:detected].each do |item|
+        puts "#{DIM_STYLE}     🔍 #{item}#{RESET}"
+      end
+    end
+
+    # Ask the LLM to describe the workspace. Streams response inline.
+    # Only works when @agent is connected and @workspace_analysis is true.
+    def workspace_llm_analysis!(path, scan)
+      return unless @workspace_analysis && @agent
+
+      # Build a concise context from the scan
+      context_parts = ["Workspace: #{path}"]
+      context_parts << "#{scan[:file_count]} files, #{scan[:size]}"
+      context_parts << "Git branch: #{scan[:git_branch]}" if scan[:git_branch]
+      context_parts += scan[:detected].map { |d| "  - #{d}" } unless scan[:detected].empty?
+
+      prompt = <<~PROMPT
+        I just cd'd into a new workspace. Here is what I know:
+        #{context_parts.join("\n")}
+
+        In 3-5 lines, tell me: What is this project? What's the tech stack and architecture?
+        Be concise and specific. No greetings.
+      PROMPT
+
+      puts "#{DIM_STYLE}  🤖 Analyzing workspace...#{RESET}"
+      process_prompt(prompt)
+    end
   end
 end
+
+
