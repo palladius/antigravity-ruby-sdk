@@ -1,7 +1,7 @@
-# 🎬 Richard Console Demo — REAL VHS Tape v5
+# 🎬 Richard Console Demo — REAL VHS Tape v6
 # Drives the ACTUAL console with live Gemini API.
 # RULE: NO SINGLE QUOTES in Type commands! VHS eats them.
-# Use Ruby %() syntax instead.
+# NEW: Workspace discovery on cd (scan + LLM analysis)
 #
 # Usage: cd ~/git/antigravity-ruby-sdk && vhs demos/richard-console/demo.tape
 
@@ -27,7 +27,7 @@ Enter
 Sleep 10s
 
 # ═══════════════════════════════════════════════════════════
-# ACT 2: Quick LLM chat (shorter pause)
+# ACT 2: Quick LLM chat
 # ═══════════════════════════════════════════════════════════
 Type "Hello! What can you do?"
 Enter
@@ -45,23 +45,18 @@ Enter
 Sleep 2s
 
 # ═══════════════════════════════════════════════════════════
-# ACT 4: /irb — THE MATRIX (100% deterministic!)
+# ACT 4: /irb — THE MATRIX
 # ═══════════════════════════════════════════════════════════
 Type "/irb"
 Enter
 Sleep 2s
 
-# Full config hash (now shows REAL model name!)
-Type "config"
+# Config slice
+Type "config.select { |k,_| [:version, :model, :workspace_analysis].include?(k) }"
 Enter
 Sleep 2s
 
-# Ruby power: .select on hash
-Type "config.select { |k,_| [:version, :workspace, :model].include?(k) }"
-Enter
-Sleep 2s
-
-# 🟢🔴 Policy visualization — %() avoids VHS single-quote bug!
+# 🟢🔴 Policy visualization
 Type "Antigravity::Policy::SAFE_CMDS.each { |c| puts %(  🟢 ) + c.to_s }"
 Enter
 Sleep 3s
@@ -70,25 +65,22 @@ Type "Antigravity::Policy::CATASTROPHIC_CMDS.each { |c| puts %(  🔴 ) + c.to_s
 Enter
 Sleep 3s
 
-# Smart setters — %() for cd too!
-Type "cd %(~/git)"
-Enter
-Sleep 1s
+# ═══════════════════════════════════════════════════════════
+# ACT 5: 🌟 Workspace Discovery — THE WOW MOMENT
+# ═══════════════════════════════════════════════════════════
 
-Type "set_policy :turbo"
+# cd to a different project — triggers scan + LLM analysis!
+Type "cd %(~/git/ricc.rocks)"
 Enter
-Sleep 1s
+Sleep 12s
 
-Type "config.select { |k,_| [:workspace, :policy].include?(k) }"
-Enter
-Sleep 2s
-
-# Reset
+# cd back — different scan results!
 Type "cd %(~/git/antigravity-ruby-sdk)"
 Enter
-Sleep 1s
+Sleep 12s
 
-Type "set_policy :console"
+# Show it can be toggled off
+Type "set_workspace_analysis false"
 Enter
 Sleep 1s
 
