@@ -114,46 +114,91 @@ module Antigravity
 
     # Parses a Gemini CLI config.json file to import auto-approved permissions.
     # @param file_path [String] Path to config.json (defaults to ~/.gemini/config/config.json)
+    # @param limit [Integer, nil] Optional max number of permissions to import (useful for testing)
     # @return [Policy]
-    def self.from_gemini_config(file_path = nil)
-      file_path = File.expand_path(file_path || '~/.gemini/config/config.json')
-      return new unless File.exist?(file_path)
-
-      data = JSON.parse(File.read(file_path))
-      perms = data['autoApprovedPermissions'] || data['auto_approved_permissions'] || []
-
-      define do
-        perms.each do |perm|
-          case perm
-          when /^unsandboxed\((.+)\)$/, /^command\((.+)\)$/
-            cmd_str = $1
-            allow :run_command, when: cmd(cmd_str)
-          when /^read_file\((.+)\)$/
-            file_p = $1
-            allow :read_file, when: path(file_p)
-          when /^write_file\((.+)\)$/
-            file_p = $1
-            allow :write_file, when: path(file_p)
-          when /^mcp\((.+)\)$/
-            mcp_tool = $1
-            allow mcp_tool.to_sym
-          end
-        end
-      end
+    def self.from_gemini_config(file_path = nil, limit: nil)
+      policy = new
+      policy.merge_gemini_config(file_path, limit: limit)
+      policy
     end
 
-    # Serializes the policy into a human-readable Ruby DSL code string.
-    # Useful for blogging, documentation, and sharing in AGENTS.md.
+    # Merges permissions from a Gemini CLI config.json into this Policy instance.
+    # @param file_path [String] Path to config.json
+    # @param limit [Integer, nil] Optional limit on permissions to merge
+    # @return [self]
+    def merge_gemini_config(file_path = nil, limit: nil)
+      file_path = File.expand_path(file_path || '~/.gemini/config/config.json')
+      return self unless File.exist?(file_path)
+
+      data = JSON.parse(File.read(file_path, encoding: 'utf-8'))
+      gpg = data.dig('userSettings', 'globalPermissionGrants')
+      perms = data['autoApprovedPermissions'] || data['auto_approved_permissions']
+      if gpg.is_a?(Hash)
+        perms ||= gpg['allow'] || gpg['approved']
+      elsif gpg.is_a?(Array)
+        perms ||= gpg
+      end
+      perms ||= []
+      perms = perms.take(limit) if limit && limit > 0
+
+      cmds = []
+      read_paths = []
+      write_paths = []
+      mcp_tools = []
+
+      perms.each do |perm|
+        case perm
+        when /^unsandboxed\((.+)\)$/, /^command\((.+)\)$/
+          cmds << $1
+        when /^read_file\((.+)\)$/
+          read_paths << $1
+        when /^write_file\((.+)\)$/
+          write_paths << $1
+        when /^mcp\((.+)\)$/
+          mcp_tools << $1
+        end
+      end
+
+      allow :run_command, when: cmd(*cmds) unless cmds.empty?
+      allow :read_file, when: path(*read_paths) unless read_paths.empty?
+      allow :write_file, when: path(*write_paths) unless write_paths.empty?
+      mcp_tools.uniq.each { |t| allow t.to_sym }
+
+      self
+    end
+
+    # Serializes the policy into a clean, DRY human-readable Ruby DSL code string.
+    # Groups paths & commands into compact arrays for maximum readability.
     def to_ruby_dsl
       buf = ['Antigravity.policy do']
       @rules.each do |rule|
         action_str = rule.action.to_s
-        tool_str = rule.tool_name ? ":#{rule.tool_name}" : 'nil'
-        if tool_str == 'nil' && action_str == 'allow'
+        tool_str = rule.tool_name ? ":#{rule.tool_name}" : nil
+        cond = rule.condition
+
+        if tool_str.nil? && action_str == 'allow'
           buf << '  allow_all'
-        elsif tool_str == 'nil' && action_str == 'deny'
+        elsif tool_str.nil? && action_str == 'deny'
           buf << '  deny_all'
-        else
+        elsif cond.respond_to?(:type) && cond.type == :cmd
+          pats = cond.patterns
+          if pats.length > 1
+            buf << "  #{action_str} #{tool_str}, when: cmd(["
+            pats.each { |p| buf << "    '#{p}'," }
+            buf << '  ])'
+          elsif pats.length == 1
+            buf << "  #{action_str} #{tool_str}, when: cmd('#{pats.first}')"
+          end
+        elsif cond.respond_to?(:type) && cond.type == :path
+          gls = cond.globs
+          if gls.length > 1
+            buf << "  #{action_str} #{tool_str}, when: path(["
+            gls.each { |g| buf << "    '#{g}'," }
+            buf << '  ])'
+          elsif gls.length == 1
+            buf << "  #{action_str} #{tool_str}, when: path('#{gls.first}')"
+          end
+        elsif tool_str
           buf << "  #{action_str} #{tool_str}"
         end
       end
@@ -263,7 +308,7 @@ module Antigravity
 
     def cmd(*patterns)
       patterns = patterns.flatten
-      ->(ctx) do
+      pred = ->(ctx) do
         args = ctx[:args]
         cmd_arg = args[:command_line] || args['command_line'] || args[:CommandLine] || args['CommandLine']
         return false unless cmd_arg
@@ -271,11 +316,14 @@ module Antigravity
         cmd_arg = cmd_arg.to_s
         patterns.any? { |p| cmd_arg.include?(p.to_s) }
       end
+      pred.define_singleton_method(:type) { :cmd }
+      pred.define_singleton_method(:patterns) { patterns }
+      pred
     end
 
     def path(*globs)
       globs = globs.flatten
-      ->(ctx) do
+      pred = ->(ctx) do
         args = ctx[:args]
         path_arg = args[:path] || args['path'] ||
                    args[:file] || args['file'] ||
@@ -287,6 +335,9 @@ module Antigravity
         path_arg = path_arg.to_s
         globs.any? { |g| File.fnmatch?(g.to_s, path_arg) }
       end
+      pred.define_singleton_method(:type) { :path }
+      pred.define_singleton_method(:globs) { globs }
+      pred
     end
 
     def args_match(**matchers)

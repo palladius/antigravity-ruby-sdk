@@ -43,3 +43,16 @@ namespace :harness do
     puts "✅ Updated at #{path}"
   end
 end
+
+namespace :antigravity do
+  desc "Import permissions from Gemini config.json and output DRY Ruby DSL (args: path, limit)"
+  task :policy_import, [:path, :limit] do |_t, args|
+    require "antigravity"
+    config_path = args[:path] || "~/.gemini/config/config.json"
+    limit = args[:limit] ? args[:limit].to_i : nil
+
+    puts "🛡️ Importing Gemini CLI policy from: #{config_path}#{limit ? " (limit: #{limit})" : ''}"
+    policy = Antigravity::Policy.from_gemini_config(config_path, limit: limit)
+    puts "\n" + policy.to_ruby_dsl
+  end
+end

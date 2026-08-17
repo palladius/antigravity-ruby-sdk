@@ -42,19 +42,39 @@ RSpec.describe "Riccardo Policy & Gemini Config Importer" do
     ensure
       tmp_config.unlink
     end
+
+    it "respects the limit argument for gradual adoption" do
+      tmp_config = Tempfile.new(["config", ".json"])
+      tmp_config.write({
+        "autoApprovedPermissions" => [
+          "unsandboxed(gcloud)",
+          "read_file(/Users/ricc/git/personal)",
+          "write_file(/Users/ricc/git/justfile)"
+        ]
+      }.to_json)
+      tmp_config.close
+
+      imported = Antigravity::Policy.from_gemini_config(tmp_config.path, limit: 1)
+      expect(imported.evaluate(:run_command, { command_line: "gcloud" })[:status]).to eq(:allow)
+      expect(imported.evaluate(:read_file, { path: "/Users/ricc/git/personal" })[:status]).to eq(:deny)
+    ensure
+      tmp_config.unlink
+    end
   end
 
   describe "Policy#to_ruby_dsl" do
-    it "exports policy rules to valid Ruby DSL syntax string" do
+    it "exports policy rules to valid Ruby DSL syntax string with DRY array grouping" do
       pol = Antigravity::Policy.define do
+        allow :run_command, when: cmd(["gcloud", "kubectl"])
         allow :read_file
-        deny :run_command
       end
 
       dsl_code = pol.to_ruby_dsl
       expect(dsl_code).to include("Antigravity.policy do")
+      expect(dsl_code).to include("allow :run_command, when: cmd([")
+      expect(dsl_code).to include("'gcloud'")
+      expect(dsl_code).to include("'kubectl'")
       expect(dsl_code).to include("allow :read_file")
-      expect(dsl_code).to include("deny :run_command")
     end
   end
 end
