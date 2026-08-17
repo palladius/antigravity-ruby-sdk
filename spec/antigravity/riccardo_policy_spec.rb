@@ -92,4 +92,25 @@ RSpec.describe "Riccardo Policy & Gemini Config Importer" do
       FileUtils.rm_f(out_path) if defined?(out_path)
     end
   end
+
+  describe "out/sample_policy.rb" do
+    it "evaluates rules for read/write paths and .env / GEMINI.md protection" do
+      sample_path = File.expand_path("../../out/sample_policy.rb", __dir__)
+      expect(File.exist?(sample_path)).to be(true)
+
+      policy = eval(File.read(sample_path)) # rubocop:disable Security/Eval
+      expect(policy).to be_a(Antigravity::Policy)
+
+      # Sensitive files: allow read, deny write
+      expect(policy.evaluate(:read_file, { target_file: ".env" })[:status]).to eq(:allow)
+      expect(policy.evaluate(:write_file, { target_file: ".env" })[:status]).to eq(:deny)
+
+      expect(policy.evaluate(:read_file, { target_file: "GEMINI.md" })[:status]).to eq(:allow)
+      expect(policy.evaluate(:write_file, { target_file: "GEMINI.md" })[:status]).to eq(:deny)
+
+      # Read & write directories
+      expect(policy.evaluate(:read_file, { path: "docs/USER_GUIDE.md" })[:status]).to eq(:allow)
+      expect(policy.evaluate(:write_file, { path: "out/report.txt" })[:status]).to eq(:allow)
+    end
+  end
 end
