@@ -77,5 +77,19 @@ RSpec.describe "Riccardo Policy & Gemini Config Importer" do
       expect(dsl_code).to include("'kubectl'")
       expect(dsl_code).to include("allow :read_file, when: path('~/git/sre')")
     end
+
+    it "saves the Ruby DSL policy to a target file" do
+      pol = Antigravity::Policy.define do
+        allow :read_file
+      end
+      out_path = File.expand_path("../../tmp/test_policy.rb", __dir__)
+      FileUtils.rm_f(out_path)
+
+      saved_file = pol.save_ruby_dsl(out_path)
+      expect(File.exist?(saved_file)).to be(true)
+      expect(File.read(saved_file)).to include("allow :read_file")
+    ensure
+      FileUtils.rm_f(out_path) if defined?(out_path)
+    end
   end
 end

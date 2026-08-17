@@ -209,6 +209,18 @@ module Antigravity
       buf.join("\n")
     end
 
+    # Saves the Ruby DSL policy to a file (defaults to out/sample_policy.rb).
+    # Creates parent directories automatically.
+    # @param output_file [String] Target file path
+    # @return [String] Absolute path to saved file
+    def save_ruby_dsl(output_file = 'out/sample_policy.rb')
+      require 'fileutils'
+      expanded = File.expand_path(output_file)
+      FileUtils.mkdir_p(File.dirname(expanded))
+      File.write(expanded, to_ruby_dsl + "\n", encoding: 'utf-8')
+      expanded
+    end
+
     # 🔒 Cautious — read-only free, confirm everything else, hard-deny destructive.
     # Best for: untrusted environments, production agents.
     # NOTE: cat/head/tail/ls NOT in safe list — they can bypass view_file deny rules.

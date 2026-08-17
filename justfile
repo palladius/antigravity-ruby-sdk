@@ -89,6 +89,6 @@ daily-ai-job:
     just test
     just rv-skill-audit lib
 
-# Import Gemini CLI permissions into a DRY Ruby DSL policy (optional limit, e.g. just policy-import 10)
-policy-import LIMIT="":
-    bundle exec rake "antigravity:policy_import[~/.gemini/config/config.json,{{LIMIT}}]"
+# Import Gemini CLI permissions into a DRY Ruby DSL policy (e.g. just policy-import 10 out/sample_policy.rb)
+policy-import LIMIT="" OUTPUT="out/sample_policy.rb":
+    bundle exec rake "antigravity:policy_import[~/.gemini/config/config.json,{{LIMIT}},{{OUTPUT}}]"
