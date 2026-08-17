@@ -168,8 +168,11 @@ module Antigravity
     end
 
     # Serializes the policy into a clean, DRY human-readable Ruby DSL code string.
-    # Groups paths & commands into compact arrays for maximum readability.
+    # Groups paths & commands using elegant paths(...) and cmds(...) DSL syntax.
     def to_ruby_dsl
+      home = Dir.home
+      shrink = ->(p) { p.to_s.start_with?(home) ? p.to_s.sub(home, '~') : p.to_s }
+
       buf = ['Antigravity.policy do']
       @rules.each do |rule|
         action_str = rule.action.to_s
@@ -183,20 +186,20 @@ module Antigravity
         elsif cond.respond_to?(:type) && cond.type == :cmd
           pats = cond.patterns
           if pats.length > 1
-            buf << "  #{action_str} #{tool_str}, when: cmd(["
+            buf << "  #{action_str} #{tool_str}, when: cmds("
             pats.each { |p| buf << "    '#{p}'," }
-            buf << '  ])'
+            buf << '  )'
           elsif pats.length == 1
             buf << "  #{action_str} #{tool_str}, when: cmd('#{pats.first}')"
           end
         elsif cond.respond_to?(:type) && cond.type == :path
           gls = cond.globs
           if gls.length > 1
-            buf << "  #{action_str} #{tool_str}, when: path(["
-            gls.each { |g| buf << "    '#{g}'," }
-            buf << '  ])'
+            buf << "  #{action_str} #{tool_str}, when: paths("
+            gls.each { |g| buf << "    '#{shrink.call(g)}'," }
+            buf << '  )'
           elsif gls.length == 1
-            buf << "  #{action_str} #{tool_str}, when: path('#{gls.first}')"
+            buf << "  #{action_str} #{tool_str}, when: path('#{shrink.call(gls.first)}')"
           end
         elsif tool_str
           buf << "  #{action_str} #{tool_str}"
@@ -320,6 +323,7 @@ module Antigravity
       pred.define_singleton_method(:patterns) { patterns }
       pred
     end
+    alias cmds cmd
 
     def path(*globs)
       globs = globs.flatten
@@ -332,13 +336,19 @@ module Antigravity
                    args[:target_file] || args['target_file']
         return false unless path_arg
 
-        path_arg = path_arg.to_s
-        globs.any? { |g| File.fnmatch?(g.to_s, path_arg) }
+        raw_path = path_arg.to_s
+        expanded_path = File.expand_path(raw_path) rescue raw_path
+
+        globs.any? do |g|
+          expanded_g = File.expand_path(g.to_s) rescue g.to_s
+          File.fnmatch?(g.to_s, raw_path) || File.fnmatch?(g.to_s, expanded_path) || File.fnmatch?(expanded_g, expanded_path)
+        end
       end
       pred.define_singleton_method(:type) { :path }
       pred.define_singleton_method(:globs) { globs }
       pred
     end
+    alias paths path
 
     def args_match(**matchers)
       ->(ctx) do

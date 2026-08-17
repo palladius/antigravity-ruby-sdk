@@ -63,18 +63,19 @@ RSpec.describe "Riccardo Policy & Gemini Config Importer" do
   end
 
   describe "Policy#to_ruby_dsl" do
-    it "exports policy rules to valid Ruby DSL syntax string with DRY array grouping" do
+    it "exports policy rules to valid Ruby DSL syntax string with DRY cmds/paths grouping and tilde paths" do
+      home_repo = File.join(Dir.home, "git/sre")
       pol = Antigravity::Policy.define do
-        allow :run_command, when: cmd(["gcloud", "kubectl"])
-        allow :read_file
+        allow :run_command, when: cmds("gcloud", "kubectl")
+        allow :read_file, when: path(home_repo)
       end
 
       dsl_code = pol.to_ruby_dsl
       expect(dsl_code).to include("Antigravity.policy do")
-      expect(dsl_code).to include("allow :run_command, when: cmd([")
+      expect(dsl_code).to include("allow :run_command, when: cmds(")
       expect(dsl_code).to include("'gcloud'")
       expect(dsl_code).to include("'kubectl'")
-      expect(dsl_code).to include("allow :read_file")
+      expect(dsl_code).to include("allow :read_file, when: path('~/git/sre')")
     end
   end
 end
