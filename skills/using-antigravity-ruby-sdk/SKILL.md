@@ -137,16 +137,23 @@ agent.add_skill('./skills/security-audit')
 
 Control tool execution and shell safety using built-in or custom policies:
 
+- `:riccardo` — Custom developer policy auto-allowing `gcloud`, `kubectl`, `just`, `rv`, `agc`, protecting `.env` files, and confirming destructive commands.
 - `:cautious` — Confirms write tools and destructive operations before execution.
 - `:turbo` — Fast mode; auto-allows non-catastrophic shell commands and file operations.
 - `:test` — Sandboxed mode for automated testing environments.
 - `:auto` — Infers policy based on `RAILS_ENV` or `RACK_ENV`.
 
 ```ruby
-Antigravity::Agent.open(policy: :cautious) do |agent|
-  # High-risk tool calls trigger confirmation guards
-  agent.ask('Clean temporary build artifacts in /tmp')
+# Using Riccardo's developer policy preset
+Antigravity::Agent.open(policy: :riccardo) do |agent|
+  agent.ask('Check gcloud auth and project status')
 end
+
+# Importing permissions from Gemini CLI config.json
+policy = Antigravity::Policy.from_gemini_config('~/.gemini/config/config.json')
+
+# Exporting any policy to human-readable Ruby DSL string
+puts policy.to_ruby_dsl
 ```
 
 ---

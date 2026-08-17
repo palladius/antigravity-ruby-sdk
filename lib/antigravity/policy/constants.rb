@@ -139,7 +139,7 @@ module Antigravity
     # ------------------------------------------------------------------
     # 🗺️  Environment → preset mapping (for Policy.auto)
     # ------------------------------------------------------------------
-    PRESET_NAMES = %i[auto cautious default test turbo].freeze
+    PRESET_NAMES = %i[auto cautious default riccardo test turbo].freeze
 
     ENV_MAP = {
       'dev'         => :turbo,

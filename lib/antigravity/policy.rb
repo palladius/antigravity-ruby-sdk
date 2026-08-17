@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+require 'json'
 require_relative 'policy/constants'
+require_relative 'policy/riccardo'
 
 module Antigravity
   # ==========================================================================
@@ -101,12 +103,62 @@ module Antigravity
       case name.to_sym
       when :cautious then cautious
       when :default  then default
+      when :riccardo then riccardo
       when :turbo    then turbo
       when :test     then test
       when :auto     then auto
       else
         raise ArgumentError, "Unknown preset :#{name}. Choose from: #{PRESET_NAMES.map { |n| ":#{n}" }.join(', ')}"
       end
+    end
+
+    # Parses a Gemini CLI config.json file to import auto-approved permissions.
+    # @param file_path [String] Path to config.json (defaults to ~/.gemini/config/config.json)
+    # @return [Policy]
+    def self.from_gemini_config(file_path = nil)
+      file_path = File.expand_path(file_path || '~/.gemini/config/config.json')
+      return new unless File.exist?(file_path)
+
+      data = JSON.parse(File.read(file_path))
+      perms = data['autoApprovedPermissions'] || data['auto_approved_permissions'] || []
+
+      define do
+        perms.each do |perm|
+          case perm
+          when /^unsandboxed\((.+)\)$/, /^command\((.+)\)$/
+            cmd_str = $1
+            allow :run_command, when: cmd(cmd_str)
+          when /^read_file\((.+)\)$/
+            file_p = $1
+            allow :read_file, when: path(file_p)
+          when /^write_file\((.+)\)$/
+            file_p = $1
+            allow :write_file, when: path(file_p)
+          when /^mcp\((.+)\)$/
+            mcp_tool = $1
+            allow mcp_tool.to_sym
+          end
+        end
+      end
+    end
+
+    # Serializes the policy into a human-readable Ruby DSL code string.
+    # Useful for blogging, documentation, and sharing in AGENTS.md.
+    def to_ruby_dsl
+      buf = ['Antigravity.policy do']
+      @rules.each do |rule|
+        action_str = rule.action.to_s
+        tool_str = rule.tool_name ? ":#{rule.tool_name}" : 'nil'
+        if tool_str == 'nil' && action_str == 'allow'
+          buf << '  allow_all'
+        elsif tool_str == 'nil' && action_str == 'deny'
+          buf << '  deny_all'
+        else
+          buf << "  #{action_str} #{tool_str}"
+        end
+      end
+      buf << 'end'
+      buf.join("\n")
     end
 
     # 🔒 Cautious — read-only free, confirm everything else, hard-deny destructive.
@@ -197,6 +249,10 @@ module Antigravity
       deny(nil)
     end
 
+    def confirm_all
+      confirm(nil)
+    end
+
     def on_confirm(&block)
       @confirm_handler = block
     end
@@ -206,6 +262,7 @@ module Antigravity
     # ------------------------------------------------------------------
 
     def cmd(*patterns)
+      patterns = patterns.flatten
       ->(ctx) do
         args = ctx[:args]
         cmd_arg = args[:command_line] || args['command_line'] || args[:CommandLine] || args['CommandLine']
@@ -217,6 +274,7 @@ module Antigravity
     end
 
     def path(*globs)
+      globs = globs.flatten
       ->(ctx) do
         args = ctx[:args]
         path_arg = args[:path] || args['path'] ||
