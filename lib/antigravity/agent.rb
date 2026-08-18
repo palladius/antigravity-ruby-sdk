@@ -35,6 +35,7 @@ module Antigravity
       # Resolve policy: sugar (symbol → preset, Policy object → use directly)
       if policy
         resolved = policy.is_a?(Symbol) ? Policy.preset(policy) : policy
+        @policy = resolved
         enforce(resolved)
       end
 
