@@ -82,26 +82,26 @@ RSpec.describe 'Dynamic Policy Deny E2E', :integration do
       tool_calls_log = []
       @agent.before_tool_call do |tool_name, args|
         tool_calls_log << { tool: tool_name, args_keys: args.keys }
-        puts "  🔍 Tool call: #{tool_name} | args keys: #{args.keys}"
+        puts "  🔍 Tool call: #{tool_name} | args keys: #{args.keys} | args: #{args.to_s[0..120]}"
       end
 
-      # Block ALL possible write tool variants for .env
-      # The harness may use different tool names than our Ruby SDK names
-      env_glob = policy.path('.env', '*.env')
-      %i[write_to_file edit_file create_file
-         replace_file_content multi_replace_file_content
-         create_and_write_to_file].each do |tool|
-        policy.add_deny(tool, when: env_glob)
-      end
+      # Block ANY tool that touches .env — wildcard (nil) catches ALL tool names
+      # This is critical because the harness may use internal tool names we don't know
+      env_path_glob = policy.path('.env', '*.env')
+      policy.add_deny(nil, when: env_path_glob)
+
+      # Also block shell commands that reference .env
+      policy.add_deny(:run_command, when: policy.cmd('.env'))
 
       puts "\n--- Phase 2: Deny injected ---"
-      # Test with various arg key formats
-      puts "Evaluate (path key):       #{policy.evaluate(:write_to_file, { path: @env_file })}"
-      puts "Evaluate (TargetFile key): #{policy.evaluate(:replace_file_content, { TargetFile: @env_file })}"
-      puts "Evaluate (target_file):    #{policy.evaluate(:write_to_file, { target_file: @env_file })}"
+      # Test with various tool/arg combinations
+      puts "Evaluate write_to_file:       #{policy.evaluate(:write_to_file, { path: @env_file })}"
+      puts "Evaluate replace_file_content: #{policy.evaluate(:replace_file_content, { TargetFile: @env_file })}"
+      puts "Evaluate UNKNOWN_TOOL:         #{policy.evaluate(:any_random_tool, { target_file: @env_file })}"
+      puts "Evaluate run_command cat .env:  #{policy.evaluate(:run_command, { command_line: 'cat .env' })}"
 
-      # Verify policy now denies
-      result = policy.evaluate(:write_to_file, { path: @env_file, target_file: @env_file })
+      # Verify policy denies even unknown tool names
+      result = policy.evaluate(:some_random_tool_xyz, { path: @env_file })
       expect(result[:status]).to eq(:deny)
 
       # ─── PHASE 3: Write SHOULD fail ──────────────────────────
