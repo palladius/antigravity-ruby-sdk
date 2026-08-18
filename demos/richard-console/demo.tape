@@ -1,12 +1,10 @@
-# 🎬 Richard Console Demo — REAL VHS Tape v8
+# 🎬 Richard Console Demo — REAL VHS Tape v9
 # Drives the ACTUAL console with live Gemini API.
 #
-# ⚠️ VHS QUOTING RULES (learned the hard way x7):
-#   - NO single quotes (VHS eats them as string delimiters)
-#   - NO %() %[] %{} (VHS eats % + grouping chars)
+# ⚠️ VHS QUOTING RULES:
+#   - NO quotes (single/double/backtick) around strings inside Type
+#   - Define emoji constants with chr(), then use them by name
 #   - Use File.join(Dir.home, :symbol.to_s) for paths
-#   - Use 128994.chr(Encoding::UTF_8) for 🟢 emoji
-#   - Use 128308.chr(Encoding::UTF_8) for 🔴 emoji
 #
 # Usage: cd ~/git/antigravity-ruby-sdk && vhs demos/richard-console/demo.tape
 
@@ -56,18 +54,26 @@ Type "/irb"
 Enter
 Sleep 2s
 
-# Config slice — show workspace_analysis is ON
+# Config slice
 Type "config.select { |k,_| [:version, :model, :workspace_analysis].include?(k) }"
 Enter
 Sleep 2s
 
-# 🟢🔴 Policy visualization WITH EMOJI!
-# 128994 = 🟢 U+1F7E2, 128308 = 🔴 U+1F534
-Type "Antigravity::Policy::SAFE_CMDS.each { |c| puts 128994.chr(Encoding::UTF_8) + 32.chr + c.to_s }"
+# Define emoji helpers (with space baked in)
+Type "GREEN_EMOJI = 128994.chr(Encoding::UTF_8) + 32.chr"
+Enter
+Sleep 1s
+
+Type "RED_EMOJI = 128308.chr(Encoding::UTF_8) + 32.chr"
+Enter
+Sleep 1s
+
+# 🟢🔴 Policy visualization — clean and readable!
+Type "Antigravity::Policy::SAFE_CMDS.each { |c| puts GREEN_EMOJI + c.to_s }"
 Enter
 Sleep 3s
 
-Type "Antigravity::Policy::CATASTROPHIC_CMDS.each { |c| puts 128308.chr(Encoding::UTF_8) + 32.chr + c.to_s }"
+Type "Antigravity::Policy::CATASTROPHIC_CMDS.each { |c| puts RED_EMOJI + c.to_s }"
 Enter
 Sleep 3s
 
@@ -75,7 +81,7 @@ Sleep 3s
 # ACT 5: 🌟 Workspace Discovery — THE WOW MOMENT
 # ═══════════════════════════════════════════════════════════
 
-# Save current workspace for later
+# Save current workspace
 Type "home_sdk = @workspace"
 Enter
 Sleep 1s
