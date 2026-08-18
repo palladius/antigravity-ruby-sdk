@@ -63,11 +63,11 @@ Sleep 2s
 
 # 🟢🔴 Policy visualization WITH EMOJI!
 # 128994 = 🟢 U+1F7E2, 128308 = 🔴 U+1F534
-Type "Antigravity::Policy::SAFE_CMDS.each { |c| puts 128994.chr(Encoding::UTF_8) + c.to_s }"
+Type "Antigravity::Policy::SAFE_CMDS.each { |c| puts 128994.chr(Encoding::UTF_8) + 32.chr + c.to_s }"
 Enter
 Sleep 3s
 
-Type "Antigravity::Policy::CATASTROPHIC_CMDS.each { |c| puts 128308.chr(Encoding::UTF_8) + c.to_s }"
+Type "Antigravity::Policy::CATASTROPHIC_CMDS.each { |c| puts 128308.chr(Encoding::UTF_8) + 32.chr + c.to_s }"
 Enter
 Sleep 3s
 
