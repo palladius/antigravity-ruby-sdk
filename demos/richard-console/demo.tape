@@ -1,10 +1,12 @@
-# 🎬 Richard Console Demo — REAL VHS Tape v7
+# 🎬 Richard Console Demo — REAL VHS Tape v8
 # Drives the ACTUAL console with live Gemini API.
 #
-# ⚠️ VHS QUOTING RULES (learned the hard way):
-#   - NO single quotes in Type commands (VHS eats them as string delimiters)
-#   - NO %() %[] %{} in Type commands (VHS eats % + grouping chars)
-#   - Use Ruby symbols :foo.to_s, ?/ char literals, and Dir.home instead
+# ⚠️ VHS QUOTING RULES (learned the hard way x7):
+#   - NO single quotes (VHS eats them as string delimiters)
+#   - NO %() %[] %{} (VHS eats % + grouping chars)
+#   - Use File.join(Dir.home, :symbol.to_s) for paths
+#   - Use 128994.chr(Encoding::UTF_8) for 🟢 emoji
+#   - Use 128308.chr(Encoding::UTF_8) for 🔴 emoji
 #
 # Usage: cd ~/git/antigravity-ruby-sdk && vhs demos/richard-console/demo.tape
 
@@ -59,18 +61,18 @@ Type "config.select { |k,_| [:version, :model, :workspace_analysis].include?(k) 
 Enter
 Sleep 2s
 
-# 🟢🔴 Policy — show raw arrays (no string literals!)
-Type "Antigravity::Policy::SAFE_CMDS"
+# 🟢🔴 Policy visualization WITH EMOJI!
+# 128994 = 🟢 U+1F7E2, 128308 = 🔴 U+1F534
+Type "Antigravity::Policy::SAFE_CMDS.each { |c| puts 128994.chr(Encoding::UTF_8) + c.to_s }"
 Enter
-Sleep 2s
+Sleep 3s
 
-Type "Antigravity::Policy::CATASTROPHIC_CMDS"
+Type "Antigravity::Policy::CATASTROPHIC_CMDS.each { |c| puts 128308.chr(Encoding::UTF_8) + c.to_s }"
 Enter
-Sleep 2s
+Sleep 3s
 
 # ═══════════════════════════════════════════════════════════
 # ACT 5: 🌟 Workspace Discovery — THE WOW MOMENT
-# No string literals needed! Dir.home + ?/ + :symbol.to_s
 # ═══════════════════════════════════════════════════════════
 
 # Save current workspace for later
@@ -79,7 +81,7 @@ Enter
 Sleep 1s
 
 # cd to ~/git — triggers 📊 scan + 🤖 LLM analysis!
-Type "cd(Dir.home + ?/ + :git.to_s)"
+Type "cd(File.join(Dir.home, :git.to_s))"
 Enter
 Sleep 12s
 
