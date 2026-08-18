@@ -266,15 +266,18 @@ module Antigravity
     def path(*globs)
       ->(ctx) do
         args = ctx[:args]
-        path_arg = args[:path] || args['path'] ||
-                   args[:file] || args['file'] ||
-                   args[:target] || args['target'] ||
-                   args[:file_path] || args['file_path'] ||
-                   args[:target_file] || args['target_file']
+        # Check both snake_case (Ruby convention) and PascalCase (harness convention)
+        path_arg = args[:path] || args['path'] || args[:Path] || args['Path'] ||
+                   args[:file] || args['file'] || args[:File] || args['File'] ||
+                   args[:target] || args['target'] || args[:Target] || args['Target'] ||
+                   args[:file_path] || args['file_path'] || args[:FilePath] || args['FilePath'] ||
+                   args[:target_file] || args['target_file'] || args[:TargetFile] || args['TargetFile']
         return false unless path_arg
 
         path_arg = path_arg.to_s
-        globs.any? { |g| File.fnmatch?(g.to_s, path_arg) }
+        basename = File.basename(path_arg)
+        # Match against full path OR basename (e.g., '.env' matches '/tmp/foo/.env')
+        globs.any? { |g| File.fnmatch?(g.to_s, path_arg) || File.fnmatch?(g.to_s, basename) }
       end
     end
 
