@@ -227,6 +227,28 @@ module Antigravity
     end
 
     # ------------------------------------------------------------------
+    # Dynamic rule injection (for runtime / IRB use)
+    # ------------------------------------------------------------------
+
+    # Add a deny rule at runtime.
+    # @example policy.add_deny(:view_file, when: path('*.env'))
+    def add_deny(tool_name = nil, **kwargs)
+      deny(tool_name, **kwargs)
+      self
+    end
+
+    # Add an allow rule at runtime.
+    def add_allow(tool_name = nil, **kwargs)
+      allow(tool_name, **kwargs)
+      self
+    end
+
+    # List all rules (for introspection)
+    def rules
+      @rules
+    end
+
+    # ------------------------------------------------------------------
     # Predicate helpers
     # ------------------------------------------------------------------
 
