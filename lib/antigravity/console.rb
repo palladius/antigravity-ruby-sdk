@@ -66,6 +66,14 @@ module Antigravity
       "#{str[0..3]}#{'*' * [str.length - 8, 4].max}#{str[-4..]}"
     end
 
+    # ─── Policy access (for dynamic rule injection) ─────────
+
+    # Returns the live Policy object from the connected agent.
+    # Use this to add_deny / add_allow rules at runtime.
+    def policy
+      @agent&.policy
+    end
+
     # ─── Smart Setters (propagate to agent) ───────────────────
 
     # Change workspace and notify agent
