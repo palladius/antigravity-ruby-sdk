@@ -1,7 +1,10 @@
-# 🎬 Richard Console Demo — REAL VHS Tape v6
+# 🎬 Richard Console Demo — REAL VHS Tape v7
 # Drives the ACTUAL console with live Gemini API.
-# RULE: NO SINGLE QUOTES in Type commands! VHS eats them.
-# NEW: Workspace discovery on cd (scan + LLM analysis)
+#
+# ⚠️ VHS QUOTING RULES (learned the hard way):
+#   - NO single quotes in Type commands (VHS eats them as string delimiters)
+#   - NO %() %[] %{} in Type commands (VHS eats % + grouping chars)
+#   - Use Ruby symbols :foo.to_s, ?/ char literals, and Dir.home instead
 #
 # Usage: cd ~/git/antigravity-ruby-sdk && vhs demos/richard-console/demo.tape
 
@@ -51,35 +54,41 @@ Type "/irb"
 Enter
 Sleep 2s
 
-# Config slice
+# Config slice — show workspace_analysis is ON
 Type "config.select { |k,_| [:version, :model, :workspace_analysis].include?(k) }"
 Enter
 Sleep 2s
 
-# 🟢🔴 Policy visualization
-Type "Antigravity::Policy::SAFE_CMDS.each { |c| puts %(  🟢 ) + c.to_s }"
+# 🟢🔴 Policy — show raw arrays (no string literals!)
+Type "Antigravity::Policy::SAFE_CMDS"
 Enter
-Sleep 3s
+Sleep 2s
 
-Type "Antigravity::Policy::CATASTROPHIC_CMDS.each { |c| puts %(  🔴 ) + c.to_s }"
+Type "Antigravity::Policy::CATASTROPHIC_CMDS"
 Enter
-Sleep 3s
+Sleep 2s
 
 # ═══════════════════════════════════════════════════════════
 # ACT 5: 🌟 Workspace Discovery — THE WOW MOMENT
+# No string literals needed! Dir.home + ?/ + :symbol.to_s
 # ═══════════════════════════════════════════════════════════
 
-# cd to a different project — triggers scan + LLM analysis!
-Type "cd %(~/git/ricc.rocks)"
+# Save current workspace for later
+Type "home_sdk = @workspace"
+Enter
+Sleep 1s
+
+# cd to ~/git — triggers 📊 scan + 🤖 LLM analysis!
+Type "cd(Dir.home + ?/ + :git.to_s)"
 Enter
 Sleep 12s
 
-# cd back — different scan results!
-Type "cd %(~/git/antigravity-ruby-sdk)"
+# cd back to the SDK — different scan results!
+Type "cd(home_sdk)"
 Enter
 Sleep 12s
 
-# Show it can be toggled off
+# Toggle analysis off
 Type "set_workspace_analysis false"
 Enter
 Sleep 1s
