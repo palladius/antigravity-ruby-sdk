@@ -103,7 +103,7 @@ Sleep 1s
 
 # ═══════════════════════════════════════════════════════════
 # ACT 6: 🛡️ Dynamic Policy Deny — SECURITY WOW
-# Add a deny rule for .env at runtime, then try to read it!
+# read_file → works, deny_file → read_file → BOOM!
 # ═══════════════════════════════════════════════════════════
 
 # Build .env string without quotes (46 = '.')
@@ -111,30 +111,25 @@ Type "DOTENV = 46.chr + :env.to_s"
 Enter
 Sleep 1s
 
-# Show: .env is currently allowed
-Type "policy.evaluate(:view_file, path: DOTENV)"
+# 1️⃣ Read .env — works fine!
+Type "read_file(DOTENV)"
 Enter
 Sleep 2s
 
-# Add deny for .env files!
-Type "policy.add_deny(:view_file, when: policy.path(DOTENV))"
+# 2️⃣ Lock it down!
+Type "deny_file(DOTENV)"
 Enter
 Sleep 2s
 
-# Show: now it's DENIED! 🛡️
-Type "policy.evaluate(:view_file, path: DOTENV)"
+# 3️⃣ Try again — DENIED! 🛡️💥
+Type "read_file(DOTENV)"
 Enter
-Sleep 2s
+Sleep 3s
 
 # Exit Matrix
 Type "exit"
 Enter
 Sleep 2s
-
-# Ask the LLM to read .env — it should be blocked!
-Type "Show me the contents of .env"
-Enter
-Sleep 8s
 
 # ═══════════════════════════════════════════════════════════
 # FINALE
