@@ -117,7 +117,7 @@ Enter
 Sleep 2s
 
 # 2️⃣ Lock it down!
-Type "deny_file(DOTENV)"
+Type "policy.deny(:read_file, DOTENV)"
 Enter
 Sleep 2s
 

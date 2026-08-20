@@ -202,16 +202,42 @@ module Antigravity
     # DSL methods
     # ------------------------------------------------------------------
 
-    def allow(tool_name = nil, **kwargs)
-      @rules << Rule.new(:allow, tool_name, condition: kwargs[:when])
+    # Human-friendly tool name aliases → harness tool names
+    TOOL_ALIASES = {
+      read_file: :view_file,
+      read: :view_file,
+      write_file: :write_to_file,
+      write: :write_to_file,
+      edit: :replace_file_content,
+      edit_file: :replace_file_content,
+      create_file: :write_to_file,
+      shell: :run_command,
+      exec: :run_command,
+    }.freeze
+
+    def resolve_tool(name)
+      return nil unless name
+      TOOL_ALIASES.fetch(name.to_sym, name.to_sym)
     end
 
-    def deny(tool_name = nil, **kwargs)
-      @rules << Rule.new(:deny, tool_name, condition: kwargs[:when])
+    def allow(tool_name = nil, file_pattern = nil, **kwargs)
+      tool_name = resolve_tool(tool_name)
+      condition = file_pattern ? path(file_pattern) : kwargs[:when]
+      @rules << Rule.new(:allow, tool_name, condition: condition)
     end
 
-    def confirm(tool_name = nil, **kwargs, &block)
-      @rules << Rule.new(:confirm, tool_name, condition: kwargs[:when], handler: block)
+    # @example deny(:read_file, '.env')
+    # @example deny(:run_command, when: cmd('rm'))
+    def deny(tool_name = nil, file_pattern = nil, **kwargs)
+      tool_name = resolve_tool(tool_name)
+      condition = file_pattern ? path(file_pattern) : kwargs[:when]
+      @rules << Rule.new(:deny, tool_name, condition: condition)
+    end
+
+    def confirm(tool_name = nil, file_pattern = nil, **kwargs, &block)
+      tool_name = resolve_tool(tool_name)
+      condition = file_pattern ? path(file_pattern) : kwargs[:when]
+      @rules << Rule.new(:confirm, tool_name, condition: condition, handler: block)
     end
 
     def allow_all
@@ -231,15 +257,16 @@ module Antigravity
     # ------------------------------------------------------------------
 
     # Add a deny rule at runtime.
+    # @example policy.deny(:read_file, '.env')
     # @example policy.add_deny(:view_file, when: path('*.env'))
-    def add_deny(tool_name = nil, **kwargs)
-      deny(tool_name, **kwargs)
+    def add_deny(tool_name = nil, file_pattern = nil, **kwargs)
+      deny(tool_name, file_pattern, **kwargs)
       self
     end
 
     # Add an allow rule at runtime.
-    def add_allow(tool_name = nil, **kwargs)
-      allow(tool_name, **kwargs)
+    def add_allow(tool_name = nil, file_pattern = nil, **kwargs)
+      allow(tool_name, file_pattern, **kwargs)
       self
     end
 
