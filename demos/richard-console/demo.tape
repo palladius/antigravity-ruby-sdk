@@ -8,8 +8,8 @@
 #
 # Usage: cd ~/git/antigravity-ruby-sdk && vhs demos/richard-console/demo.tape
 
-Output demos/richard-console/demo.mp4
-Output demos/richard-console/demo.gif
+Output demo.mp4
+Output demo.gif
 
 # ─── Terminal Setup ───────────────────────────────────────
 Set FontSize 14
