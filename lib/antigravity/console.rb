@@ -83,7 +83,7 @@ module Antigravity
       if policy
         check = policy.evaluate(:view_file, { path: expanded, target_file: expanded, TargetFile: expanded })
         if check[:status] == :deny
-          raise Antigravity::PolicyDeniedError, "🛡️ DENIED by policy: #{path}"
+          raise Antigravity::PolicyDeniedError, "\e[31m🛡️ DENIED by policy: #{path}\e[0m"
         end
       end
       File.read(expanded)
