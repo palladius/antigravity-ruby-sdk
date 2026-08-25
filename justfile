@@ -102,3 +102,13 @@ rv-e2e-multiturn-console:
 
 # Run all rv examples (excludes telegram — it's a long-running daemon)
 rv-examples: rv-chat rv-workspace rv-skill-audit rv-skill-sre-postmortem
+
+# Run the daily AI maintenance & audit job
+daily-ai-job:
+    @echo "☀️ Running Daily AI Job..."
+    just test
+    just rv-skill-audit lib
+
+# Import Gemini CLI permissions into a DRY Ruby DSL policy (e.g. just policy-import 10 out/sample_policy.rb)
+policy-import LIMIT="" OUTPUT="out/sample_policy.rb":
+    bundle exec rake "antigravity:policy_import[~/.gemini/config/config.json,{{LIMIT}},{{OUTPUT}}]"

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+require 'json'
 require_relative 'policy/constants'
+require_relative 'policy/riccardo'
 
 module Antigravity
   # ==========================================================================
@@ -102,12 +104,122 @@ module Antigravity
       when :cautious then cautious
       when :console  then console
       when :default  then default
+      when :riccardo then riccardo
       when :turbo    then turbo
       when :test     then test
       when :auto     then auto
       else
         raise ArgumentError, "Unknown preset :#{name}. Choose from: #{PRESET_NAMES.map { |n| ":#{n}" }.join(', ')}"
       end
+    end
+
+    # Parses a Gemini CLI config.json file to import auto-approved permissions.
+    # @param file_path [String] Path to config.json (defaults to ~/.gemini/config/config.json)
+    # @param limit [Integer, nil] Optional max number of permissions to import (useful for testing)
+    # @return [Policy]
+    def self.from_gemini_config(file_path = nil, limit: nil)
+      policy = new
+      policy.merge_gemini_config(file_path, limit: limit)
+      policy
+    end
+
+    # Merges permissions from a Gemini CLI config.json into this Policy instance.
+    # @param file_path [String] Path to config.json
+    # @param limit [Integer, nil] Optional limit on permissions to merge
+    # @return [self]
+    def merge_gemini_config(file_path = nil, limit: nil)
+      file_path = File.expand_path(file_path || '~/.gemini/config/config.json')
+      return self unless File.exist?(file_path)
+
+      data = JSON.parse(File.read(file_path, encoding: 'utf-8'))
+      gpg = data.dig('userSettings', 'globalPermissionGrants')
+      perms = data['autoApprovedPermissions'] || data['auto_approved_permissions']
+      if gpg.is_a?(Hash)
+        perms ||= gpg['allow'] || gpg['approved']
+      elsif gpg.is_a?(Array)
+        perms ||= gpg
+      end
+      perms ||= []
+      perms = perms.take(limit) if limit && limit > 0
+
+      cmds = []
+      read_paths = []
+      write_paths = []
+      mcp_tools = []
+
+      perms.each do |perm|
+        case perm
+        when /^unsandboxed\((.+)\)$/, /^command\((.+)\)$/
+          cmds << $1
+        when /^read_file\((.+)\)$/
+          read_paths << $1
+        when /^write_file\((.+)\)$/
+          write_paths << $1
+        when /^mcp\((.+)\)$/
+          mcp_tools << $1
+        end
+      end
+
+      allow :run_command, when: cmd(*cmds) unless cmds.empty?
+      allow :read_file, when: path(*read_paths) unless read_paths.empty?
+      allow :write_file, when: path(*write_paths) unless write_paths.empty?
+      mcp_tools.uniq.each { |t| allow t.to_sym }
+
+      self
+    end
+
+    # Serializes the policy into a clean, DRY human-readable Ruby DSL code string.
+    # Groups paths & commands using elegant paths(...) and cmds(...) DSL syntax.
+    def to_ruby_dsl
+      home = Dir.home
+      shrink = ->(p) { p.to_s.start_with?(home) ? p.to_s.sub(home, '~') : p.to_s }
+
+      buf = ['Antigravity.policy do']
+      @rules.each do |rule|
+        action_str = rule.action.to_s
+        tool_str = rule.tool_name ? ":#{rule.tool_name}" : nil
+        cond = rule.condition
+
+        if tool_str.nil? && action_str == 'allow'
+          buf << '  allow_all'
+        elsif tool_str.nil? && action_str == 'deny'
+          buf << '  deny_all'
+        elsif cond.respond_to?(:type) && cond.type == :cmd
+          pats = cond.patterns
+          if pats.length > 1
+            buf << "  #{action_str} #{tool_str}, when: cmds("
+            pats.each { |p| buf << "    '#{p}'," }
+            buf << '  )'
+          elsif pats.length == 1
+            buf << "  #{action_str} #{tool_str}, when: cmd('#{pats.first}')"
+          end
+        elsif cond.respond_to?(:type) && cond.type == :path
+          gls = cond.globs
+          if gls.length > 1
+            buf << "  #{action_str} #{tool_str}, when: paths("
+            gls.each { |g| buf << "    '#{shrink.call(g)}'," }
+            buf << '  )'
+          elsif gls.length == 1
+            buf << "  #{action_str} #{tool_str}, when: path('#{shrink.call(gls.first)}')"
+          end
+        elsif tool_str
+          buf << "  #{action_str} #{tool_str}"
+        end
+      end
+      buf << 'end'
+      buf.join("\n")
+    end
+
+    # Saves the Ruby DSL policy to a file (defaults to out/sample_policy.rb).
+    # Creates parent directories automatically.
+    # @param output_file [String] Target file path
+    # @return [String] Absolute path to saved file
+    def save_ruby_dsl(output_file = 'out/sample_policy.rb')
+      require 'fileutils'
+      expanded = File.expand_path(output_file)
+      FileUtils.mkdir_p(File.dirname(expanded))
+      File.write(expanded, to_ruby_dsl + "\n", encoding: 'utf-8')
+      expanded
     end
 
     # 🔒 Cautious — read-only free, confirm everything else, hard-deny destructive.
@@ -222,6 +334,10 @@ module Antigravity
       deny(nil)
     end
 
+    def confirm_all
+      confirm(nil)
+    end
+
     def on_confirm(&block)
       @confirm_handler = block
     end
@@ -253,7 +369,8 @@ module Antigravity
     # ------------------------------------------------------------------
 
     def cmd(*patterns)
-      ->(ctx) do
+      patterns = patterns.flatten
+      pred = ->(ctx) do
         args = ctx[:args]
         cmd_arg = args[:command_line] || args['command_line'] || args[:CommandLine] || args['CommandLine']
         return false unless cmd_arg
@@ -261,10 +378,15 @@ module Antigravity
         cmd_arg = cmd_arg.to_s
         patterns.any? { |p| cmd_arg.include?(p.to_s) }
       end
+      pred.define_singleton_method(:type) { :cmd }
+      pred.define_singleton_method(:patterns) { patterns }
+      pred
     end
+    alias cmds cmd
 
     def path(*globs)
-      ->(ctx) do
+      globs = globs.flatten
+      pred = ->(ctx) do
         args = ctx[:args]
         # Check both snake_case (Ruby convention) and PascalCase (harness convention)
         path_arg = args[:path] || args['path'] || args[:Path] || args['Path'] ||
@@ -274,12 +396,23 @@ module Antigravity
                    args[:target_file] || args['target_file'] || args[:TargetFile] || args['TargetFile']
         return false unless path_arg
 
-        path_arg = path_arg.to_s
-        basename = File.basename(path_arg)
-        # Match against full path OR basename (e.g., '.env' matches '/tmp/foo/.env')
-        globs.any? { |g| File.fnmatch?(g.to_s, path_arg) || File.fnmatch?(g.to_s, basename) }
+        raw_path = path_arg.to_s
+        basename = File.basename(raw_path)
+        expanded_path = File.expand_path(raw_path) rescue raw_path
+
+        globs.any? do |g|
+          expanded_g = File.expand_path(g.to_s) rescue g.to_s
+          File.fnmatch?(g.to_s, raw_path) ||
+            File.fnmatch?(g.to_s, basename) ||
+            File.fnmatch?(g.to_s, expanded_path) ||
+            File.fnmatch?(expanded_g, expanded_path)
+        end
       end
+      pred.define_singleton_method(:type) { :path }
+      pred.define_singleton_method(:globs) { globs }
+      pred
     end
+    alias paths path
 
     def args_match(**matchers)
       ->(ctx) do
