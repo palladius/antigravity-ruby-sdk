@@ -6,8 +6,9 @@
 # Usage in examples:
 #   require_relative 'rv/rv_init'
 #
-# Or standalone:
+# Or standalone diagnostics:
 #   rv run ruby -Ilib -Iexamples examples/rv/rv_init.rb
+#   rv run ruby -Ilib -Iexamples examples/rv/rv_init.rb --verbose
 #
 # This file will grow as the SDK adds more runtime dependencies.
 
@@ -24,9 +25,8 @@ end
 $LOAD_PATH.unshift File.expand_path('../../lib', __dir__)
 require 'antigravity'
 
-# Quick sanity check when run directly
+# Run full diagnostics when invoked directly
 if __FILE__ == $PROGRAM_NAME
-  puts "💎 rv_init OK — Antigravity #{Antigravity::VERSION} loaded"
-  puts "   Ruby: #{RUBY_VERSION}"
-  puts "   Gems: websocket #{Gem.loaded_specs['websocket']&.version}"
+  verbose = ARGV.include?('--verbose') || ARGV.include?('-v')
+  Antigravity::Diagnostics.run!(verbose: verbose)
 end

@@ -114,6 +114,22 @@ RSpec.describe Antigravity::Agent do
       # Inline skills have nil path, so skillsPaths should be empty
       expect(config[:config]).not_to have_key(:skillsPaths)
     end
+
+    it "injects workspace path into system instructions" do
+      a = described_class.new(workspace: '/tmp/test-workspace', auto_logger: false)
+      config = a.send(:build_harness_config)
+      instructions = config[:config][:systemInstructions][:custom][:part].first[:text]
+      expect(instructions).to include('/tmp/test-workspace')
+      expect(instructions).to include('current workspace directory')
+    end
+
+    it "includes tool hints when workspace is set" do
+      a = described_class.new(workspace: '/tmp/test-workspace', auto_logger: false)
+      config = a.send(:build_harness_config)
+      instructions = config[:config][:systemInstructions][:custom][:part].first[:text]
+      expect(instructions).to include('list_dir')
+      expect(instructions).to include('view_file')
+    end
   end
 
   context "class methods" do

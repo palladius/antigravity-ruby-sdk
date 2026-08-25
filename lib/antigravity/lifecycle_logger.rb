@@ -58,6 +58,17 @@ module Antigravity
         puts C.gray("\n🪝🟢 #{C.dim("session_start")} | model=#{C.cyan(model)} | conv=#{C.cyan(conv_id)}")
       end
 
+      agent.hooks.on(:indexing_start) do |info|
+        ws = info[:workspace] || '?'
+        puts C.gray("🪝 📂 #{C.dim("indexing")}       | #{C.blue(ws)}")
+      end
+
+      agent.hooks.on(:indexing_done) do |info|
+        ws = info[:workspace] || '?'
+        elapsed = info[:elapsed] ? "#{info[:elapsed]}s" : '?'
+        puts C.gray("🪝 ✅ #{C.dim("indexed")}        | #{C.blue(ws)} | #{C.green(elapsed)}")
+      end
+
       agent.hooks.on(:session_end) do |info|
         elapsed = if logger.instance_variable_get(:@session_start_time)
                     (Process.clock_gettime(Process::CLOCK_MONOTONIC) - logger.instance_variable_get(:@session_start_time)).round(1)

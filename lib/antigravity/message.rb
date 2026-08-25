@@ -26,9 +26,20 @@ module Antigravity
     def delta?
       @delta
     end
+
+    # Does this message/chunk contain thinking content?
+    def thinking?
+      @thinking.is_a?(String) && !@thinking.empty?
+    end
+
+    # Does this message/chunk contain visible content?
+    def content?
+      @content.is_a?(String) && !@content.empty?
+    end
   end
 
-  # Backward-compatible alias for streaming chunks
+  # Backward-compatible alias for streaming chunks.
+  # Chunks carry either thinking or content deltas (or both).
   class Chunk < Message
     def initialize(**kwargs)
       super(**kwargs, delta: true)

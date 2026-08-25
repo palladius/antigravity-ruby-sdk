@@ -35,6 +35,7 @@ module Antigravity
       # Resolve policy: sugar (symbol → preset, Policy object → use directly)
       if policy
         resolved = policy.is_a?(Symbol) ? Policy.preset(policy) : policy
+        @policy = resolved
         enforce(resolved)
       end
 
@@ -101,8 +102,18 @@ module Antigravity
       )
 
       harness_config = build_harness_config
+
+      # Emit indexing hooks — workspace indexing happens during session init
+      index_t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC) if @workspace
+      hooks.emit(:indexing_start, { workspace: @workspace }) if @workspace
+
       @conversation.initialize_session!(harness_config: harness_config)
       @connected = true
+
+      if @workspace
+        index_elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - index_t0
+        hooks.emit(:indexing_done, { workspace: @workspace, elapsed: index_elapsed.round(2) })
+      end
 
       # Emit session_start hook
       hooks.emit(:session_start, {
@@ -323,7 +334,8 @@ module Antigravity
       # Add workspaces if specified
       if @workspace
         expanded = File.expand_path(@workspace)
-        $stderr.puts "\u231B Indexing workspace: #{expanded} — this may take a moment..."
+        short = tilde_path(expanded)
+        $stderr.puts "📂 Indexing workspace \e[33m#{short}/\e[0m — this may take a moment..."
         config[:config][:workspaces] = [
           {
             filesystemWorkspace: {
@@ -336,10 +348,16 @@ module Antigravity
       # Add system instructions if specified (protobuf: SystemInstructions.custom.part[])
       effective_instructions = @system_instruction || ''
 
-      # Auto-append workspace tool hints — models (esp. flash-lite) won't use tools unless told
+      # Auto-append workspace context — model needs to know where it is
+      if @workspace
+        workspace_hint = "Your current workspace directory is: #{@workspace}"
+        effective_instructions = effective_instructions.empty? ? workspace_hint : "#{effective_instructions}\n#{workspace_hint}"
+      end
+
+      # Auto-append tool hints — models (esp. flash-lite) won't use tools unless told
       if @workspace && !effective_instructions.match?(/list_dir|view_file|tools/i)
         tool_hint = 'You have access to the workspace filesystem. Use the available tools (list_dir, view_file, grep_search) to explore it.'
-        effective_instructions = effective_instructions.empty? ? tool_hint : "#{effective_instructions}\n#{tool_hint}"
+        effective_instructions = "#{effective_instructions}\n#{tool_hint}"
       end
 
       unless effective_instructions.empty?
@@ -401,8 +419,14 @@ module Antigravity
       expanded = File.expand_path(raw_path)
       expanded += '/' unless expanded.end_with?('/')
 
-      $stderr.puts "📁 Setting workspace to \e[34m#{expanded}\e[0m" rescue nil
+      $stderr.puts "📂 Workspace → \e[33m#{tilde_path(expanded)}/\e[0m" rescue nil
       expanded
+    end
+
+    # Shorten /Users/ricc/foo to ~/foo for cleaner output
+    def tilde_path(path)
+      home = Dir.home
+      path.start_with?(home) ? path.sub(home, '~') : path
     end
   end
 end

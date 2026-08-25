@@ -59,6 +59,44 @@ just rv-skill-sre-postmortem    # SRE post-mortem from GitHub skills
 
 ---
 
+## 🇫🇷 *Richard* — Interactive Console
+
+Remember `rails console` and `irb`? We got inspired by those to create ***Richard*** (pronounced *Ri-shar*, a la francaise 🇫🇷) — a full-featured interactive REPL for your Antigravity agents.
+
+<p align="center">
+  <img src="demo/richard_demo.gif" alt="Richard Console Demo" width="700"/>
+</p>
+
+```bash
+# Launch it
+just rv-console
+# Or directly
+rv run ruby examples/10_console.rb
+```
+
+**What you get:**
+
+| Feature | Syntax | Description |
+|---------|--------|-------------|
+| 💬 Chat | Just type | Multi-turn conversation with thinking/tools display |
+| ⚡ Shell | `! pwd` | Execute shell commands inline |
+| 💎 Ruby eval | `r! 2+2` | Single-line Ruby evaluation |
+| 💊 IRB mode | `/irb` | Persistent Ruby sub-REPL (*"So you chose the RED pill, Neo!"*) |
+| 🛡️ Policy | `/policy` | Show active safety policy (auto-allow, confirm, deny) |
+| 🤔 Thinking | `/think` or `Ctrl-O` | Toggle thinking expansion |
+
+**Matrix Mode** (`/irb`): Full Ruby introspection with smart setters that propagate to the agent:
+
+```ruby
+💎irb> config                   # full session state (api_key masked!)
+💎irb> cd '~/git/my-project'    # change workspace (validated)
+💎irb> set_policy :turbo        # switch safety policy
+💎irb> @agent.class             # => Antigravity::Agent
+💎irb> exit                     # "Welcome... to the real world, Neo. 🕶️"
+```
+
+---
+
 ## 📚 Agent Skills
 
 Skills are reusable instruction sets (SKILL.md files) that teach agents new capabilities. Load them from local folders, GitHub repos, or define them inline:

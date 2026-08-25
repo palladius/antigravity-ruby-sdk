@@ -102,6 +102,7 @@ module Antigravity
     def self.preset(name)
       case name.to_sym
       when :cautious then cautious
+      when :console  then console
       when :default  then default
       when :riccardo then riccardo
       when :turbo    then turbo
@@ -277,6 +278,30 @@ module Antigravity
       end
     end
 
+    # 🎮 Console — interactive REPL mode. Reads free, ASK for everything else.
+    # The user is at the keyboard, so confirm is fast. Safety first.
+    # Best for: ♦agy> interactive console sessions.
+    def self.console
+      define do
+        deny_all
+
+        # Reads: always free
+        READONLY_TOOLS.each { |t| allow t }
+        allow :run_command, when: cmd(*SAFE_CMDS, *SAFE_GIT_CMDS, *READ_CMDS)
+
+        # Writes: ASK (user is at keyboard, fast confirm)
+        WRITE_TOOLS.each { |t| confirm t }
+        WRITE_TOOLS.each { |t| allow t, when: path(*SANDBOX_DIRS) }
+
+        # Shell: ASK by default, DENY catastrophic + rm -rf (always!)
+        deny :run_command, when: cmd(*CATASTROPHIC_CMDS)
+        deny :run_command, when: cmd(*DESTRUCTIVE_GIT_CMDS)
+        deny :run_command, when: cmd('rm -rf')  # ALWAYS blocked in console
+        deny :run_command, when: cmd(*RISKY_CMDS)
+        confirm :run_command
+      end
+    end
+
     # 🔮 Auto — reads RAILS_ENV, RACK_ENV, or ANTIGRAVITY_ENV and picks a preset.
     # Falls back to :default if unrecognized or unset.
     def self.auto
@@ -318,6 +343,28 @@ module Antigravity
     end
 
     # ------------------------------------------------------------------
+    # Dynamic rule injection (for runtime / IRB use)
+    # ------------------------------------------------------------------
+
+    # Add a deny rule at runtime.
+    # @example policy.add_deny(:view_file, when: path('*.env'))
+    def add_deny(tool_name = nil, **kwargs)
+      deny(tool_name, **kwargs)
+      self
+    end
+
+    # Add an allow rule at runtime.
+    def add_allow(tool_name = nil, **kwargs)
+      allow(tool_name, **kwargs)
+      self
+    end
+
+    # List all rules (for introspection)
+    def rules
+      @rules
+    end
+
+    # ------------------------------------------------------------------
     # Predicate helpers
     # ------------------------------------------------------------------
 
@@ -341,19 +388,24 @@ module Antigravity
       globs = globs.flatten
       pred = ->(ctx) do
         args = ctx[:args]
-        path_arg = args[:path] || args['path'] ||
-                   args[:file] || args['file'] ||
-                   args[:target] || args['target'] ||
-                   args[:file_path] || args['file_path'] ||
-                   args[:target_file] || args['target_file']
+        # Check both snake_case (Ruby convention) and PascalCase (harness convention)
+        path_arg = args[:path] || args['path'] || args[:Path] || args['Path'] ||
+                   args[:file] || args['file'] || args[:File] || args['File'] ||
+                   args[:target] || args['target'] || args[:Target] || args['Target'] ||
+                   args[:file_path] || args['file_path'] || args[:FilePath] || args['FilePath'] ||
+                   args[:target_file] || args['target_file'] || args[:TargetFile] || args['TargetFile']
         return false unless path_arg
 
         raw_path = path_arg.to_s
+        basename = File.basename(raw_path)
         expanded_path = File.expand_path(raw_path) rescue raw_path
 
         globs.any? do |g|
           expanded_g = File.expand_path(g.to_s) rescue g.to_s
-          File.fnmatch?(g.to_s, raw_path) || File.fnmatch?(g.to_s, expanded_path) || File.fnmatch?(expanded_g, expanded_path)
+          File.fnmatch?(g.to_s, raw_path) ||
+            File.fnmatch?(g.to_s, basename) ||
+            File.fnmatch?(g.to_s, expanded_path) ||
+            File.fnmatch?(expanded_g, expanded_path)
         end
       end
       pred.define_singleton_method(:type) { :path }

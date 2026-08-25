@@ -2,9 +2,10 @@
 
 ## Coding
 
-* Whenever you find a bug, or whenver user adds a requirements, start with a plan.
+* Whenever you find a bug, or whenever user adds a requirement, start with a plan.
+* **TDD is mandatory**: For every new feature, ALWAYS start with failing tests first, then implement the functionality and observe the tests being fixed one by one. Never ship a feature without its corresponding test suite.
 * Then add failing tests which reflect the delta between your previous and current understanding of user intent / bug.
-* Then start fixing tests until the work - if you get stuck ask for help to user.
+* Then start fixing tests until they work - if you get stuck ask for help to user.
 
 ## 💎 Ruby Style
 
