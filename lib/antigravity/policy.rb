@@ -224,6 +224,7 @@ module Antigravity
       tool_name = resolve_tool(tool_name)
       condition = file_pattern ? path(file_pattern) : kwargs[:when]
       @rules << Rule.new(:allow, tool_name, condition: condition)
+      self
     end
 
     # @example deny(:read_file, '.env')
@@ -232,12 +233,14 @@ module Antigravity
       tool_name = resolve_tool(tool_name)
       condition = file_pattern ? path(file_pattern) : kwargs[:when]
       @rules << Rule.new(:deny, tool_name, condition: condition)
+      self
     end
 
     def confirm(tool_name = nil, file_pattern = nil, **kwargs, &block)
       tool_name = resolve_tool(tool_name)
       condition = file_pattern ? path(file_pattern) : kwargs[:when]
       @rules << Rule.new(:confirm, tool_name, condition: condition, handler: block)
+      self
     end
 
     def allow_all
@@ -250,6 +253,14 @@ module Antigravity
 
     def on_confirm(&block)
       @confirm_handler = block
+    end
+
+    # ------------------------------------------------------------------
+    # Introspection
+    # ------------------------------------------------------------------
+
+    def inspect
+      "#<Policy #{@rules.size} rules>"
     end
 
     # ------------------------------------------------------------------
