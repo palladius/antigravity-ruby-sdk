@@ -8,8 +8,8 @@
 #
 # Usage: cd ~/git/antigravity-ruby-sdk && vhs demos/richard-console/demo.tape
 
-Output demos/richard-console/demo.mp4
-Output demos/richard-console/demo.gif
+Output demo.mp4
+Output demo.gif
 
 # ─── Terminal Setup ───────────────────────────────────────
 Set FontSize 14
@@ -25,7 +25,7 @@ Set LetterSpacing 0
 # ═══════════════════════════════════════════════════════════
 # ACT 1: Launch console
 # ═══════════════════════════════════════════════════════════
-Type "rv run ruby examples/10_console.rb"
+Type "rv run ruby ../../examples/10_console.rb"
 Enter
 Sleep 10s
 
@@ -59,6 +59,11 @@ Type "config.select { |k,_| [:version, :model, :workspace_analysis].include?(k) 
 Enter
 Sleep 2s
 
+# Disable workspace analysis EARLY so cd() doesn't trigger slow scans
+Type "set_workspace_analysis false"
+Enter
+Sleep 1s
+
 # Define emoji helpers (with space baked in)
 Type "GREEN_EMOJI = 128994.chr(Encoding::UTF_8) + 32.chr"
 Enter
@@ -77,64 +82,36 @@ Type "Antigravity::Policy::CATASTROPHIC_CMDS.each { |c| puts RED_EMOJI + c.to_s 
 Enter
 Sleep 3s
 
-# ═══════════════════════════════════════════════════════════
-# ACT 5: 🌟 Workspace Discovery — THE WOW MOMENT
-# ═══════════════════════════════════════════════════════════
-
-# Save current workspace
-Type "home_sdk = @workspace"
-Enter
-Sleep 1s
-
-# cd to ~/git — triggers 📊 scan + 🤖 LLM analysis!
-Type "cd(File.join(Dir.home, :git.to_s))"
-Enter
-Sleep 12s
-
-# cd back to the SDK — different scan results!
-Type "cd(home_sdk)"
-Enter
-Sleep 12s
-
-# Toggle analysis off
-Type "set_workspace_analysis false"
-Enter
-Sleep 1s
 
 # ═══════════════════════════════════════════════════════════
 # ACT 6: 🛡️ Dynamic Policy Deny — SECURITY WOW
-# Add a deny rule for .env at runtime, then try to read it!
+# read_file → works, deny_file → read_file → BOOM!
 # ═══════════════════════════════════════════════════════════
 
 # Build .env string without quotes (46 = '.')
 Type "DOTENV = 46.chr + :env.to_s"
 Enter
-Sleep 1s
-
-# Show: .env is currently allowed
-Type "policy.evaluate(:view_file, path: DOTENV)"
-Enter
 Sleep 2s
 
-# Add deny for .env files!
-Type "policy.add_deny(:view_file, when: policy.path(DOTENV))"
+# 1️⃣ Read .env — works fine!
+Type "read_file(DOTENV)"
 Enter
-Sleep 2s
+Sleep 3s
 
-# Show: now it's DENIED! 🛡️
-Type "policy.evaluate(:view_file, path: DOTENV)"
+# 2️⃣ Lock it down!
+Type "policy.deny(:read_file, DOTENV)"
 Enter
-Sleep 2s
+Sleep 3s
+
+# 3️⃣ Try again — DENIED! 🛡️💥
+Type "read_file(DOTENV)"
+Enter
+Sleep 5s
 
 # Exit Matrix
 Type "exit"
 Enter
 Sleep 2s
-
-# Ask the LLM to read .env — it should be blocked!
-Type "Show me the contents of .env"
-Enter
-Sleep 8s
 
 # ═══════════════════════════════════════════════════════════
 # FINALE

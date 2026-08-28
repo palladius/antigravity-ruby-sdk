@@ -74,6 +74,32 @@ module Antigravity
       @agent&.policy
     end
 
+
+    # Read a file, but check the policy first.
+    # Raises PolicyDeniedError if the policy blocks access.
+    # @example read_file('.env')  # => "API_KEY=..."
+    # @example deny_file('.env'); read_file('.env')  # => PolicyDeniedError!
+    def read_file(path)
+      expanded = File.expand_path(path, @workspace || Dir.pwd)
+      if policy
+        check = policy.evaluate(:view_file, { path: expanded, target_file: expanded, TargetFile: expanded })
+        if check[:status] == :deny
+          raise Antigravity::PolicyDeniedError, "\e[31m🛡️ DENIED by policy: #{path}\e[0m"
+        end
+      end
+      File.read(expanded)
+    end
+
+    # Convenience: deny ALL tools from accessing a file (by basename glob).
+    # This is a one-liner for policy.add_deny(nil, when: policy.path(file))
+    # @example deny_file('.env')
+    def deny_file(filename)
+      raise 'No policy loaded' unless policy
+      policy.add_deny(nil, when: policy.path(filename))
+      policy.add_deny(:run_command, when: policy.cmd(filename))
+      puts "\e[2m  🛡️ Denied all access to #{filename}\e[0m"
+    end
+
     # ─── Smart Setters (propagate to agent) ───────────────────
 
     # Change workspace and notify agent

@@ -24,4 +24,7 @@ module Antigravity
 
   # Raised when required configuration (e.g., GEMINI_API_KEY) is missing
   class ConfigError < Error; end
+
+  # Raised when a policy denies a tool call at runtime
+  class PolicyDeniedError < Error; end
 end
