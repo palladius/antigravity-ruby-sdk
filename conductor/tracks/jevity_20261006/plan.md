@@ -14,26 +14,26 @@
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 2: Visual Telemetry & Model Router (TDD)
-- [ ] Task: Write failing RSpec unit tests for `Antigravity::Jev::Telemetry` and `Antigravity::Jev::Router`
-  - [ ] Test single-line telemetry formatting with emojis and latency badges
-  - [ ] Test prompt complexity evaluation with JEV
-  - [ ] Test dynamic model assignment (simple -> Flash, complex -> Pro)
-- [ ] Task: Implement `Antigravity::Jev::Telemetry` and `Antigravity::Jev::Router`
-  - [ ] Build colorful single-line logger (`⚡ [Jev: Xms | ...]`)
-  - [ ] Implement routing logic integrating with Antigravity Gemini client
-  - [ ] Ensure all Phase 2 tests pass
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Write failing RSpec unit tests for `Antigravity::Jev::Telemetry` and `Antigravity::Jev::Router`
+  - [x] Test single-line telemetry formatting with emojis and latency badges
+  - [x] Test prompt complexity evaluation with JEV
+  - [x] Test dynamic model assignment (simple -> Flash, complex -> Pro)
+- [x] Task: Implement `Antigravity::Jev::Telemetry` and `Antigravity::Jev::Router`
+  - [x] Build colorful single-line logger (`⚡ [Jev: Xms | ...]`)
+  - [x] Implement routing logic integrating with Antigravity Gemini client
+  - [x] Ensure all Phase 2 tests pass
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 3: Command Safety Guardrail (TDD)
-- [ ] Task: Write failing RSpec unit tests for `Antigravity::Jev::Guardrail`
-  - [ ] Test probability threshold classification ($\ge 0.80$ -> `:allow`, $< 0.40$ -> `:deny`, $0.40..0.80$ -> `:ask`)
-  - [ ] Test simulated execution for commands (`ls`, `cat .env`, `rm -rf /`)
-  - [ ] Test interactive confirmation hook for ambiguous commands
-- [ ] Task: Implement `Antigravity::Jev::Guardrail`
-  - [ ] Build guardrail evaluation engine using JEV `noul` primitive
-  - [ ] Implement execution dispatcher respecting safety verdict
-  - [ ] Ensure all Phase 3 tests pass
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Write failing RSpec unit tests for `Antigravity::Jev::Guardrail`
+  - [x] Test probability threshold classification ($\ge 0.80$ -> `:allow`, $< 0.40$ -> `:deny`, $0.40..0.80$ -> `:ask`)
+  - [x] Test simulated execution for commands (`ls`, `cat .env`, `rm -rf /`)
+  - [x] Test interactive confirmation hook for ambiguous commands
+- [x] Task: Implement `Antigravity::Jev::Guardrail`
+  - [x] Build guardrail evaluation engine using JEV `noul` primitive
+  - [x] Implement execution dispatcher respecting safety verdict
+  - [x] Ensure all Phase 3 tests pass
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 4: CLI Executable `bin/jevity` & Integration
 - [ ] Task: Write tests / CLI specs for `bin/jevity`

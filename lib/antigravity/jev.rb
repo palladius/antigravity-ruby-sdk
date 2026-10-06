@@ -3,6 +3,9 @@
 require_relative "jev/errors"
 require_relative "jev/response"
 require_relative "jev/client"
+require_relative "jev/telemetry"
+require_relative "jev/router"
+require_relative "jev/guardrail"
 
 module Antigravity
   module Jev
