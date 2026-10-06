@@ -1,0 +1,177 @@
+# frozen_string_literal: true
+
+require "net/http"
+require "json"
+require "uri"
+
+module Antigravity
+  module Jev
+    class Client
+      ENDPOINT = "https://api.typesafe.ai/v1/systemone"
+
+      attr_reader :api_key, :timeout
+
+      def initialize(api_key: nil, mock: false, timeout: 5)
+        @mock = mock
+        @timeout = timeout
+        @api_key = api_key || (mock ? nil : self.class.resolve_api_key)
+
+        raise AuthenticationError, "TypeSafe JEV API key not found in ENV or GIC config" if !@mock && (@api_key.nil? || @api_key.empty?)
+
+        @mock_handler = nil
+      end
+
+      def mock?
+        @mock
+      end
+
+      def set_mock_handler(&block)
+        @mock_handler = block
+      end
+
+      def self.resolve_api_key
+        # 1. Direct ENV variables
+        key = ENV["JEV_API_KEY"] || ENV["TYPESAFE_API_KEY"]
+        return key if key && !key.empty?
+
+        # 2. Check $GIC/.env if GIC path exists (read-only inspect, never write!)
+        gic_path = ENV["GIC"]
+        if gic_path && File.directory?(gic_path)
+          gic_env = File.join(gic_path, ".env")
+          if File.file?(gic_env)
+            content = File.read(gic_env)
+            if content =~ /^JEV_API_KEY=['"]?([^'"\n]+)['"]?/
+              return ::Regexp.last_match(1)
+            end
+          end
+        end
+
+        # 3. Check current directory .env if readable
+        if File.file?(".env")
+          begin
+            content = File.read(".env")
+            if content =~ /^JEV_API_KEY=['"]?([^'"\n]+)['"]?/
+              return ::Regexp.last_match(1)
+            end
+          rescue SystemCallError
+            # Ignore read errors
+          end
+        end
+
+        nil
+      end
+
+      def systemone(state:, questions:, model: "jev-latest")
+        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+        if mock?
+          data = if @mock_handler
+                   answers = @mock_handler.call(state, questions)
+                   { "model" => model, "answers" => answers, "usage" => { "input_tokens" => 50, "output_tokens" => 10 } }
+                 else
+                   default_mock_response(questions)
+                 end
+          t1 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          latency = ((t1 - t0) * 1000.0).round(2)
+          return Response.new(data: data, latency_ms: latency)
+        end
+
+        uri = URI(ENDPOINT)
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl = (uri.scheme == "https")
+        http.open_timeout = @timeout
+        http.read_timeout = @timeout
+
+        req = Net::HTTP::Post.new(uri.path, {
+          "Content-Type" => "application/json",
+          "Authorization" => "Bearer #{@api_key}"
+        })
+
+        payload = {
+          model: model,
+          state: state,
+          questions: questions
+        }
+        req.body = JSON.generate(payload)
+
+        res = http.request(req)
+        t1 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        latency = ((t1 - t0) * 1000.0).round(2)
+
+        unless res.is_a?(Net::HTTPSuccess)
+          raise ApiError, "JEV API request failed (#{res.code}): #{res.body}"
+        end
+
+        data = JSON.parse(res.body)
+        Response.new(data: data, latency_ms: latency)
+      end
+
+      def noul(instructions, state: nil, key: :verdict)
+        state_str = state.is_a?(Hash) ? JSON.generate(state) : state.to_s
+        questions = {
+          key => {
+            type: "noul",
+            instructions: instructions
+          }
+        }
+        resp = systemone(state: state_str, questions: questions)
+        val = resp.noul(key)
+        if val.nil? && resp.answers.size == 1
+          val = resp.noul(resp.answers.keys.first)
+        end
+        [val, resp]
+      end
+
+      def choice(criteria, state: nil, instructions: nil, key: :category)
+        state_str = state.is_a?(Hash) ? JSON.generate(state) : state.to_s
+        q = { type: "choice", criteria: criteria }
+        q[:instructions] = instructions if instructions
+        resp = systemone(state: state_str, questions: { key => q })
+        c = resp.choice(key)
+        conf = resp.confidence(key)
+        if c.nil? && resp.answers.size == 1
+          single_key = resp.answers.keys.first
+          c = resp.choice(single_key)
+          conf = resp.confidence(single_key)
+        end
+        [c, conf, resp]
+      end
+
+      def score(rubric, state: nil, key: :grade)
+        state_str = state.is_a?(Hash) ? JSON.generate(state) : state.to_s
+        q = { type: "score", rubric: rubric }
+        resp = systemone(state: state_str, questions: { key => q })
+        s = resp.score(key)
+        conf = resp.confidence(key)
+        if s.nil? && resp.answers.size == 1
+          single_key = resp.answers.keys.first
+          s = resp.score(single_key)
+          conf = resp.confidence(single_key)
+        end
+        [s, conf, resp]
+      end
+
+      private
+
+      def default_mock_response(questions)
+        answers = {}
+        questions.each do |k, v|
+          type = v[:type] || v["type"]
+          answers[k.to_s] = case type.to_s
+                            when "noul"
+                              { "type" => "noul", "noul" => 0.95 }
+                            when "choice"
+                              criteria = v[:criteria] || v["criteria"] || {}
+                              first_choice = criteria.keys.first.to_s
+                              { "type" => "choice", "choice" => first_choice, "confidence" => 0.90 }
+                            when "score"
+                              { "type" => "score", "score" => 5.0, "confidence" => 0.85 }
+                            else
+                              { "type" => "unknown" }
+                            end
+        end
+        { "model" => "jev-mock", "answers" => answers, "usage" => {} }
+      end
+    end
+  end
+end

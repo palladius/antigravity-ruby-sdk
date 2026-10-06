@@ -1,17 +1,17 @@
 # Implementation Plan: Jevity (`bin/jevity`) — JEV-Powered Harness
 
 ## Phase 1: JEV Client & Primitives (TDD)
-- [ ] Task: Write failing RSpec unit tests for `Antigravity::Jev::Client`
-  - [ ] Test API key resolution (from `ENV['JEV_API_KEY']`, `ENV['TYPESAFE_API_KEY']`, and fallback checking `$GIC/.env`)
-  - [ ] Test request payload formatting for `choice`, `score`, and `noul` primitives
-  - [ ] Test latency measurement recording in milliseconds
-  - [ ] Test mock/stub offline mode and error handling
-- [ ] Task: Implement `Antigravity::Jev::Client`
-  - [ ] Implement key discovery without modifying any `.env`
-  - [ ] Implement HTTP POST to `https://api.typesafe.ai/v1/systemone` using standard Net::HTTP
-  - [ ] Implement response parsing for `answers` map and token usage
-  - [ ] Ensure all Phase 1 tests pass
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Write failing RSpec unit tests for `Antigravity::Jev::Client`
+  - [x] Test API key resolution (from `ENV['JEV_API_KEY']`, `ENV['TYPESAFE_API_KEY']`, and fallback checking `$GIC/.env`)
+  - [x] Test request payload formatting for `choice`, `score`, and `noul` primitives
+  - [x] Test latency measurement recording in milliseconds
+  - [x] Test mock/stub offline mode and error handling
+- [x] Task: Implement `Antigravity::Jev::Client`
+  - [x] Implement key discovery without modifying any `.env`
+  - [x] Implement HTTP POST to `https://api.typesafe.ai/v1/systemone` using standard Net::HTTP
+  - [x] Implement response parsing for `answers` map and token usage
+  - [x] Ensure all Phase 1 tests pass
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 2: Visual Telemetry & Model Router (TDD)
 - [ ] Task: Write failing RSpec unit tests for `Antigravity::Jev::Telemetry` and `Antigravity::Jev::Router`
