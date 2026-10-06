@@ -9,12 +9,13 @@ A Ruby gem (`antigravity-sdk`) that provides first-class Ruby access to Google's
 - **Tool framework** with DSL-style `class MyTool < Antigravity::Tool`
 - **Skill system** for loading agent capabilities from local/remote sources
 - **Streaming** with thinking token support
+- **Jevity decision harness & guardrails** (`bin/jevity`, `bin/rujev`) with JEV System One routing and safe command gating
 
 ## Target Users
 - Ruby developers building AI agents
 - DevRel/SRE teams wanting Ruby-native AI tooling
 - Developers who prefer Ruby's expressiveness over Python
 
-## Current State (v0.5.5)
-Working: agent lifecycle, hooks, tools, skills, E2E tests, diagnostics, workspace indexing.
-Missing: thinking token UX, REPL/console, TUI module, MCP support.
+## Current State (v0.7.0)
+Working: agent lifecycle, hooks, tools, skills, E2E tests, diagnostics, workspace indexing, thinking console REPL, Jevity decision & guardrail harness.
+Missing: TUI module, MCP support.

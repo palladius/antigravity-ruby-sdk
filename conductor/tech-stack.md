@@ -22,4 +22,5 @@
 ## Infrastructure
 - **localharness** — Antigravity binary (Mach-O arm64)
 - **Gemini API** — LLM backend (via API key)
+- **TypeSafe JEV API** — System One decision model backend (`https://api.typesafe.ai/v1/systemone`)
 - **stdio** — Process communication protocol
