@@ -1,0 +1,15 @@
+# Jevity Configuration
+# Easy place to configure model routing and safety thresholds
+
+# Models routed by JEV System One:
+fast_model: "gemini-3.8-flash-low"      # Fast, lightweight model for simple queries
+smart_model: "gemini-3.8-flash-high"    # Reasoning model for complex queries
+
+# Guardrail thresholds:
+# Probability >= allow_threshold -> Auto-approve (Green)
+allow_threshold: 0.80
+
+# Probability < deny_threshold   -> Auto-block (Red)
+deny_threshold: 0.40
+
+# In between (0.40..0.80)        -> Ask user confirmation on second line (Yellow)

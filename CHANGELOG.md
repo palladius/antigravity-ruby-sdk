@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-06 🚦 Jevity & JEV System One Integration (Track jevity_20261006)
+### Features
+* 🚦 **JEV Decision & Guardrail Harness**: First-class integration with TypeSafe AI's Jev "System One" model.
+* ⚡ **Ultra-Fast Visual Telemetry**: Single-line sub-second telemetry (`⚡ [Jev: 75ms | Safe: 99.2%] ✅ APPROVED: ls -la`).
+* 🚀 **Smart Model Routing (`Antigravity::Jev::Router`)**: Dynamic routing between `gemini-3.8-flash-low` and `gemini-3.8-flash-high` based on prompt complexity.
+* 🛡️ **Command Safety Guardrail (`Antigravity::Jev::Guardrail`)**: Probabilistic execution gates ($\ge 80\%$ auto-allow, $< 40\%$ auto-block, $40..80\%$ prompt user on 2nd line).
+* 🔒 **Safety Circuit Breaker**: Hardcoded failsafe strictly prohibiting catastrophic wipes.
+* 💻 **CLI Binary `bin/jevity` & `bin/rujev`**: Mini-harness executable supporting stdin piping (`echo ... | rujev -`), `ask`, `exec`, `guard`, and interactive REPL.
+* ⚙️ **Configurable YAML**: Customizable `config/jevity.yml` and ENV overrides for models and safety thresholds.
+* 🔑 **Smart Key Discovery**: Auto-detects `JEV_API_KEY_RUJEV` in environment or `$GIC/.env`.
+
 ## [0.6.0] - 2026-08-15 🧠 Thinking Tokens + Interactive Console (GHI #8)
 ### Features
 * 🧠 **Thinking in Chunks**: `Message#thinking?` and `#content?` predicates. Streaming block now receives thinking chunks (gray italic) alongside content chunks (bold cyan).

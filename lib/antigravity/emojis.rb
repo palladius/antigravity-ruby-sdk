@@ -21,6 +21,7 @@ module Antigravity
     guard: "🛡️",
     test: "🧪",
     success: "✅",
+    jev: "🚦",
     unknown: "🤷"
   }.freeze
 
@@ -34,7 +35,8 @@ module Antigravity
     "Message" => :message,
     "Chunk" => :message,
     "Guard" => :guard,
-    "Logger" => :logger
+    "Logger" => :logger,
+    "Jev" => :jev
   }.freeze
 
   class << self

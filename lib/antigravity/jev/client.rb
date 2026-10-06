@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require "net/http"
-require "json"
-require "uri"
+require 'net/http'
+require 'json'
+require 'uri'
 
 module Antigravity
   module Jev
     class Client
-      ENDPOINT = "https://api.typesafe.ai/v1/systemone"
+      ENDPOINT = 'https://api.typesafe.ai/v1/systemone'
 
       attr_reader :api_key, :timeout
 
@@ -16,7 +16,10 @@ module Antigravity
         @timeout = timeout
         @api_key = api_key || (mock ? nil : self.class.resolve_api_key)
 
-        raise AuthenticationError, "TypeSafe JEV API key not found in ENV or GIC config" if !@mock && (@api_key.nil? || @api_key.empty?)
+        if !@mock && (@api_key.nil? || @api_key.empty?)
+          raise AuthenticationError,
+                'TypeSafe JEV API key not found in ENV or GIC config'
+        end
 
         @mock_handler = nil
       end
@@ -30,27 +33,31 @@ module Antigravity
       end
 
       def self.resolve_api_key
-        # 1. Direct ENV variables
-        key = ENV["JEV_API_KEY"] || ENV["TYPESAFE_API_KEY"]
+        # 1. Process ENV variables (highest priority)
+        key = ENV['JEV_API_KEY_RUJEV'] || ENV['JEV_API_KEY'] || ENV['TYPESAFE_API_KEY']
         return key if key && !key.empty?
 
-        # 2. Check $GIC/.env if GIC path exists (read-only inspect, never write!)
-        gic_path = ENV["GIC"]
+        # 2. Check $GIC/.env (JEV_API_KEY_RUJEV first, then JEV_API_KEY)
+        gic_path = ENV['GIC']
         if gic_path && File.directory?(gic_path)
-          gic_env = File.join(gic_path, ".env")
+          gic_env = File.join(gic_path, '.env')
           if File.file?(gic_env)
             content = File.read(gic_env)
-            if content =~ /^JEV_API_KEY=['"]?([^'"\n]+)['"]?/
+            if content =~ /^JEV_API_KEY_RUJEV=['"]?([^'"\n]+)['"]?/
+              return ::Regexp.last_match(1)
+            elsif content =~ /^JEV_API_KEY=['"]?([^'"\n]+)['"]?/
               return ::Regexp.last_match(1)
             end
           end
         end
 
         # 3. Check current directory .env if readable
-        if File.file?(".env")
+        if File.file?('.env')
           begin
-            content = File.read(".env")
-            if content =~ /^JEV_API_KEY=['"]?([^'"\n]+)['"]?/
+            content = File.read('.env')
+            if content =~ /^JEV_API_KEY_RUJEV=['"]?([^'"\n]+)['"]?/
+              return ::Regexp.last_match(1)
+            elsif content =~ /^JEV_API_KEY=['"]?([^'"\n]+)['"]?/
               return ::Regexp.last_match(1)
             end
           rescue SystemCallError
@@ -61,13 +68,14 @@ module Antigravity
         nil
       end
 
-      def systemone(state:, questions:, model: "jev-latest")
+      def systemone(state:, questions:, model: 'jev-latest')
         t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
         if mock?
           data = if @mock_handler
                    answers = @mock_handler.call(state, questions)
-                   { "model" => model, "answers" => answers, "usage" => { "input_tokens" => 50, "output_tokens" => 10 } }
+                   { 'model' => model, 'answers' => answers,
+                     'usage' => { 'input_tokens' => 50, 'output_tokens' => 10 } }
                  else
                    default_mock_response(questions)
                  end
@@ -78,14 +86,14 @@ module Antigravity
 
         uri = URI(ENDPOINT)
         http = Net::HTTP.new(uri.host, uri.port)
-        http.use_ssl = (uri.scheme == "https")
+        http.use_ssl = (uri.scheme == 'https')
         http.open_timeout = @timeout
         http.read_timeout = @timeout
 
         req = Net::HTTP::Post.new(uri.path, {
-          "Content-Type" => "application/json",
-          "Authorization" => "Bearer #{@api_key}"
-        })
+                                    'Content-Type' => 'application/json',
+                                    'Authorization' => "Bearer #{@api_key}"
+                                  })
 
         payload = {
           model: model,
@@ -98,9 +106,7 @@ module Antigravity
         t1 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         latency = ((t1 - t0) * 1000.0).round(2)
 
-        unless res.is_a?(Net::HTTPSuccess)
-          raise ApiError, "JEV API request failed (#{res.code}): #{res.body}"
-        end
+        raise ApiError, "JEV API request failed (#{res.code}): #{res.body}" unless res.is_a?(Net::HTTPSuccess)
 
         data = JSON.parse(res.body)
         Response.new(data: data, latency_ms: latency)
@@ -110,21 +116,19 @@ module Antigravity
         state_str = state.is_a?(Hash) ? JSON.generate(state) : state.to_s
         questions = {
           key => {
-            type: "noul",
+            type: 'noul',
             instructions: instructions
           }
         }
         resp = systemone(state: state_str, questions: questions)
         val = resp.noul(key)
-        if val.nil? && resp.answers.size == 1
-          val = resp.noul(resp.answers.keys.first)
-        end
+        val = resp.noul(resp.answers.keys.first) if val.nil? && resp.answers.size == 1
         [val, resp]
       end
 
       def choice(criteria, state: nil, instructions: nil, key: :category)
         state_str = state.is_a?(Hash) ? JSON.generate(state) : state.to_s
-        q = { type: "choice", criteria: criteria }
+        q = { type: 'choice', criteria: criteria }
         q[:instructions] = instructions if instructions
         resp = systemone(state: state_str, questions: { key => q })
         c = resp.choice(key)
@@ -139,7 +143,7 @@ module Antigravity
 
       def score(rubric, state: nil, key: :grade)
         state_str = state.is_a?(Hash) ? JSON.generate(state) : state.to_s
-        q = { type: "score", rubric: rubric }
+        q = { type: 'score', rubric: rubric }
         resp = systemone(state: state_str, questions: { key => q })
         s = resp.score(key)
         conf = resp.confidence(key)
@@ -156,21 +160,21 @@ module Antigravity
       def default_mock_response(questions)
         answers = {}
         questions.each do |k, v|
-          type = v[:type] || v["type"]
+          type = v[:type] || v['type']
           answers[k.to_s] = case type.to_s
-                            when "noul"
-                              { "type" => "noul", "noul" => 0.95 }
-                            when "choice"
-                              criteria = v[:criteria] || v["criteria"] || {}
+                            when 'noul'
+                              { 'type' => 'noul', 'noul' => 0.95 }
+                            when 'choice'
+                              criteria = v[:criteria] || v['criteria'] || {}
                               first_choice = criteria.keys.first.to_s
-                              { "type" => "choice", "choice" => first_choice, "confidence" => 0.90 }
-                            when "score"
-                              { "type" => "score", "score" => 5.0, "confidence" => 0.85 }
+                              { 'type' => 'choice', 'choice' => first_choice, 'confidence' => 0.90 }
+                            when 'score'
+                              { 'type' => 'score', 'score' => 5.0, 'confidence' => 0.85 }
                             else
-                              { "type" => "unknown" }
+                              { 'type' => 'unknown' }
                             end
         end
-        { "model" => "jev-mock", "answers" => answers, "usage" => {} }
+        { 'model' => 'jev-mock', 'answers' => answers, 'usage' => {} }
       end
     end
   end

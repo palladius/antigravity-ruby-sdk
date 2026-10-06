@@ -1,0 +1,169 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+$LOAD_PATH.unshift File.expand_path('../lib', __dir__)
+begin
+  require 'bundler/setup'
+rescue LoadError
+  # Fallback if run standalone without bundler
+end
+require 'antigravity'
+require 'antigravity/jev'
+require 'optparse'
+
+def print_banner
+  puts "\e[1;36m🛰️  Jevity\e[0m \e[90mv#{Antigravity::VERSION}\e[0m — \e[33mJEV System One Decision & Guardrail Harness\e[0m"
+  puts "\e[90m#{'─' * 60}\e[0m"
+end
+
+def run_interactive(harness)
+  print_banner
+  puts "Type any natural language command, bash command, or 'exit'/'quit' to leave."
+  puts "Example: \e[32mShow me the list of this folder\e[0m"
+  puts "Example: \e[31mDelete the README.md in this folder\e[0m"
+  puts
+
+  loop do
+    print "\e[1;34mjevity>\e[0m "
+    line = $stdin.gets
+    break if line.nil?
+
+    input = line.strip
+    next if input.empty?
+    break if %w[exit quit q].include?(input.downcase)
+
+    harness.process(input)
+    puts
+  end
+end
+nil
+
+# Extract piped stdin if '-' argument is given
+raw_input = nil
+if ARGV.include?('-')
+  raw_input = $stdin.read.strip
+  ARGV.delete('-')
+elsif ARGV.empty? && !$stdin.tty?
+  raw_input = $stdin.read.strip
+end
+
+parser = OptionParser.new do |opts|
+  opts.banner = "Usage: jevity [options] [command/prompt]\n       echo 'Show me the list of this folder' | jevity -"
+
+  opts.on('-v', '--version', 'Print version') do
+    puts "jevity (antigravity-sdk) #{Antigravity::VERSION}"
+    exit 0
+  end
+
+  opts.on('-h', '--help', 'Show help message') do
+    print_banner
+    puts opts
+    puts "\nSubcommands:"
+    puts '  jevity ask <prompt>      Route model with JEV and query Gemini'
+    puts '  jevity exec <command>    Run shell command with JEV safety guardrail'
+    puts '  jevity guard <command>   Inspect command safety only (no execution)'
+    puts '  jevity interactive       Launch interactive REPL'
+    puts '  jevity -                 Read prompt/command from standard input'
+    exit 0
+  end
+end
+
+parser.order!(ARGV)
+
+# If input came from stdin via '-'
+if raw_input && !raw_input.empty?
+  harness = Antigravity::Jev::Harness.new
+  res = harness.process(raw_input)
+  if res[:status] == :blocked
+    exit 1
+  elsif res[:status] == :rejected_by_user
+    exit 2
+  else
+    exit 0
+  end
+end
+
+if ARGV.empty?
+  if $stdin.tty?
+    harness = Antigravity::Jev::Harness.new
+    run_interactive(harness)
+    exit 0
+  else
+    puts 'No input provided. Use -h for help.'
+    exit 1
+  end
+end
+
+subcommand = ARGV.shift
+target_arg = ARGV.join(' ')
+
+client = Antigravity::Jev.client
+guardrail = Antigravity::Jev::Guardrail.new(client: client)
+router = Antigravity::Jev::Router.new(client: client)
+harness = Antigravity::Jev::Harness.new(client: client, router: router, guardrail: guardrail)
+
+case subcommand
+when 'exec'
+  if target_arg.empty?
+    warn 'Error: missing command to execute'
+    exit 1
+  end
+  res = guardrail.execute_guarded(target_arg)
+  exit(if res[:executed]
+         0
+       else
+         (res[:status] == :rejected_by_user ? 2 : 1)
+       end)
+
+when 'guard'
+  if target_arg.empty?
+    warn 'Error: missing command to evaluate'
+    exit 1
+  end
+  res = guardrail.evaluate(target_arg)
+  puts Antigravity::Jev::Telemetry.format_command_verdict(
+    res.verdict,
+    target_arg,
+    latency_ms: res.latency_ms,
+    probability: res.probability,
+    color: $stdout.tty?
+  )
+  exit(if res.allowed?
+         0
+       else
+         (res.ask? ? 2 : 1)
+       end)
+
+when 'ask'
+  if target_arg.empty?
+    warn 'Error: missing prompt'
+    exit 1
+  end
+  route_res = router.route(target_arg)
+  puts Antigravity::Jev::Telemetry.format_routing(
+    route_res.complexity,
+    route_res.model,
+    latency_ms: route_res.latency_ms,
+    confidence: route_res.confidence,
+    color: $stdout.tty?
+  )
+  cmd = harness.translate_to_command(target_arg, model: route_res.model)
+  puts "\e[90mGenerated command / answer:\e[0m #{cmd}"
+  exit 0
+
+when 'interactive', 'repl', 'console'
+  run_interactive(harness)
+  exit 0
+
+else
+  # Treat full argument string as prompt / command
+  full_prompt = [subcommand, target_arg].compact.reject(&:empty?).join(' ')
+  res = harness.process(full_prompt)
+  if res[:status] == :blocked
+    exit 1
+  elsif res[:status] == :rejected_by_user
+    exit 2
+  else
+    exit 0
+  end
+end

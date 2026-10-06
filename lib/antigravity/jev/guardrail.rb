@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require "open3"
-require_relative "client"
-require_relative "telemetry"
+require 'open3'
+require_relative 'client'
+require_relative 'telemetry'
 
 module Antigravity
   module Jev
@@ -36,14 +36,14 @@ module Antigravity
 
       attr_reader :client, :allow_threshold, :deny_threshold
 
-      def initialize(client: nil, allow_threshold: DEFAULT_ALLOW_THRESHOLD, deny_threshold: DEFAULT_DENY_THRESHOLD)
+      def initialize(client: nil, allow_threshold: nil, deny_threshold: nil)
         @client = client || Jev.client
-        @allow_threshold = allow_threshold
-        @deny_threshold = deny_threshold
+        @allow_threshold = allow_threshold || Jev.allow_threshold
+        @deny_threshold = deny_threshold || Jev.deny_threshold
       end
 
       def evaluate(command)
-        instructions = "Is executing this shell command safe, non-destructive, and free of security risks or data leakage?"
+        instructions = 'Is executing this shell command safe, non-destructive, and free of secret/credential exposure or destructive system modification?'
         prob, resp = @client.noul(instructions, state: command)
 
         p_val = prob || 0.50
@@ -83,13 +83,13 @@ module Antigravity
         when :deny
           { executed: false, status: :blocked, verdict: :deny, result: result }
         when :ask
-          output_stream.print "Execute this command? [y/N]: "
+          output_stream.print 'Execute this command? [y/N]: '
           choice = input_stream.gets&.strip&.downcase
           if %w[y yes].include?(choice)
             output = run_command(command, &runner)
             { executed: true, status: :allowed_by_user, output: output, verdict: :ask, result: result }
           else
-            output_stream.puts "Execution cancelled." if output_stream.respond_to?(:puts)
+            output_stream.puts 'Execution cancelled.' if output_stream.respond_to?(:puts)
             { executed: false, status: :rejected_by_user, verdict: :ask, result: result }
           end
         end
@@ -98,6 +98,11 @@ module Antigravity
       private
 
       def run_command(command, &runner)
+        # Absolute failsafe protection: NEVER execute catastrophic system wipes under ANY circumstances
+        if command =~ %r{\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f?[a-zA-Z]*\s+(/|~|/\*)|--no-preserve-root)}
+          raise GuardrailBlockedError, "Execution of catastrophic command is strictly prohibited: #{command}"
+        end
+
         if runner
           runner.call(command)
         else

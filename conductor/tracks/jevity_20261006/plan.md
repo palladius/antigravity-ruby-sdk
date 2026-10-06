@@ -36,21 +36,21 @@
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 4: CLI Executable `bin/jevity` & Integration
-- [ ] Task: Write tests / CLI specs for `bin/jevity`
-  - [ ] Test `bin/jevity ask` argument parsing and execution
-  - [ ] Test `bin/jevity exec` and `bin/jevity guard` flags
-  - [ ] Test exit codes (0 for success/allowed, 1 for blocked/error)
-- [ ] Task: Implement `bin/jevity`
-  - [ ] Implement CLI binary in `bin/jevity` with shebang and executable permissions
-  - [ ] Add subcommands: `ask`, `exec`, `guard`, and `interactive` mini-console
-  - [ ] Wire up SDK modules, telemetry, and banner
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Write tests / CLI specs for `bin/jevity`
+  - [x] Test `bin/jevity ask` argument parsing and execution
+  - [x] Test `bin/jevity exec` and `bin/jevity guard` flags
+  - [x] Test exit codes (0 for success/allowed, 1 for blocked/error)
+- [x] Task: Implement `bin/jevity`
+  - [x] Implement CLI binary in `bin/jevity` with shebang and executable permissions
+  - [x] Add subcommands: `ask`, `exec`, `guard`, and `interactive` mini-console
+  - [x] Wire up SDK modules, telemetry, and banner
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 5: Quality Gates & Polish
-- [ ] Task: Verification & Compliance
-  - [ ] Run full test suite via `just test`
-  - [ ] Run Rubocop and resolve any code style issues
-  - [ ] Test live run with actual `JEV_API_KEY` from `$GIC/.env`
-- [ ] Task: Documentation & Release
-  - [ ] Update `CHANGELOG.md` and `VERSION`
-  - [ ] Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Verification & Compliance
+  - [x] Run full test suite via `just test`
+  - [x] Run Rubocop and resolve any code style issues
+  - [x] Test live run with actual `JEV_API_KEY` from `$GIC/.env`
+- [x] Task: Documentation & Release
+  - [x] Update `CHANGELOG.md` and `VERSION`
+  - [x] Phase Verification & Checkpoint (Refer to workflow.md)

@@ -32,6 +32,7 @@ require_relative "antigravity/lifecycle_logger"
 require_relative "antigravity/diagnostics"
 require_relative "antigravity/console"
 require_relative "antigravity/agent"
+require_relative "antigravity/jev"
 
 module Antigravity
   class << self

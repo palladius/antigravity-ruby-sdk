@@ -7,9 +7,9 @@ module Antigravity
 
       def initialize(data:, latency_ms:)
         @raw_data = data
-        @model = data["model"] || data[:model]
-        @answers = (data["answers"] || data[:answers] || {}).transform_keys(&:to_sym)
-        @usage = data["usage"] || data[:usage] || {}
+        @model = data['model'] || data[:model]
+        @answers = (data['answers'] || data[:answers] || {}).transform_keys(&:to_sym)
+        @usage = data['usage'] || data[:usage] || {}
         @latency_ms = latency_ms
       end
 
@@ -17,7 +17,7 @@ module Antigravity
         ans = @answers[key.to_sym]
         return nil unless ans
 
-        val = ans["noul"] || ans[:noul]
+        val = ans['noul'] || ans[:noul]
         val&.to_f
       end
 
@@ -25,14 +25,14 @@ module Antigravity
         ans = @answers[key.to_sym]
         return nil unless ans
 
-        ans["choice"] || ans[:choice]
+        ans['choice'] || ans[:choice]
       end
 
       def confidence(key)
         ans = @answers[key.to_sym]
         return nil unless ans
 
-        val = ans["confidence"] || ans[:confidence]
+        val = ans['confidence'] || ans[:confidence]
         val&.to_f
       end
 
@@ -40,7 +40,7 @@ module Antigravity
         ans = @answers[key.to_sym]
         return nil unless ans
 
-        val = ans["score"] || ans[:score]
+        val = ans['score'] || ans[:score]
         val&.to_f
       end
     end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../colors"
+require_relative '../colors'
 
 module Antigravity
   module Jev
@@ -15,15 +15,15 @@ module Antigravity
 
           case verdict.to_sym
           when :allow, :approved
-            label = "APPROVED"
+            label = 'APPROVED'
             label_str = color ? Colors.colorize(label, :bright_green, :bold) : label
             "⚡ #{badge_str} ✅ #{label_str}: #{command}"
           when :ask, :unsure
-            label = "UNSURE"
+            label = 'UNSURE'
             label_str = color ? Colors.colorize(label, :bright_yellow, :bold) : label
             "⚡ #{badge_str} ⚠️ #{label_str}: #{command}"
           when :deny, :blocked
-            label = "BLOCKED"
+            label = 'BLOCKED'
             label_str = color ? Colors.colorize(label, :red, :bold) : label
             "⚡ #{badge_str} 🚫 #{label_str}: #{command}"
           else
@@ -38,8 +38,8 @@ module Antigravity
           badge = "[Jev: #{lat_str} | Routing: #{complexity} (#{conf_pct}%)]"
           badge_str = color ? Colors.colorize(badge, :yellow, :bold) : badge
 
-          icon = complexity.to_s == "complex" ? "🧠" : "🚀"
-          routed_label = color ? Colors.colorize("ROUTED", :cyan, :bold) : "ROUTED"
+          icon = complexity.to_s == 'complex' ? '🧠' : '🚀'
+          routed_label = color ? Colors.colorize('ROUTED', :cyan, :bold) : 'ROUTED'
 
           "⚡ #{badge_str} #{icon} #{routed_label}: #{model}"
         end

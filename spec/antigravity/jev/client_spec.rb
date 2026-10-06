@@ -1,167 +1,173 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-require "antigravity/jev"
+require 'spec_helper'
+require 'antigravity/jev'
 
 RSpec.describe Antigravity::Jev::Client do
-  let(:dummy_api_key) { "apikey_test1234567890abcdef" }
+  let(:dummy_api_key) { 'apikey_test1234567890abcdef' }
 
-  describe "initialization & API key resolution" do
-    it "accepts an explicit api_key" do
+  describe 'initialization & API key resolution' do
+    it 'accepts an explicit api_key' do
       client = described_class.new(api_key: dummy_api_key)
       expect(client.api_key).to eq(dummy_api_key)
     end
 
     it "resolves api_key from ENV['JEV_API_KEY']" do
-      ClimateControl.modify(JEV_API_KEY: "apikey_from_env", TYPESAFE_API_KEY: nil) do
-        client = described_class.new
-        expect(client.api_key).to eq("apikey_from_env")
-      end
-    rescue NameError
-      # If ClimateControl is not present, test via ENV directly with restore
-      original_jev = ENV["JEV_API_KEY"]
-      original_ts = ENV["TYPESAFE_API_KEY"]
+      original_rujev = ENV['JEV_API_KEY_RUJEV']
+      original_jev = ENV['JEV_API_KEY']
+      original_ts = ENV['TYPESAFE_API_KEY']
+      original_gic = ENV['GIC']
       begin
-        ENV["JEV_API_KEY"] = "apikey_from_env"
-        ENV["TYPESAFE_API_KEY"] = nil
+        ENV['JEV_API_KEY_RUJEV'] = nil
+        ENV['JEV_API_KEY'] = 'apikey_from_env'
+        ENV['TYPESAFE_API_KEY'] = nil
+        ENV['GIC'] = nil
         client = described_class.new
-        expect(client.api_key).to eq("apikey_from_env")
+        expect(client.api_key).to eq('apikey_from_env')
       ensure
-        ENV["JEV_API_KEY"] = original_jev
-        ENV["TYPESAFE_API_KEY"] = original_ts
+        ENV['JEV_API_KEY_RUJEV'] = original_rujev
+        ENV['JEV_API_KEY'] = original_jev
+        ENV['TYPESAFE_API_KEY'] = original_ts
+        ENV['GIC'] = original_gic
       end
     end
 
     it "resolves api_key from ENV['TYPESAFE_API_KEY'] as secondary" do
-      original_jev = ENV["JEV_API_KEY"]
-      original_ts = ENV["TYPESAFE_API_KEY"]
+      original_rujev = ENV['JEV_API_KEY_RUJEV']
+      original_jev = ENV['JEV_API_KEY']
+      original_ts = ENV['TYPESAFE_API_KEY']
+      original_gic = ENV['GIC']
       begin
-        ENV["JEV_API_KEY"] = nil
-        ENV["TYPESAFE_API_KEY"] = "apikey_from_typesafe_env"
+        ENV['JEV_API_KEY_RUJEV'] = nil
+        ENV['JEV_API_KEY'] = nil
+        ENV['TYPESAFE_API_KEY'] = 'apikey_from_typesafe_env'
+        ENV['GIC'] = nil
         client = described_class.new
-        expect(client.api_key).to eq("apikey_from_typesafe_env")
+        expect(client.api_key).to eq('apikey_from_typesafe_env')
       ensure
-        ENV["JEV_API_KEY"] = original_jev
-        ENV["TYPESAFE_API_KEY"] = original_ts
+        ENV['JEV_API_KEY_RUJEV'] = original_rujev
+        ENV['JEV_API_KEY'] = original_jev
+        ENV['TYPESAFE_API_KEY'] = original_ts
+        ENV['GIC'] = original_gic
       end
     end
 
-    it "falls back to parsing $GIC/.env if present without editing files" do
-      original_jev = ENV["JEV_API_KEY"]
-      original_ts = ENV["TYPESAFE_API_KEY"]
-      original_gic = ENV["GIC"]
+    it 'falls back to parsing $GIC/.env if present without editing files' do
+      original_jev = ENV['JEV_API_KEY']
+      original_ts = ENV['TYPESAFE_API_KEY']
+      original_gic = ENV['GIC']
       begin
-        ENV["JEV_API_KEY"] = nil
-        ENV["TYPESAFE_API_KEY"] = nil
+        ENV['JEV_API_KEY'] = nil
+        ENV['TYPESAFE_API_KEY'] = nil
         Dir.mktmpdir do |dir|
-          ENV["GIC"] = dir
-          File.write(File.join(dir, ".env"), "JEV_API_KEY='apikey_from_gic_env'\n")
+          ENV['GIC'] = dir
+          File.write(File.join(dir, '.env'), "JEV_API_KEY='apikey_from_gic_env'\n")
           client = described_class.new
-          expect(client.api_key).to eq("apikey_from_gic_env")
+          expect(client.api_key).to eq('apikey_from_gic_env')
         end
       ensure
-        ENV["JEV_API_KEY"] = original_jev
-        ENV["TYPESAFE_API_KEY"] = original_ts
-        ENV["GIC"] = original_gic
+        ENV['JEV_API_KEY'] = original_jev
+        ENV['TYPESAFE_API_KEY'] = original_ts
+        ENV['GIC'] = original_gic
       end
     end
 
-    it "raises AuthenticationError when no key is found and not in mock mode" do
-      original_jev = ENV["JEV_API_KEY"]
-      original_ts = ENV["TYPESAFE_API_KEY"]
-      original_gic = ENV["GIC"]
+    it 'raises AuthenticationError when no key is found and not in mock mode' do
+      original_jev = ENV['JEV_API_KEY']
+      original_ts = ENV['TYPESAFE_API_KEY']
+      original_gic = ENV['GIC']
       begin
-        ENV["JEV_API_KEY"] = nil
-        ENV["TYPESAFE_API_KEY"] = nil
-        ENV["GIC"] = "/nonexistent/path/gic"
-        expect {
+        ENV['JEV_API_KEY'] = nil
+        ENV['TYPESAFE_API_KEY'] = nil
+        ENV['GIC'] = '/nonexistent/path/gic'
+        expect do
           described_class.new
-        }.to raise_error(Antigravity::Jev::AuthenticationError, /API key not found/)
+        end.to raise_error(Antigravity::Jev::AuthenticationError, /API key not found/)
       ensure
-        ENV["JEV_API_KEY"] = original_jev
-        ENV["TYPESAFE_API_KEY"] = original_ts
-        ENV["GIC"] = original_gic
+        ENV['JEV_API_KEY'] = original_jev
+        ENV['TYPESAFE_API_KEY'] = original_ts
+        ENV['GIC'] = original_gic
       end
     end
 
-    it "allows initialization without key when mock: true" do
-      original_jev = ENV["JEV_API_KEY"]
-      original_ts = ENV["TYPESAFE_API_KEY"]
+    it 'allows initialization without key when mock: true' do
+      original_jev = ENV['JEV_API_KEY']
+      original_ts = ENV['TYPESAFE_API_KEY']
       begin
-        ENV["JEV_API_KEY"] = nil
-        ENV["TYPESAFE_API_KEY"] = nil
+        ENV['JEV_API_KEY'] = nil
+        ENV['TYPESAFE_API_KEY'] = nil
         client = described_class.new(mock: true)
         expect(client.mock?).to be true
       ensure
-        ENV["JEV_API_KEY"] = original_jev
-        ENV["TYPESAFE_API_KEY"] = original_ts
+        ENV['JEV_API_KEY'] = original_jev
+        ENV['TYPESAFE_API_KEY'] = original_ts
       end
     end
   end
 
-  describe "#systemone" do
+  describe '#systemone' do
     let(:client) { described_class.new(api_key: dummy_api_key) }
 
-    it "sends POST to /v1/systemone and returns structured Response with latency" do
+    it 'sends POST to /v1/systemone and returns structured Response with latency' do
       fake_body = {
-        model: "jev-latest",
+        model: 'jev-latest',
         answers: {
-          is_safe: { type: "noul", noul: 0.98 },
-          complexity: { type: "choice", choice: "simple", confidence: 0.95 }
+          is_safe: { type: 'noul', noul: 0.98 },
+          complexity: { type: 'choice', choice: 'simple', confidence: 0.95 }
         },
         usage: { input_tokens: 120, output_tokens: 24 }
       }.to_json
 
-      fake_http_response = instance_double(Net::HTTPSuccess, body: fake_body, code: "200")
+      fake_http_response = instance_double(Net::HTTPSuccess, body: fake_body, code: '200')
       allow(fake_http_response).to receive(:is_a?).with(Net::HTTPSuccess).and_return(true)
 
       allow_any_instance_of(Net::HTTP).to receive(:request).and_return(fake_http_response)
 
       resp = client.systemone(
-        state: "ls -la",
+        state: 'ls -la',
         questions: {
-          is_safe: { type: "noul", instructions: "Is this shell command safe?" },
-          complexity: { type: "choice", criteria: { simple: "Easy command", complex: "Multi-step command" } }
+          is_safe: { type: 'noul', instructions: 'Is this shell command safe?' },
+          complexity: { type: 'choice', criteria: { simple: 'Easy command', complex: 'Multi-step command' } }
         }
       )
 
       expect(resp).to be_a(Antigravity::Jev::Response)
       expect(resp.noul(:is_safe)).to eq(0.98)
-      expect(resp.choice(:complexity)).to eq("simple")
+      expect(resp.choice(:complexity)).to eq('simple')
       expect(resp.confidence(:complexity)).to eq(0.95)
       expect(resp.latency_ms).to be_a(Numeric)
       expect(resp.latency_ms).to be >= 0
     end
   end
 
-  describe "primitive convenience helpers" do
+  describe 'primitive convenience helpers' do
     let(:client) { described_class.new(mock: true) }
 
-    it "#noul returns probability float" do
-      client.set_mock_handler do |state, questions|
+    it '#noul returns probability float' do
+      client.set_mock_handler do |_state, _questions|
         {
-          "is_safe" => { "type" => "noul", "noul" => 0.85 }
+          'is_safe' => { 'type' => 'noul', 'noul' => 0.85 }
         }
       end
 
-      prob, resp = client.noul("Is this command safe?", state: "cat README.md")
+      prob, resp = client.noul('Is this command safe?', state: 'cat README.md')
       expect(prob).to eq(0.85)
       expect(resp).to be_a(Antigravity::Jev::Response)
       expect(resp.latency_ms).to be_a(Numeric)
     end
 
-    it "#choice returns selected category and confidence" do
-      client.set_mock_handler do |state, questions|
+    it '#choice returns selected category and confidence' do
+      client.set_mock_handler do |_state, _questions|
         {
-          "model_tier" => { "type" => "choice", "choice" => "flash", "confidence" => 0.91 }
+          'model_tier' => { 'type' => 'choice', 'choice' => 'flash', 'confidence' => 0.91 }
         }
       end
 
-      choice, conf, resp = client.choice(
-        { flash: "Simple question", pro: "Complex reasoning" },
-        state: "What is 2 + 2?"
+      choice, conf, = client.choice(
+        { flash: 'Simple question', pro: 'Complex reasoning' },
+        state: 'What is 2 + 2?'
       )
-      expect(choice).to eq("flash")
+      expect(choice).to eq('flash')
       expect(conf).to eq(0.91)
     end
   end
