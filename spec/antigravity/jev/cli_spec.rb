@@ -25,4 +25,16 @@ RSpec.describe 'CLI bin/jevity and bin/rujev' do
     expect(status.success?).to be true
     expect(out).to include('Usage:')
   end
+
+  it 'validates --folder directory exists' do
+    out, status = Open3.capture2e(bin_path, '--folder', '/nonexistent_folder_xyz_123', '--help')
+    expect(status.success?).to be false
+    expect(out).to include('directory not found')
+  end
+
+  it 'accepts valid --folder option' do
+    out, status = Open3.capture2e(bin_path, '--folder', '/tmp', '--version')
+    expect(status.success?).to be true
+    expect(out).to include(Antigravity::VERSION)
+  end
 end

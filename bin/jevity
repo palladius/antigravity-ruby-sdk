@@ -3,6 +3,8 @@
 
 $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 begin
+  gemfile = File.expand_path('../Gemfile', __dir__)
+  ENV['BUNDLE_GEMFILE'] ||= gemfile if File.file?(gemfile)
   require 'bundler/setup'
 rescue LoadError
   # Fallback if run standalone without bundler
@@ -49,6 +51,15 @@ end
 
 parser = OptionParser.new do |opts|
   opts.banner = "Usage: jevity [options] [command/prompt]\n       echo 'Show me the list of this folder' | jevity -"
+
+  opts.on('-d DIR', '--dir DIR', '--folder DIR', '-C DIR', 'Change working directory before executing') do |dir|
+    target_dir = File.expand_path(dir)
+    unless File.directory?(target_dir)
+      warn "Error: directory not found: #{dir}"
+      exit 1
+    end
+    Dir.chdir(target_dir)
+  end
 
   opts.on('-v', '--version', 'Print version') do
     puts "jevity (antigravity-sdk) #{Antigravity::VERSION}"
