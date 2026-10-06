@@ -18,7 +18,7 @@ module Antigravity
 
         if !@mock && (@api_key.nil? || @api_key.empty?)
           raise AuthenticationError,
-                'TypeSafe JEV API key not found in ENV or GIC config'
+                'TypeSafe JEV API key (JEV_API_KEY_RUJEV) not found in ENV or GIC config'
         end
 
         @mock_handler = nil
@@ -33,11 +33,11 @@ module Antigravity
       end
 
       def self.resolve_api_key
-        # 1. Process ENV variables (highest priority)
-        key = ENV['JEV_API_KEY_RUJEV'] || ENV['JEV_API_KEY'] || ENV['TYPESAFE_API_KEY']
+        # 1. Process ENV variable JEV_API_KEY_RUJEV strictly
+        key = ENV['JEV_API_KEY_RUJEV']
         return key if key && !key.empty?
 
-        # 2. Check $GIC/.env (JEV_API_KEY_RUJEV first, then JEV_API_KEY)
+        # 2. Check $GIC/.env strictly for JEV_API_KEY_RUJEV (read-only inspect, never write!)
         gic_path = ENV['GIC']
         if gic_path && File.directory?(gic_path)
           gic_env = File.join(gic_path, '.env')
@@ -45,19 +45,15 @@ module Antigravity
             content = File.read(gic_env)
             if content =~ /^JEV_API_KEY_RUJEV=['"]?([^'"\n]+)['"]?/
               return ::Regexp.last_match(1)
-            elsif content =~ /^JEV_API_KEY=['"]?([^'"\n]+)['"]?/
-              return ::Regexp.last_match(1)
             end
           end
         end
 
-        # 3. Check current directory .env if readable
+        # 3. Check current directory .env strictly for JEV_API_KEY_RUJEV if readable
         if File.file?('.env')
           begin
             content = File.read('.env')
             if content =~ /^JEV_API_KEY_RUJEV=['"]?([^'"\n]+)['"]?/
-              return ::Regexp.last_match(1)
-            elsif content =~ /^JEV_API_KEY=['"]?([^'"\n]+)['"]?/
               return ::Regexp.last_match(1)
             end
           rescue SystemCallError

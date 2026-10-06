@@ -12,80 +12,48 @@ RSpec.describe Antigravity::Jev::Client do
       expect(client.api_key).to eq(dummy_api_key)
     end
 
-    it "resolves api_key from ENV['JEV_API_KEY']" do
+    it "resolves api_key from ENV['JEV_API_KEY_RUJEV']" do
       original_rujev = ENV['JEV_API_KEY_RUJEV']
-      original_jev = ENV['JEV_API_KEY']
-      original_ts = ENV['TYPESAFE_API_KEY']
       original_gic = ENV['GIC']
       begin
-        ENV['JEV_API_KEY_RUJEV'] = nil
-        ENV['JEV_API_KEY'] = 'apikey_from_env'
-        ENV['TYPESAFE_API_KEY'] = nil
+        ENV['JEV_API_KEY_RUJEV'] = 'apikey_from_rujev_env'
         ENV['GIC'] = nil
         client = described_class.new
-        expect(client.api_key).to eq('apikey_from_env')
+        expect(client.api_key).to eq('apikey_from_rujev_env')
       ensure
         ENV['JEV_API_KEY_RUJEV'] = original_rujev
-        ENV['JEV_API_KEY'] = original_jev
-        ENV['TYPESAFE_API_KEY'] = original_ts
         ENV['GIC'] = original_gic
       end
     end
 
-    it "resolves api_key from ENV['TYPESAFE_API_KEY'] as secondary" do
+    it 'falls back to parsing JEV_API_KEY_RUJEV from $GIC/.env' do
       original_rujev = ENV['JEV_API_KEY_RUJEV']
-      original_jev = ENV['JEV_API_KEY']
-      original_ts = ENV['TYPESAFE_API_KEY']
       original_gic = ENV['GIC']
       begin
         ENV['JEV_API_KEY_RUJEV'] = nil
-        ENV['JEV_API_KEY'] = nil
-        ENV['TYPESAFE_API_KEY'] = 'apikey_from_typesafe_env'
-        ENV['GIC'] = nil
-        client = described_class.new
-        expect(client.api_key).to eq('apikey_from_typesafe_env')
-      ensure
-        ENV['JEV_API_KEY_RUJEV'] = original_rujev
-        ENV['JEV_API_KEY'] = original_jev
-        ENV['TYPESAFE_API_KEY'] = original_ts
-        ENV['GIC'] = original_gic
-      end
-    end
-
-    it 'falls back to parsing $GIC/.env if present without editing files' do
-      original_jev = ENV['JEV_API_KEY']
-      original_ts = ENV['TYPESAFE_API_KEY']
-      original_gic = ENV['GIC']
-      begin
-        ENV['JEV_API_KEY'] = nil
-        ENV['TYPESAFE_API_KEY'] = nil
         Dir.mktmpdir do |dir|
           ENV['GIC'] = dir
-          File.write(File.join(dir, '.env'), "JEV_API_KEY='apikey_from_gic_env'\n")
+          File.write(File.join(dir, '.env'), "JEV_API_KEY_RUJEV='apikey_from_gic_rujev_env'\n")
           client = described_class.new
-          expect(client.api_key).to eq('apikey_from_gic_env')
+          expect(client.api_key).to eq('apikey_from_gic_rujev_env')
         end
       ensure
-        ENV['JEV_API_KEY'] = original_jev
-        ENV['TYPESAFE_API_KEY'] = original_ts
+        ENV['JEV_API_KEY_RUJEV'] = original_rujev
         ENV['GIC'] = original_gic
       end
     end
 
-    it 'raises AuthenticationError when no key is found and not in mock mode' do
-      original_jev = ENV['JEV_API_KEY']
-      original_ts = ENV['TYPESAFE_API_KEY']
+    it 'raises AuthenticationError when JEV_API_KEY_RUJEV is not found and not in mock mode' do
+      original_rujev = ENV['JEV_API_KEY_RUJEV']
       original_gic = ENV['GIC']
       begin
-        ENV['JEV_API_KEY'] = nil
-        ENV['TYPESAFE_API_KEY'] = nil
+        ENV['JEV_API_KEY_RUJEV'] = nil
         ENV['GIC'] = '/nonexistent/path/gic'
         expect do
           described_class.new
-        end.to raise_error(Antigravity::Jev::AuthenticationError, /API key not found/)
+        end.to raise_error(Antigravity::Jev::AuthenticationError, /JEV_API_KEY_RUJEV/)
       ensure
-        ENV['JEV_API_KEY'] = original_jev
-        ENV['TYPESAFE_API_KEY'] = original_ts
+        ENV['JEV_API_KEY_RUJEV'] = original_rujev
         ENV['GIC'] = original_gic
       end
     end
