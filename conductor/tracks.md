@@ -6,6 +6,6 @@
 
 ---
 
-- [ ] **Track: Jevity (bin/jevity) — JEV-Powered Model Router and Command Safety Guardrail Harness**
+- [~] **Track: Jevity (bin/jevity) — JEV-Powered Model Router and Command Safety Guardrail Harness**
   *Link: [conductor/tracks/jevity_20261006/index.md](./tracks/jevity_20261006/index.md)*
 
