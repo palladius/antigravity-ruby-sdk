@@ -45,6 +45,11 @@ module Antigravity
           'gemini-3.8-flash-high'
       end
 
+      # Used when the routed model fails (404 / 503 high demand / timeout).
+      def fallback_model
+        ENV['JEV_FALLBACK_MODEL'] || loaded_yaml_config['fallback_model'] || 'gemini-3.7-flash'
+      end
+
       def allow_threshold
         (ENV['JEV_ALLOW_THRESHOLD'] || loaded_yaml_config['allow_threshold'] || 0.80).to_f
       end

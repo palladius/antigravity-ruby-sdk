@@ -1,71 +1,52 @@
 # frozen_string_literal: true
 
-require 'net/http'
-require 'json'
 require 'open3'
-require 'uri'
 require_relative 'client'
 require_relative 'router'
 require_relative 'guardrail'
 require_relative 'telemetry'
+require_relative 'renderer'
+require_relative 'gemini'
 
 module Antigravity
   module Jev
+    # Jevity mini-harness: route (JEV) -> think/answer (Gemini) -> guard (JEV) -> run -> observe.
+    #
+    # Natural-language prompts get a real model answer. If the model proposes
+    # a shell command, JEV guards it; its output is fed back to the model so it
+    # can finish the answer (up to MAX_STEPS commands per prompt).
     class Harness
-      GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
+      MAX_STEPS     = 3
+      MAX_OBSERVED  = 4_000 # chars of command output fed back to the model
+      FOLLOWUP_MARK = '[command output]'
+      DIRECT_COMMANDS = %w[ls cat rm git pwd echo touch mkdir cd find grep ruby bundle which head tail cp mv].freeze
 
-      attr_reader :client, :router, :guardrail, :output, :input
+      attr_reader :client, :router, :guardrail, :output, :input, :gemini, :renderer
 
-      def initialize(client: nil, router: nil, guardrail: nil, output: $stdout, input: $stdin)
+      def initialize(client: nil, router: nil, guardrail: nil, output: $stdout, input: $stdin,
+                     gemini: nil, renderer: nil)
         @client = client || Jev.client
         @router = router || Router.new(client: @client)
         @guardrail = guardrail || Guardrail.new(client: @client)
         @output = output
         @input = input
+        @gemini = gemini || (@client.mock? ? Gemini::Offline.new : Gemini.new)
+        @renderer = renderer || Renderer.new(output: output)
       end
 
-      def process(user_input)
+      def process(user_input, yolo: false)
         text = user_input.to_s.strip
-        return { error: 'Empty input' } if text.empty?
+        return { error: 'Empty input', status: :error } if text.empty?
 
-        # 1. Routing step (Fast visual telemetry)
-        route_res = @router.route(text)
-        routing_line = Telemetry.format_routing(
-          route_res.complexity,
-          route_res.model,
-          latency_ms: route_res.latency_ms,
-          confidence: route_res.confidence,
-          color: @output.respond_to?(:tty?) && @output.tty?
-        )
-        @output.puts routing_line
+        route_res = route(text)
+        return guarded(text, yolo).merge(route: route_res) if direct_command?(text)
 
-        # 2. Determine if it's natural language or direct shell command
-        cmd = if direct_command?(text)
-                text
-              else
-                translate_to_command(text, model: route_res.model)
-              end
-
-        # 3. Guardrail evaluation & guarded execution
-        exec_res = @guardrail.execute_guarded(cmd, input_stream: @input, output_stream: @output) do |command_to_run|
-          run_system_command(command_to_run)
-        end
-
-        exec_res.merge(command: cmd, route: route_res)
+        agent_loop(text, route_res, yolo)
       end
 
-      def translate_to_command(prompt, model: 'gemini-2.5-flash')
-        api_key = ENV['GEMINI_API_KEY']
-        if api_key && !api_key.empty?
-          begin
-            cmd = query_gemini_for_command(prompt, model: model, api_key: api_key)
-            return cmd if cmd && !cmd.empty?
-          rescue StandardError
-            # Fall back to heuristic if network/API error
-          end
-        end
-
-        heuristic_command(prompt)
+      # Used by `jevity ask`: show thinking/answer, return the proposed command (not executed).
+      def translate_to_command(prompt, model:)
+        ask_model(prompt, model)&.command
       end
 
       def run_system_command(cmd)
@@ -76,58 +57,76 @@ module Antigravity
 
       private
 
-      def direct_command?(text)
-        first_word = text.split(/\s+/).first.to_s.downcase
-        %w[ls cat rm git pwd echo touch mkdir cd find grep ruby bundle which head tail cp mv].include?(first_word)
+      def route(text)
+        res = @router.route(text)
+        @output.puts Telemetry.format_routing(res.complexity, res.model, latency_ms: res.latency_ms,
+                                                                        confidence: res.confidence, color: tty?)
+        res
       end
 
-      def query_gemini_for_command(prompt, model:, api_key:)
-        uri = URI("#{GEMINI_BASE_URL}/#{model}:generateContent?key=#{api_key}")
-        http = Net::HTTP.new(uri.host, uri.port)
-        http.use_ssl = true
-        http.open_timeout = 8
-        http.read_timeout = 8
+      def agent_loop(text, route_res, yolo)
+        prompt = text
+        executed = false
+        last = nil
 
-        system_instruction = 'You are a Unix command assistant. Given a user request, return EXACTLY one single bash command to fulfill it. Return ONLY the raw shell command, no backticks, no markdown, no comments, no explanation.'
-        payload = {
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: "#{system_instruction}\n\nUser request: #{prompt}" }]
-            }
-          ]
-        }
+        MAX_STEPS.times do
+          reply = ask_model(prompt, route_res.model)
+          return { executed: executed, status: :error, route: route_res } unless reply
+          return { executed: executed, status: :answered, command: last, route: route_res, reply: reply } unless reply.command
 
-        req = Net::HTTP::Post.new(uri.request_uri, { 'Content-Type' => 'application/json' })
-        req.body = JSON.generate(payload)
+          last = reply.command
+          res = guarded(last, yolo)
+          return res.merge(command: last, route: route_res) unless res[:executed]
 
-        res = http.request(req)
-        return nil unless res.is_a?(Net::HTTPSuccess)
-
-        parsed = JSON.parse(res.body)
-        raw_cmd = parsed.dig('candidates', 0, 'content', 'parts', 0, 'text')&.strip
-        # Clean potential markdown code blocks
-        raw_cmd&.gsub(/^```[a-z]*\n?/, '')&.gsub(/```$/, '')&.strip
-      end
-
-      def heuristic_command(prompt)
-        p = prompt.downcase
-        if p.include?('delete') && p.include?('readme')
-          'rm README.md'
-        elsif p.include?('delete') || p.include?('remove')
-          target = prompt.scan(/[\w.-]+/).last || 'file.tmp'
-          "rm #{target}"
-        elsif p.include?('list') || (p.include?('show') && (p.include?('folder') || p.include?('directory')))
-          'ls -la'
-        elsif p.include?('move out') || p.include?('go up')
-          'cd ..'
-        elsif p.include?('.env')
-          'cat .env'
-        elsif p.include?('readme')
-          'cat README.md'
-        else
-          "echo 'Interpreted: #{prompt}'"
+          executed = true
+          prompt = followup_prompt(last, res[:output])
         end
+
+        { executed: executed, status: :max_steps, command: last, route: route_res }
+      end
+
+      def ask_model(prompt, model)
+        reply = @gemini.ask(prompt, model: model, system_instruction: system_instruction)
+        reply.warnings.to_a.each { |w| @renderer.warning(w) }
+        @renderer.thinking(reply.thinking)
+        @renderer.answer(reply.answer)
+        reply
+      rescue ApiError => e
+        @renderer.warning("Gemini error: #{e.message}")
+        nil
+      end
+
+      def guarded(cmd, yolo)
+        @guardrail.execute_guarded(cmd, input_stream: @input, output_stream: @output, yolo: yolo) do |c|
+          run_system_command(c)
+        end
+      end
+
+      def followup_prompt(cmd, out)
+        "#{FOLLOWUP_MARK} `#{cmd}` returned:\n#{out.to_s[0, MAX_OBSERVED]}\n\n" \
+          'Use this to answer my original request. Propose another command only if strictly needed.'
+      end
+
+      def system_instruction
+        files = Dir.children('.').sort.first(40).join(', ')
+        <<~PROMPT
+          You are Jevity, a concise AI assistant in the developer's terminal.
+          Workspace: #{Dir.pwd}
+          Top-level entries: #{files}
+          Answer in the user's language. If running ONE shell command would help answer or
+          fulfil the request, include it in a ```bash fenced block; JEV will safety-check it
+          before it runs and you will receive its output. Never wrap prose in <thought> tags.
+        PROMPT
+      rescue SystemCallError
+        'You are Jevity, a concise AI assistant in the developer terminal.'
+      end
+
+      def direct_command?(text)
+        DIRECT_COMMANDS.include?(text.split(/\s+/).first.to_s.downcase)
+      end
+
+      def tty?
+        @output.respond_to?(:tty?) && @output.tty?
       end
     end
   end

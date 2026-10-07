@@ -43,4 +43,10 @@ RSpec.describe 'CLI bin/jevity and bin/rujev' do
     expect(status.success?).to be true
     expect(out).to include('APPROVED')
   end
+
+  it 'accepts --yolo and --yes flags to auto-confirm unsure commands' do
+    out, status = Open3.capture2e(bin_path, '--mock', '--yolo', 'exec', 'cat .env')
+    expect(status.success?).to be true
+    expect(out).not_to include('Execute this command?')
+  end
 end

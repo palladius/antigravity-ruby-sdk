@@ -43,6 +43,27 @@ RSpec.describe Antigravity::Jev::Client do
       end
     end
 
+    it 'falls back to ~/git/gic/.env when $GIC is not exported' do
+      original_rujev = ENV['JEV_API_KEY_RUJEV']
+      original_gic = ENV['GIC']
+      begin
+        ENV['JEV_API_KEY_RUJEV'] = nil
+        ENV['GIC'] = nil
+        default_env = File.join(File.expand_path('~/git/gic'), '.env')
+        allow(File).to receive(:directory?).and_call_original
+        allow(File).to receive(:directory?).with(File.expand_path('~/git/gic')).and_return(true)
+        allow(File).to receive(:file?).and_call_original
+        allow(File).to receive(:file?).with(default_env).and_return(true)
+        allow(File).to receive(:read).and_call_original
+        allow(File).to receive(:read).with(default_env).and_return("JEV_API_KEY_RUJEV=apikey_default_gic\n")
+
+        expect(described_class.resolve_api_key).to eq('apikey_default_gic')
+      ensure
+        ENV['JEV_API_KEY_RUJEV'] = original_rujev
+        ENV['GIC'] = original_gic
+      end
+    end
+
     it 'raises AuthenticationError when JEV_API_KEY_RUJEV is not found and not in mock mode' do
       original_rujev = ENV['JEV_API_KEY_RUJEV']
       original_gic = ENV['GIC']

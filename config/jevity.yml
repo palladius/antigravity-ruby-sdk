@@ -4,6 +4,11 @@
 # Models routed by JEV System One:
 fast_model: "gemini-3.8-flash-low"      # Fast, lightweight model for simple queries
 smart_model: "gemini-3.8-flash-high"    # Reasoning model for complex queries
+# A trailing -minimal/-low/-medium/-high is sent to Gemini as thinkingLevel
+# (e.g. "gemini-3.8-flash-low" => model gemini-3.8-flash, thinkingLevel low).
+
+# Used automatically if the routed model fails (404, 503 high demand, timeout):
+fallback_model: "gemini-3.7-flash"
 
 # Guardrail thresholds:
 # Probability >= allow_threshold -> Auto-approve (Green)

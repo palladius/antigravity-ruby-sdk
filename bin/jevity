@@ -13,11 +13,12 @@ def print_banner
   puts "\e[90m#{'─' * 60}\e[0m"
 end
 
-def run_interactive(harness)
+def run_interactive(harness, yolo: false)
   print_banner
   puts "Type any natural language command, bash command, or 'exit'/'quit' to leave."
   puts "Example: \e[32mShow me the list of this folder\e[0m"
   puts "Example: \e[31mDelete the README.md in this folder\e[0m"
+  puts "\e[90mThe session remembers previous turns. /reset clears the memory.\e[0m"
   puts
 
   loop do
@@ -29,7 +30,13 @@ def run_interactive(harness)
     next if input.empty?
     break if %w[exit quit q].include?(input.downcase)
 
-    harness.process(input)
+    if input == '/reset'
+      harness.gemini.reset!
+      puts '🧹 Conversation memory cleared.'
+      next
+    end
+
+    harness.process(input, yolo: yolo)
     puts
   end
 end
@@ -45,11 +52,16 @@ elsif ARGV.empty? && !$stdin.tty?
 end
 
 is_mock = false
+is_yolo = false
 parser = OptionParser.new do |opts|
   opts.banner = "Usage: jevity [options] [command/prompt]\n       echo 'Show me the list of this folder' | jevity -"
 
   opts.on('-m', '--mock', 'Run with mocked JEV client (no API calls)') do
     is_mock = true
+  end
+
+  opts.on('-y', '--yes', '--yolo', 'Automatically approve unsure commands without asking') do
+    is_yolo = true
   end
 
   opts.on('-d DIR', '--dir DIR', '--folder DIR', '-C DIR', 'Change working directory before executing') do |dir|
@@ -88,7 +100,7 @@ harness = Antigravity::Jev::Harness.new(client: client, router: router, guardrai
 
 # If input came from stdin via '-'
 if raw_input && !raw_input.empty?
-  res = harness.process(raw_input)
+  res = harness.process(raw_input, yolo: is_yolo)
   if res[:status] == :blocked
     exit 1
   elsif res[:status] == :rejected_by_user
@@ -100,7 +112,7 @@ end
 
 if ARGV.empty?
   if $stdin.tty?
-    run_interactive(harness)
+    run_interactive(harness, yolo: is_yolo)
     exit 0
   else
     puts 'No input provided. Use -h for help.'
@@ -117,7 +129,7 @@ when 'exec'
     warn 'Error: missing command to execute'
     exit 1
   end
-  res = guardrail.execute_guarded(target_arg)
+  res = guardrail.execute_guarded(target_arg, yolo: is_yolo)
   exit(if res[:executed]
          0
        else
@@ -157,17 +169,17 @@ when 'ask'
     color: $stdout.tty?
   )
   cmd = harness.translate_to_command(target_arg, model: route_res.model)
-  puts "\e[90mGenerated command / answer:\e[0m #{cmd}"
+  puts "\e[90mGenerated command / answer:\e[0m #{cmd}" if cmd
   exit 0
 
 when 'interactive', 'repl', 'console'
-  run_interactive(harness)
+  run_interactive(harness, yolo: is_yolo)
   exit 0
 
 else
   # Treat full argument string as prompt / command
   full_prompt = [subcommand, target_arg].compact.reject(&:empty?).join(' ')
-  res = harness.process(full_prompt)
+  res = harness.process(full_prompt, yolo: is_yolo)
   if res[:status] == :blocked
     exit 1
   elsif res[:status] == :rejected_by_user

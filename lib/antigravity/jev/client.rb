@@ -3,6 +3,7 @@
 require 'net/http'
 require 'json'
 require 'uri'
+require_relative 'key_finder'
 
 module Antigravity
   module Jev
@@ -32,36 +33,10 @@ module Antigravity
         @mock_handler = block
       end
 
+      # Strictly JEV_API_KEY_RUJEV: ENV, then $GIC/.env (default ~/git/gic), then ./.env.
+      # Read-only: never writes any .env file.
       def self.resolve_api_key
-        # 1. Process ENV variable JEV_API_KEY_RUJEV strictly
-        key = ENV['JEV_API_KEY_RUJEV']
-        return key if key && !key.empty?
-
-        # 2. Check $GIC/.env strictly for JEV_API_KEY_RUJEV (read-only inspect, never write!)
-        gic_path = ENV['GIC']
-        if gic_path && File.directory?(gic_path)
-          gic_env = File.join(gic_path, '.env')
-          if File.file?(gic_env)
-            content = File.read(gic_env)
-            if content =~ /^JEV_API_KEY_RUJEV=['"]?([^'"\n]+)['"]?/
-              return ::Regexp.last_match(1)
-            end
-          end
-        end
-
-        # 3. Check current directory .env strictly for JEV_API_KEY_RUJEV if readable
-        if File.file?('.env')
-          begin
-            content = File.read('.env')
-            if content =~ /^JEV_API_KEY_RUJEV=['"]?([^'"\n]+)['"]?/
-              return ::Regexp.last_match(1)
-            end
-          rescue SystemCallError
-            # Ignore read errors
-          end
-        end
-
-        nil
+        KeyFinder.lookup('JEV_API_KEY_RUJEV')
       end
 
       def systemone(state:, questions:, model: 'jev-latest')

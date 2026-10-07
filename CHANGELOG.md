@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-07 🤖 Jevity: real answers, thinking display & review fixes
+### Features
+* 🤔/🤖 **Tag-free rendering** (`Antigravity::Jev::Renderer`): thinking in gray with 🤔, answer in white with 🤖, continuation lines indented. No ANSI when piped.
+* 🔁 **Observe loop**: command output is fed back to Gemini so it finishes the answer (max 3 commands per prompt).
+* 🧠 **Native thinking**: `gemini-3.8-flash-low/-high` now map to model `gemini-3.8-flash` + `thinkingLevel` (`includeThoughts`).
+* 🧵 **Multi-turn memory** in the REPL (`/reset` to clear).
+* 🏖️ **`--yolo` / `--yes` / `-y`**: auto-approve UNSURE commands (BLOCKED stays blocked, catastrophic circuit breaker still on).
+* 🚦 **`Antigravity::Jev::AgentGuard`**: plugs the JEV guardrail into core `Antigravity::Hooks#before_tool_call` (one safety brain for Agent and rujev).
+
+### Fixes (from /review)
+* 🐛 No more silent fake `echo 'Interpreted: ...'`: Gemini errors and fallbacks are shown as ⚠️ warnings.
+* 🔀 Automatic `fallback_model` (default `gemini-3.7-flash`, configurable in `config/jevity.yml`) on 404/503/timeouts.
+* 🔑 Gemini key sent via `x-goog-api-key` header (no longer in the URL).
+* 🗝️ Shared read-only `KeyFinder`; `$GIC` defaults to `~/git/gic` when not exported.
+* ♻️ Gemini REST code extracted from `Harness` into `Antigravity::Jev::Gemini`; heuristics only in `--mock` (`Gemini::Offline`).
+
 ## [0.7.0] - 2026-10-06 🚦 Jevity & JEV System One Integration (Track jevity_20261006)
 ### Features
 * 🚦 **JEV Decision & Guardrail Harness**: First-class integration with TypeSafe AI's Jev "System One" model.

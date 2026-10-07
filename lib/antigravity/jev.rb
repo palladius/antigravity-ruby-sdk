@@ -2,11 +2,15 @@
 
 require_relative 'jev/errors'
 require_relative 'jev/constants'
+require_relative 'jev/key_finder'
 require_relative 'jev/response'
 require_relative 'jev/client'
 require_relative 'jev/telemetry'
 require_relative 'jev/router'
 require_relative 'jev/guardrail'
+require_relative 'jev/agent_guard'
+require_relative 'jev/renderer'
+require_relative 'jev/gemini'
 require_relative 'jev/harness'
 
 module Antigravity

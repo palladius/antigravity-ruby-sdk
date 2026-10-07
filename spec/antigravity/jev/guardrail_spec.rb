@@ -131,6 +131,26 @@ RSpec.describe Antigravity::Jev::Guardrail do
       expect(output.string).to include('Execute this command? [y/N]: ')
     end
 
+    it 'auto-executes unsure command without asking when yolo: true' do
+      client.set_mock_handler do |_state, _questions|
+        { verdict: { type: 'noul', noul: 0.55 } }
+      end
+
+      executed = false
+      res = guardrail.execute_guarded(
+        'cat .env',
+        yolo: true,
+        output_stream: output
+      ) do |_cmd|
+        executed = true
+        'mock content'
+      end
+
+      expect(executed).to be true
+      expect(res[:executed]).to be true
+      expect(output.string).not_to include('Execute this command? [y/N]: ')
+    end
+
     it 'raises GuardrailBlockedError if catastrophic wipe is ever attempted' do
       expect do
         guardrail.send(:run_command, 'rm -rf /')

@@ -64,7 +64,7 @@ module Antigravity
         )
       end
 
-      def execute_guarded(command, input_stream: $stdin, output_stream: $stdout, &runner)
+      def execute_guarded(command, input_stream: $stdin, output_stream: $stdout, yolo: false, &runner)
         result = evaluate(command)
 
         line = Telemetry.format_command_verdict(
@@ -83,14 +83,19 @@ module Antigravity
         when :deny
           { executed: false, status: :blocked, verdict: :deny, result: result }
         when :ask
-          output_stream.print 'Execute this command? [y/N]: '
-          choice = input_stream.gets&.strip&.downcase
-          if %w[y yes].include?(choice)
+          if yolo
             output = run_command(command, &runner)
-            { executed: true, status: :allowed_by_user, output: output, verdict: :ask, result: result }
+            { executed: true, status: :allowed_by_yolo, output: output, verdict: :ask, result: result }
           else
-            output_stream.puts 'Execution cancelled.' if output_stream.respond_to?(:puts)
-            { executed: false, status: :rejected_by_user, verdict: :ask, result: result }
+            output_stream.print 'Execute this command? [y/N]: '
+            choice = input_stream.gets&.strip&.downcase
+            if %w[y yes].include?(choice)
+              output = run_command(command, &runner)
+              { executed: true, status: :allowed_by_user, output: output, verdict: :ask, result: result }
+            else
+              output_stream.puts 'Execution cancelled.' if output_stream.respond_to?(:puts)
+              { executed: false, status: :rejected_by_user, verdict: :ask, result: result }
+            end
           end
         end
       end
