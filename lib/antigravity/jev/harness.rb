@@ -86,7 +86,9 @@ module Antigravity
       end
 
       def ask_model(prompt, model)
-        reply = @gemini.ask(prompt, model: model, system_instruction: system_instruction)
+        reply = @renderer.waiting("thinking with #{model}") do
+          @gemini.ask(prompt, model: model, system_instruction: system_instruction)
+        end
         reply.warnings.to_a.each { |w| @renderer.warning(w) }
         @renderer.thinking(reply.thinking)
         @renderer.answer(reply.answer)

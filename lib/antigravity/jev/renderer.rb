@@ -37,6 +37,15 @@ module Antigravity
         block(WARNING_EMOJI, text, :yellow)
       end
 
+      # Shows "⏳ label…" while the block runs (TTY only), then erases it.
+      def waiting(label)
+        @output.print "\r⏳ #{paint("#{label}…", :gray)}" if @color
+        @output.flush if @color && @output.respond_to?(:flush)
+        yield
+      ensure
+        @output.print "\r\e[K" if @color
+      end
+
       private
 
       def block(emoji, text, style)

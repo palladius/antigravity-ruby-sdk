@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-10-07 ⚡ Jevity: much less waiting
+### Performance
+* ⏱️ **Gemini timeout 30s → 10s** (configurable: `JEV_GEMINI_TIMEOUT` / `gemini_timeout` in `jevity.yml`).
+* 🧲 **Sticky fallback**: a model that timed out / 503'd is skipped for the rest of the session (retried only as last resort). Before, every call paid the full timeout again.
+* 🔗 **Fallback chain**: `fallback_model` accepts a comma-separated list (default `gemini-3.7-flash,gemini-3.5-flash`).
+* ⏳ **Waiting indicator** while the model thinks (TTY only, erased afterwards).
+
 ## [0.7.1] - 2026-10-07 🤖 Jevity: real answers, thinking display & review fixes
 ### Features
 * 🤔/🤖 **Tag-free rendering** (`Antigravity::Jev::Renderer`): thinking in gray with 🤔, answer in white with 🤖, continuation lines indented. No ANSI when piped.

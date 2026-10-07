@@ -24,7 +24,7 @@ module Antigravity
 
       Reply = Struct.new(:thinking, :answer, :command, :model, :warnings, keyword_init: true)
 
-      attr_reader :history, :fallback_model
+      attr_reader :history
 
       def self.resolve_api_key
         KeyFinder.lookup('GEMINI_API_KEY')
@@ -52,11 +52,18 @@ module Antigravity
                   command: answer[CODE_RE, 1]&.strip, warnings: [])
       end
 
-      def initialize(api_key: nil, fallback_model: nil, timeout: 30)
+      def initialize(api_key: nil, fallback_model: nil, timeout: nil)
         @api_key = api_key || self.class.resolve_api_key
-        @fallback_model = fallback_model || Jev.fallback_model
-        @timeout = timeout
+        @fallbacks = (fallback_model || Jev.fallback_model).to_s.split(',').map(&:strip).reject(&:empty?)
+        @timeout = timeout || Jev.gemini_timeout
         @history = []
+        @degraded = []
+      end
+
+      attr_reader :timeout, :degraded
+
+      def fallback_model
+        @fallbacks.first
       end
 
       def ask(prompt, model:, system_instruction: nil)
@@ -67,15 +74,17 @@ module Antigravity
         payload = build_payload(@history + [user_turn], level, system_instruction)
         warnings = []
 
-        [base, @fallback_model].compact.uniq.each do |candidate|
+        candidates(base).each do |candidate|
           code, body = safe_post(candidate, payload)
           if code == 200
+            @degraded.delete(candidate)
             reply = self.class.parse_response(JSON.parse(body))
             remember(user_turn, reply.answer)
             reply.model = candidate
             reply.warnings = warnings
             return reply
           end
+          @degraded |= [candidate]
           warnings << "Gemini HTTP #{code} on #{candidate}: #{error_message(body)}"
         end
 
@@ -84,9 +93,18 @@ module Antigravity
 
       def reset!
         @history.clear
+        @degraded.clear
       end
 
       private
+
+      # Healthy models first (routed, then fallback chain); models that already
+      # failed this session go last, as a last resort.
+      def candidates(base)
+        all = [base, *@fallbacks].compact.uniq
+        healthy, sick = all.partition { |m| !@degraded.include?(m) }
+        healthy + sick
+      end
 
       def build_payload(contents, level, system_instruction)
         thinking = { includeThoughts: true }

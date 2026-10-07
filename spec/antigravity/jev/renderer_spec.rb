@@ -55,4 +55,28 @@ RSpec.describe Antigravity::Jev::Renderer do
     renderer.answer("  \n ")
     expect(output.string).to eq('')
   end
+
+  describe '#waiting ⏳' do
+    it 'shows a transient hourglass line on a TTY and erases it after the block' do
+      renderer = described_class.new(output: output, color: true)
+      result = renderer.waiting('gemini-3.8-flash') { :done }
+
+      expect(result).to eq(:done)
+      expect(output.string).to start_with("\r⏳ ")
+      expect(output.string).to include('gemini-3.8-flash')
+      expect(output.string).to end_with("\r\e[K")
+    end
+
+    it 'erases the line even if the block raises' do
+      renderer = described_class.new(output: output, color: true)
+      expect { renderer.waiting('x') { raise 'boom' } }.to raise_error('boom')
+      expect(output.string).to end_with("\r\e[K")
+    end
+
+    it 'prints nothing when piped (no color)' do
+      renderer = described_class.new(output: output, color: false)
+      expect(renderer.waiting('x') { 42 }).to eq(42)
+      expect(output.string).to eq('')
+    end
+  end
 end

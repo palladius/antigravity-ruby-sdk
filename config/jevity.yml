@@ -8,7 +8,8 @@ smart_model: "gemini-3.8-flash-high"    # Reasoning model for complex queries
 # (e.g. "gemini-3.8-flash-low" => model gemini-3.8-flash, thinkingLevel low).
 
 # Used automatically if the routed model fails (404, 503 high demand, timeout):
-fallback_model: "gemini-3.7-flash"
+fallback_model: "gemini-3.7-flash,gemini-3.5-flash" # comma-separated chain; failed models are skipped for the session
+gemini_timeout: 10 # seconds before failing over to the next model (env: JEV_GEMINI_TIMEOUT)
 
 # Guardrail thresholds:
 # Probability >= allow_threshold -> Auto-approve (Green)

@@ -90,6 +90,72 @@ RSpec.describe Antigravity::Jev::Gemini do
     end
   end
 
+  describe 'speed ⚡' do
+    it 'uses a short configurable timeout (JEV_GEMINI_TIMEOUT, default 10s)' do
+      expect(Antigravity::Jev.gemini_timeout).to eq(10)
+      expect(gemini.timeout).to eq(10)
+
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('JEV_GEMINI_TIMEOUT').and_return('4')
+      expect(Antigravity::Jev.gemini_timeout).to eq(4)
+    end
+
+    it 'is sticky: once a model failed, later calls skip it and go straight to the fallback' do
+      calls = []
+      allow(gemini).to receive(:post) do |model, _payload|
+        calls << model
+        model == 'gemini-3.8-flash' ? [0, 'Net::ReadTimeout'] : [200, ok_body([{ text: 'ok' }])]
+      end
+
+      gemini.ask('uno', model: 'gemini-3.8-flash-low')
+      second = gemini.ask('due', model: 'gemini-3.8-flash-low')
+
+      expect(calls).to eq(%w[gemini-3.8-flash gemini-3.7-flash gemini-3.7-flash])
+      expect(second.warnings).to be_empty
+      expect(gemini.degraded).to include('gemini-3.8-flash')
+    end
+
+    it 'supports a comma-separated fallback chain' do
+      chain = described_class.new(api_key: 'k', fallback_model: 'gemini-3.7-flash, gemini-3.5-flash')
+      calls = []
+      allow(chain).to receive(:post) do |model, _payload|
+        calls << model
+        model == 'gemini-3.5-flash' ? [200, ok_body([{ text: 'ok' }])] : [503, '{"error":{"message":"busy"}}']
+      end
+
+      reply = chain.ask('x', model: 'gemini-3.8-flash-low')
+
+      expect(calls).to eq(%w[gemini-3.8-flash gemini-3.7-flash gemini-3.5-flash])
+      expect(reply.model).to eq('gemini-3.5-flash')
+      expect(chain.fallback_model).to eq('gemini-3.7-flash')
+    end
+
+    it 'retries previously degraded models as a last resort instead of giving up' do
+      calls = []
+      allow(gemini).to receive(:post) do |model, _payload|
+        calls << model
+        case calls.size
+        when 1, 3 then [503, '{}'] # 3.8 busy on call 1, 3.7 busy on call 2
+        else [200, ok_body([{ text: 'ok' }])]
+        end
+      end
+      gemini.ask('uno', model: 'gemini-3.8-flash') # 3.8 fails -> degraded, 3.7 ok
+      reply = gemini.ask('due', model: 'gemini-3.8-flash') # 3.7 fails -> last resort 3.8
+
+      expect(calls).to eq(%w[gemini-3.8-flash gemini-3.7-flash gemini-3.7-flash gemini-3.8-flash])
+      expect(reply.model).to eq('gemini-3.8-flash')
+    end
+
+    it 'reset! clears the degraded list too' do
+      allow(gemini).to receive(:post) do |model, _payload|
+        model == 'gemini-3.8-flash' ? [503, '{}'] : [200, ok_body([{ text: 'ok' }])]
+      end
+      gemini.ask('uno', model: 'gemini-3.8-flash')
+      gemini.reset!
+      expect(gemini.degraded).to be_empty
+    end
+  end
+
   describe '.resolve_api_key' do
     it 'prefers ENV GEMINI_API_KEY' do
       allow(ENV).to receive(:[]).and_call_original
