@@ -37,4 +37,10 @@ RSpec.describe 'CLI bin/jevity and bin/rujev' do
     expect(status.success?).to be true
     expect(out).to include(Antigravity::VERSION)
   end
+
+  it 'accepts --mock flag for offline testing' do
+    out, status = Open3.capture2e(bin_path, '--mock', 'guard', 'ls -la')
+    expect(status.success?).to be true
+    expect(out).to include('APPROVED')
+  end
 end

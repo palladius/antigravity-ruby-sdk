@@ -11,7 +11,9 @@ All notable changes to this project will be documented in this file.
 * 🚀 **Smart Model Routing (`Antigravity::Jev::Router`)**: Dynamic routing between `gemini-3.8-flash-low` and `gemini-3.8-flash-high` based on prompt complexity.
 * 🛡️ **Command Safety Guardrail (`Antigravity::Jev::Guardrail`)**: Probabilistic execution gates ($\ge 80\%$ auto-allow, $< 40\%$ auto-block, $40..80\%$ prompt user on 2nd line).
 * 🔒 **Safety Circuit Breaker**: Hardcoded failsafe strictly prohibiting catastrophic wipes.
-* 💻 **CLI Binary `bin/jevity` & `bin/rujev`**: Mini-harness executable supporting stdin piping (`echo ... | rujev -`), `ask`, `exec`, `guard`, and interactive REPL.
+* 💻 **CLI Binary `bin/jevity` & `bin/rujev`**: Mini-harness executable supporting stdin piping (`echo ... | rujev -`), `ask`, `exec`, `guard`, `--mock`, and interactive REPL.
+* 📦 **Zero-Dependency CLI**: Removed Bundler dependency from `bin/jevity` so `rujev` can be invoked globally from any directory without gem conflicts.
+* 🐧 **Linux `BinaryFetcher` Support**: Auto-detects Linux `x86_64` and `aarch64` architectures when fetching `localharness` wheels from PyPI.
 * ⚙️ **Configurable YAML**: Customizable `config/jevity.yml` and ENV overrides for models and safety thresholds.
 * 🔑 **Smart Key Discovery**: Auto-detects `JEV_API_KEY_RUJEV` in environment or `$GIC/.env`.
 

@@ -2,14 +2,9 @@
 # frozen_string_literal: true
 
 $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
-begin
-  gemfile = File.expand_path('../Gemfile', __dir__)
-  ENV['BUNDLE_GEMFILE'] ||= gemfile if File.file?(gemfile)
-  require 'bundler/setup'
-rescue LoadError
-  # Fallback if run standalone without bundler
-end
-require 'antigravity'
+require 'antigravity/version'
+require 'antigravity/emojis'
+require 'antigravity/colors'
 require 'antigravity/jev'
 require 'optparse'
 
@@ -49,8 +44,13 @@ elsif ARGV.empty? && !$stdin.tty?
   raw_input = $stdin.read.strip
 end
 
+is_mock = false
 parser = OptionParser.new do |opts|
   opts.banner = "Usage: jevity [options] [command/prompt]\n       echo 'Show me the list of this folder' | jevity -"
+
+  opts.on('-m', '--mock', 'Run with mocked JEV client (no API calls)') do
+    is_mock = true
+  end
 
   opts.on('-d DIR', '--dir DIR', '--folder DIR', '-C DIR', 'Change working directory before executing') do |dir|
     target_dir = File.expand_path(dir)
@@ -79,11 +79,15 @@ parser = OptionParser.new do |opts|
   end
 end
 
-parser.order!(ARGV)
+parser.parse!(ARGV)
+
+client = is_mock ? Antigravity::Jev::Client.new(mock: true) : Antigravity::Jev.client
+guardrail = Antigravity::Jev::Guardrail.new(client: client)
+router = Antigravity::Jev::Router.new(client: client)
+harness = Antigravity::Jev::Harness.new(client: client, router: router, guardrail: guardrail)
 
 # If input came from stdin via '-'
 if raw_input && !raw_input.empty?
-  harness = Antigravity::Jev::Harness.new
   res = harness.process(raw_input)
   if res[:status] == :blocked
     exit 1
@@ -96,7 +100,6 @@ end
 
 if ARGV.empty?
   if $stdin.tty?
-    harness = Antigravity::Jev::Harness.new
     run_interactive(harness)
     exit 0
   else
@@ -107,11 +110,6 @@ end
 
 subcommand = ARGV.shift
 target_arg = ARGV.join(' ')
-
-client = Antigravity::Jev.client
-guardrail = Antigravity::Jev::Guardrail.new(client: client)
-router = Antigravity::Jev::Router.new(client: client)
-harness = Antigravity::Jev::Harness.new(client: client, router: router, guardrail: guardrail)
 
 case subcommand
 when 'exec'

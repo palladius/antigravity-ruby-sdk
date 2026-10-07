@@ -19,11 +19,11 @@ module Antigravity
 
       # Platform mapping: Ruby's RUBY_PLATFORM -> PyPI wheel platform tag
       PLATFORM_MAP = {
-        /darwin.*arm/i   => 'macosx_11_0_arm64',
-        /darwin.*x86/i   => 'macosx_10_15_x86_64',
-        /darwin/i        => 'macosx_11_0_arm64',    # default macOS = ARM
-        /linux.*x86_64/i => 'manylinux2014_x86_64',
-        /linux.*aarch/i  => 'manylinux2014_aarch64',
+        /darwin.*(arm|aarch)/i                          => 'macosx_11_0_arm64',
+        /darwin.*x86/i                                  => 'macosx_10_15_x86_64',
+        /darwin/i                                       => 'macosx_11_0_arm64',    # default macOS = ARM
+        /(x86_64|amd64).*linux|linux.*(x86_64|amd64)/i => 'manylinux_2_17_x86_64',
+        /(aarch64|arm64).*linux|linux.*(aarch64|arm64)/i => 'manylinux_2_17_aarch64',
       }.freeze
 
       class << self
@@ -83,14 +83,14 @@ module Antigravity
 
           # Find latest version's wheel for our platform
           urls = data['urls'] || []
-          wheel = urls.find { |u| u['filename']&.include?(platform) && u['filename']&.end_with?('.whl') }
+          wheel = match_wheel(urls, platform)
 
           unless wheel
             # Try all versions for the platform
             versions = data['releases']&.keys&.sort_by { |v| Gem::Version.correct?(v) ? Gem::Version.new(v) : Gem::Version.new('0') }&.reverse
             versions&.each do |ver|
               files = data.dig('releases', ver) || []
-              wheel = files.find { |u| u['filename']&.include?(platform) && u['filename']&.end_with?('.whl') }
+              wheel = match_wheel(files, platform)
               break if wheel
             end
           end
@@ -99,6 +99,17 @@ module Antigravity
             "No wheel found for platform #{platform} on PyPI. Install Antigravity.app manually." unless wheel
 
           wheel['url']
+        end
+
+        def match_wheel(files, platform)
+          matched = files.find { |u| u['filename']&.include?(platform) && u['filename']&.end_with?('.whl') }
+          return matched if matched
+
+          if platform.include?('x86_64')
+            files.find { |u| u['filename']&.include?('linux') && u['filename']&.include?('x86_64') && u['filename']&.end_with?('.whl') }
+          elsif platform.include?('aarch64')
+            files.find { |u| u['filename']&.include?('linux') && u['filename']&.include?('aarch64') && u['filename']&.end_with?('.whl') }
+          end
         end
 
         def download_wheel(url, quiet: false)

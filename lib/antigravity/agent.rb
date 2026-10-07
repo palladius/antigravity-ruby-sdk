@@ -5,10 +5,11 @@ module Antigravity
 
     attr_accessor :model, :system_instruction, :api_key
     attr_reader :tools, :skills, :hooks, :sidecars, :client, :logger_guard,
-                :workspace, :connection, :conversation, :policy, :policies, :born_at
+                :workspace, :connection, :conversation, :policy, :policies, :born_at, :auto_connect
 
     def initialize(model: nil, system_instruction: nil, tools: [],
-                   skills: [], policies: [], policy: nil, workspace: nil, auto_logger: true, log_file: nil, &block)
+                   skills: [], policies: [], policy: nil, workspace: nil,
+                   auto_logger: true, log_file: nil, auto_connect: true, &block)
       @model = model || Antigravity.config.default_model
       @api_key = Antigravity.config.api_key
       @system_instruction = system_instruction
@@ -23,6 +24,7 @@ module Antigravity
       @connection = nil
       @conversation = nil
       @connected = false
+      @auto_connect = auto_connect && (ENV['ANTIGRAVITY_AUTO_CONNECT'] != 'false')
       @born_at = Time.now
 
       # Register pre-provided tools into the tool runner
@@ -141,7 +143,7 @@ module Antigravity
     # --- Chat ---
 
     def prompt(message, timeout: Antigravity.config.timeout_llm, &block)
-      connect! unless @connected
+      connect! if @auto_connect && !@connected
       emit_sidecar_event(:prompt_started, prompt: message)
       hooks.run_pre_prompt(message)
 
