@@ -37,6 +37,7 @@ module Antigravity
       # Resolve policy: sugar (symbol → preset, Policy object → use directly)
       if policy
         resolved = policy.is_a?(Symbol) ? Policy.preset(policy) : policy
+        @policy = resolved
         enforce(resolved)
       end
 
@@ -69,6 +70,13 @@ module Antigravity
       ensure
         agent.close!
       end
+    end
+
+    # One-liner ask helper: opens connection, sends ask prompt, auto-closes.
+    #   Antigravity::Agent.ask("What is 2+2?")
+    #   Antigravity::Agent.ask("Explain Ruby") { |chunk| print chunk.content }
+    def self.ask(prompt, **kwargs, &block)
+      open(**kwargs) { |agent| agent.ask(prompt, &block) }
     end
 
     def workspace=(path)

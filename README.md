@@ -74,6 +74,17 @@ just rv-console
 rv run ruby examples/10_console.rb
 ```
 
+### 🎬 Full Demo (v10)
+
+<p align="center">
+  <a href="demos/richard-console/demo.mp4">
+    <img src="demos/richard-console/demo.gif" alt="Richard Console v10 Demo" width="700"/>
+  </a>
+</p>
+
+*In this demo we show the Richard console's ability to interact with a normal LLM conversation, run shell commands with `! cmd`, evaluate Ruby with `r! expr`, drop into full IRB mode with `/irb`, and -- most importantly -- interact safely with the Policy DSL to dynamically add protections at runtime: `read_file(".env")` exposes secrets, then `policy.deny(:read_file, ".env")` locks it down, and the next `read_file` raises a red `PolicyDeniedError`. Policies can only tighten, never loosen.*
+
+
 **What you get:**
 
 | Feature | Syntax | Description |
@@ -123,6 +134,15 @@ agent.add_inline_skill(
 # Discover skills in a folder
 Agent.list_skills("~/git/skillume/sre-extension/")
 # => ["/path/to/anomaly-detection", "/path/to/cloud-logging", ...]
+```
+
+### 🌐 Installing Skills via CLI (`npx skills`)
+
+You can also install and manage skills using standard CLI tools:
+
+```bash
+# Add the SDK skill to your workspace
+npx skills add palladius/antigravity-ruby-sdk/skills/using-antigravity-ruby-sdk
 ```
 
 Here, for example, we are using an inline skill for custom severity emojis (`severity-emoji`) alongside a local code quality audit skill (`code-quality-review`):

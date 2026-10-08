@@ -248,6 +248,27 @@ Integration tests are tagged `:integration` and automatically skip if the harnes
 
 ---
 
+## 🔄 Reusable Maintenance Workflow Prompts
+
+The repository includes a suite of standardized maintenance prompts in `docs/prompts/` to perform periodic daily/weekly audits:
+
+| Prompt | Purpose |
+|--------|---------|
+| [`docs/prompts/search-for-vulnerabilities.md`](prompts/search-for-vulnerabilities.md) | Security & code quality review using skills |
+| [`docs/prompts/verify-functionality-and-docs-in-sync.md`](prompts/verify-functionality-and-docs-in-sync.md) | Ensures code, skills, and documentation remain 100% in sync |
+| [`docs/prompts/assert-ruby-elegance-and-beauty-are-preserved.md`](prompts/assert-ruby-elegance-and-beauty-are-preserved.md) | Asserts terse DSL design, symbol keys, and zero bloat |
+
+### Recurring Maintenance with `/schedule`
+
+You can trigger these prompts manually or schedule them in your agent environment:
+
+```bash
+# Weekly vulnerability scan prompt
+/schedule CronExpression="0 9 * * 1" Prompt="Run docs/prompts/search-for-vulnerabilities.md on lib/"
+```
+
+---
+
 ## Credits
 
 This SDK's architecture is inspired by:
