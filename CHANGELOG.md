@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-10-08 🎈 Jevity: JEV-powered levity for your Ruby Antigravity agents
+### Changes
+* 🏷️ **Naming settled**: the project is **Jevity** (JEV + *levity*, the opposite of gravity), the command stays **`rujev`** (Ru-by + Jev). Banner: "🛰️ Jevity — JEV-powered levity for your Ruby Antigravity agents", with a second line explaining `rujev`. README / USER_GUIDE / SKILL / demo tape updated; the model introduces itself as Jevity.
+
 ## [0.8.2] - 2026-10-08 🧠 Rujev: HIGH thinking for complex prompts, 🔌 red network errors
 ### Changes
 * 🧠 **Complex prompts now use HIGH thinking**: smart default `gemini-3.7-flash-low` → **`gemini-3.8-flash-high`** (benchmark: thoughts start streaming at ~2.4s, ~7.6s total; `gemini-3.7-flash-high` stayed silent ~5.2s, too close to the 6s first-byte cut). Faster alternative: `gemini-3.5-flash-high` (~3.3s).

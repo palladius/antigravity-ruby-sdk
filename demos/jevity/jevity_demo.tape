@@ -1,4 +1,4 @@
-# 🛰️ Rujev (Ruby × JEV for Google Antigravity) demo: Gemini answers, JEV System One guards every command.
+# 🎈 Jevity (rujev) demo: JEV-powered levity for your Ruby Antigravity agents: Gemini answers, JEV System One guards every command.
 # Replays Riccardo's real session (2026-10-08), translated to English.
 #
 #   just demo-jevity        # builds the sandbox + records (run from repo root)
@@ -25,7 +25,7 @@ Enter
 Sleep 1s
 Show
 
-Type "# Rujev = Ruby + JEV guardrails for Google Antigravity: Gemini answers, JEV guards every command"
+Type "# Jevity: JEV-powered levity for your Ruby Antigravity agents (run as rujev)"
 Sleep 800ms
 Enter
 Sleep 600ms

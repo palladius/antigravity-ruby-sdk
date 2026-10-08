@@ -282,15 +282,15 @@ See [`lib/antigravity/policy.rb`](lib/antigravity/policy.rb) and [`lib/antigravi
 
 ---
 
-## 🚦 *Rujev* — Ruby × JEV guardrails for Google Antigravity
+## 🎈 *Jevity* — JEV-powered levity for your Ruby Antigravity agents
 
-`rujev` (alias `bin/jevity`, since **v0.7.0**) is a terminal assistant built on this SDK. **JEV (System One)** makes fast decisions (~200–300ms each); **Gemini** does the talking:
+**Jevity** (JEV + *levity*, the opposite of gravity) is a terminal assistant built on this SDK, since **v0.7.0**. You run it as **`rujev`** (Ru-by + Jev; `bin/jevity` works too). **JEV (System One)** makes fast decisions (~200–300ms each); **Gemini** does the talking:
 
 1. 🚀 **Route**: JEV classifies your prompt as *simple* → fast model (`gemini-3.5-flash-lite`, ~0.8s) or *complex* → HIGH-thinking model (`gemini-3.8-flash-high`).
 2. 🤖 **Answer**: Gemini streams 🤔 thinking and 🤖 answer live; if it needs a shell command, it proposes one.
 3. 🛡️ **Guard**: JEV scores every command before it runs: ✅ ≥80% runs, 🚫 <40% blocked, ⚠️ in between asks you `[y/N]`.
 
-![Rujev demo](demos/jevity/jevity_demo.gif)
+![Jevity (rujev) demo](demos/jevity/jevity_demo.gif)
 
 > 🎬 Full-quality video: [`demos/jevity/jevity_demo.mp4`](demos/jevity/jevity_demo.mp4) — re-record it with `just demo-jevity` (needs `vhs` + `ttyd` + `ffmpeg`; runs in a `/tmp` sandbox with a fake `.env`).
 

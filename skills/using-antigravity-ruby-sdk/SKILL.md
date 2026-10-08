@@ -172,9 +172,9 @@ agent.before_tool_call { |name, args| puts "🛠️ Executing tool #{name} with 
 
 ---
 
-## 6b. Rujev — JEV-guarded terminal assistant (`bin/rujev`)
+## 6b. Jevity — JEV-guarded terminal assistant (`bin/rujev`)
 
-Ruby × JEV guardrails for Google Antigravity: JEV routes the model and vets every shell command; Gemini answers.
+Jevity: JEV-powered levity for your Ruby Antigravity agents. JEV routes the model and vets every shell command; Gemini answers. The command is `rujev` (alias `bin/jevity`).
 
 ```bash
 rujev 'what is in here?'          # one-shot (or no args for the REPL)

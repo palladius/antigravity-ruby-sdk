@@ -9,8 +9,8 @@ require 'antigravity/jev'
 require 'optparse'
 
 def print_banner
-  puts "\e[1;36m🛰️  Rujev\e[0m \e[90mv#{Antigravity::VERSION}\e[0m — \e[33mRuby × JEV guardrails for Google Antigravity\e[0m"
-  puts "\e[90m    Ru(by) + Jev (System One): Gemini answers 🤖, JEV guards every command 🚦\e[0m"
+  puts "\e[1;36m🛰️  Jevity\e[0m \e[90mv#{Antigravity::VERSION}\e[0m — \e[33mJEV-powered levity for your Ruby Antigravity agents\e[0m"
+  puts "\e[90m    rujev = Ru(by) + Jev (System One): JEV routes & guards 🚦, Gemini answers 🤖\e[0m"
   puts "\e[90m#{'─' * 70}\e[0m"
 end
 
@@ -80,7 +80,7 @@ parser = OptionParser.new do |opts|
   end
 
   opts.on('-v', '--version', 'Print version') do
-    puts "rujev (aka jevity, antigravity-ruby-sdk) #{Antigravity::VERSION}"
+    puts "rujev (Jevity, antigravity-ruby-sdk) #{Antigravity::VERSION}"
     exit 0
   end
 

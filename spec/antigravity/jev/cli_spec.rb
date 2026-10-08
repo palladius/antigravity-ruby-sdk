@@ -14,13 +14,12 @@ RSpec.describe 'CLI bin/jevity and bin/rujev' do
     expect(out).to include('Usage:')
   end
 
-  it 'brands the banner as Rujev (Ruby + JEV) for Google Antigravity' do
+  it 'brands the banner as Jevity (JEV + levity) for Ruby Antigravity agents, run as rujev' do
     out, status = Open3.capture2e(bin_path, '--help')
     expect(status.success?).to be true
-    expect(out).to include('Rujev')
-    expect(out).to include('Ruby')
-    expect(out).to include('JEV')
-    expect(out).to include('Antigravity')
+    expect(out).to include('Jevity')
+    expect(out).to include('JEV-powered levity for your Ruby Antigravity agents')
+    expect(out).to include('rujev')
   end
 
   it 'displays version with --version' do

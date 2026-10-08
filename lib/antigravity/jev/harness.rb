@@ -134,7 +134,7 @@ module Antigravity
       def system_instruction
         files = Dir.children('.').sort.first(40).join(', ')
         <<~PROMPT
-          You are Rujev, a concise AI assistant in the developer's terminal.
+          You are Jevity, a concise AI assistant in the developer's terminal.
           Workspace: #{Dir.pwd}
           Top-level entries: #{files}
           Answer in the user's language. If the workspace entries above already answer, just
@@ -148,7 +148,7 @@ module Antigravity
           Never wrap prose in <thought> tags.
         PROMPT
       rescue SystemCallError
-        'You are Rujev, a concise AI assistant in the developer terminal.'
+        'You are Jevity, a concise AI assistant in the developer terminal.'
       end
 
       def direct_command?(text)
