@@ -27,6 +27,12 @@ benchmark-gemini-testspeed *models:
 rujev *args:
     bin/jevity "$@"
 
+# 🎬 Record the Jevity demo video (sandbox in /tmp, fake .env) -> demos/jevity/jevity_demo.{mp4,gif}. Needs vhs+ttyd+ffmpeg
+demo-jevity:
+    demos/jevity/setup_sandbox.sh
+    cd demos/jevity && vhs jevity_demo.tape
+    @echo "🎬 Done: demos/jevity/jevity_demo.mp4"
+
 # Run unit tests only (fast, no harness needed)
 test:
     bundle exec rspec --tag '~integration' spec/

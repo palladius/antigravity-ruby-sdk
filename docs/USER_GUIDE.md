@@ -220,6 +220,11 @@ end
 | `GEMINI_API_KEY` | API key for Gemini (passed to harness) | Required |
 | `ANTIGRAVITY_HARNESS_PATH` | Override harness binary location | Auto-detect |
 | `ANTIGRAVITY_LOGGER` | Enable/disable auto-logging (`true`/`false`) | `true` |
+| `JEV_API_KEY_RUJEV` | 🚦 Rujev: JEV (System One) key for routing + command guardrail | Required for `rujev` |
+| `JEV_FAST_MODEL` / `JEV_SMART_MODEL` | 🚦 Rujev: Gemini models picked by JEV routing (`rujev -M` overrides) | `gemini-3.5-flash-lite` / `gemini-3.7-flash-low` |
+| `JEV_GEMINI_TIMEOUT` / `JEV_FIRST_BYTE_TIMEOUT` | 🚦 Rujev: total / first-streamed-byte timeouts (s) | `10` / `6` |
+
+> 🚦 **Rujev** (`bin/rujev`, alias `bin/jevity`) — Ruby × JEV guardrails for Google Antigravity: Gemini answers, JEV guards every shell command. See the README section and `just demo-jevity`.
 
 ### Programmatic Config
 

@@ -172,6 +172,27 @@ agent.before_tool_call { |name, args| puts "🛠️ Executing tool #{name} with 
 
 ---
 
+## 6b. Rujev — JEV-guarded terminal assistant (`bin/rujev`)
+
+Ruby × JEV guardrails for Google Antigravity: JEV routes the model and vets every shell command; Gemini answers.
+
+```bash
+rujev 'what is in here?'          # one-shot (or no args for the REPL)
+rujev -M gemini-3.7-flash-low ... # force a model (skips JEV routing)
+rujev guard 'cat .env'            # verdict only, never executes
+```
+
+```ruby
+require 'antigravity/jev'
+client  = Antigravity::Jev.client                       # needs JEV_API_KEY_RUJEV
+verdict = Antigravity::Jev::Guardrail.new(client: client).evaluate('rm -rf /')
+verdict.allowed? # => false
+```
+
+Config precedence: `--model` > ENV/.env/justfile > `config/jevity.yml` > code default.
+
+---
+
 ## 7. Documentation & Reference Links
 
 For full API documentation, wire protocols, and advanced workflows:

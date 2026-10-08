@@ -14,10 +14,20 @@ RSpec.describe 'CLI bin/jevity and bin/rujev' do
     expect(out).to include('Usage:')
   end
 
+  it 'brands the banner as Rujev (Ruby + JEV) for Google Antigravity' do
+    out, status = Open3.capture2e(bin_path, '--help')
+    expect(status.success?).to be true
+    expect(out).to include('Rujev')
+    expect(out).to include('Ruby')
+    expect(out).to include('JEV')
+    expect(out).to include('Antigravity')
+  end
+
   it 'displays version with --version' do
     out, status = Open3.capture2e(bin_path, '--version')
     expect(status.success?).to be true
     expect(out).to include(Antigravity::VERSION)
+    expect(out).to include('rujev')
   end
 
   it 'symlink bin/rujev exists and executes bin/jevity' do

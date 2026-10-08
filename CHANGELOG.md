@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-10-08 🎬 Rujev: Ruby × JEV guardrails for Google Antigravity
+### Changes
+* 🛰️ **Rebrand to Rujev** (Ru(by) + Jev): banner now reads "Rujev — Ruby × JEV guardrails for Google Antigravity", REPL prompt is `rujev>`. `bin/jevity` stays as an alias; internals (`Antigravity::Jev`, `config/jevity.yml`) unchanged.
+### Features
+* 🎬 **`just demo-jevity`**: reproducible VHS demo (English replay of a real session) in a throwaway `/tmp` sandbox with a FAKE `.env` → `demos/jevity/jevity_demo.{mp4,gif}`. Needs `vhs` + `ttyd` + `ffmpeg`.
+
 ## [0.8.0] - 2026-10-08 🌊 Jevity: streaming, benchmarked models, ~1.5s answers
 Same prompt went from ~34s (v0.7.2) to ~1.4s.
 ### Features

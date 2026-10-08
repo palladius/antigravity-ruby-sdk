@@ -9,8 +9,9 @@ require 'antigravity/jev'
 require 'optparse'
 
 def print_banner
-  puts "\e[1;36m🛰️  Jevity\e[0m \e[90mv#{Antigravity::VERSION}\e[0m — \e[33mJEV System One Decision & Guardrail Harness\e[0m"
-  puts "\e[90m#{'─' * 60}\e[0m"
+  puts "\e[1;36m🛰️  Rujev\e[0m \e[90mv#{Antigravity::VERSION}\e[0m — \e[33mRuby × JEV guardrails for Google Antigravity\e[0m"
+  puts "\e[90m    Ru(by) + Jev (System One): Gemini answers 🤖, JEV guards every command 🚦\e[0m"
+  puts "\e[90m#{'─' * 70}\e[0m"
 end
 
 def run_interactive(harness, yolo: false, model: nil)
@@ -22,7 +23,7 @@ def run_interactive(harness, yolo: false, model: nil)
   puts
 
   loop do
-    print "\e[1;34mjevity>\e[0m "
+    print "\e[1;34mrujev>\e[0m "
     line = $stdin.gets
     break if line.nil?
 
@@ -55,7 +56,7 @@ is_mock = false
 is_yolo = false
 forced_model = nil
 parser = OptionParser.new do |opts|
-  opts.banner = "Usage: jevity [options] [command/prompt]\n       echo 'Show me the list of this folder' | jevity -"
+  opts.banner = "Usage: rujev (alias: jevity) [options] [command/prompt]\n       echo 'Show me the list of this folder' | rujev -"
 
   opts.on('-m', '--mock', 'Run with mocked JEV client (no API calls)') do
     is_mock = true
@@ -79,7 +80,7 @@ parser = OptionParser.new do |opts|
   end
 
   opts.on('-v', '--version', 'Print version') do
-    puts "jevity (antigravity-sdk) #{Antigravity::VERSION}"
+    puts "rujev (aka jevity, antigravity-ruby-sdk) #{Antigravity::VERSION}"
     exit 0
   end
 

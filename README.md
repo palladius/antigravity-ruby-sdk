@@ -282,6 +282,25 @@ See [`lib/antigravity/policy.rb`](lib/antigravity/policy.rb) and [`lib/antigravi
 
 ---
 
+## 🚦 *Rujev* — Ruby × JEV guardrails for Google Antigravity
+
+`rujev` (alias `bin/jevity`) is a terminal assistant: **Gemini answers, JEV (System One) guards every shell command** before it runs. JEV also picks the model (fast vs smart) in ~250ms.
+
+![Rujev demo](demos/jevity/jevity_demo.gif)
+
+```bash
+rujev                                  # interactive REPL (multi-turn, /reset)
+rujev 'what is in here?'               # one-shot
+rujev -M gemini-3.7-flash-low '...'    # force a model, skip JEV routing
+rujev guard 'rm -rf /'                 # safety verdict only, never executes
+just benchmark-gemini-testspeed        # re-pick the fastest Gemini models
+just demo-jevity                       # re-record the demo above (vhs + ttyd)
+```
+
+Needs `JEV_API_KEY_RUJEV` and `GEMINI_API_KEY`. Models are configured at the top of the `justfile` / in `.env.dist`.
+
+---
+
 ## 📊 Feature Parity with [Python SDK](https://github.com/google-antigravity/antigravity-sdk-python)
 
 > Full matrix: [`docs/FEATURE_PARITY.md`](docs/FEATURE_PARITY.md) | Epic: [GHI #20](https://github.com/palladius/antigravity-ruby-sdk/issues/20)
