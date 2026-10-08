@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../colors'
+require_relative 'errors'
 
 module Antigravity
   module Jev
@@ -17,6 +18,7 @@ module Antigravity
       THINKING_EMOJI = '🤔'
       ANSWER_EMOJI   = '🤖'
       WARNING_EMOJI  = '⚠️ '
+      NETWORK_EMOJI  = '🔌' # unplugged: the other side never answered
       INDENT         = '  ' # edit me: continuation-line indent
       CODE_FENCE     = /```[^\n]*\n.*?\n```/m
 
@@ -33,8 +35,15 @@ module Antigravity
         block(ANSWER_EMOJI, text.to_s.gsub(CODE_FENCE, ''), :white)
       end
 
+      # Connectivity failures (Net::ReadTimeout & co) get the red 🔌 style.
       def warning(text)
+        return network_error(text) if text.to_s.match?(NETWORK_ERROR_RE)
+
         block(WARNING_EMOJI, text, :yellow)
+      end
+
+      def network_error(text)
+        block(NETWORK_EMOJI, text, :red)
       end
 
       # Shows "⏳ label…" while the block runs (TTY only), then erases it.

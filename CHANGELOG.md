@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-10-08 🧠 Rujev: HIGH thinking for complex prompts, 🔌 red network errors
+### Changes
+* 🧠 **Complex prompts now use HIGH thinking**: smart default `gemini-3.7-flash-low` → **`gemini-3.8-flash-high`** (benchmark: thoughts start streaming at ~2.4s, ~7.6s total; `gemini-3.7-flash-high` stayed silent ~5.2s, too close to the 6s first-byte cut). Faster alternative: `gemini-3.5-flash-high` (~3.3s).
+* ⏱️ **`JEV_THINKING_TIMEOUT`** (default 30s): medium/high thinking models get a longer first-byte and between-chunk timeout, so they are no longer killed at 6s.
+### Fixes
+* 🔌 **Explicit `Net::ReadTimeout` & co handling** (`Antigravity::Jev::NetworkError < ApiError`, `NETWORK_ERRORS`): Gemini timeouts print `🔌 gemini-x: no answer within 6s (Net::ReadTimeout)` **in red** before the fallback; a JEV timeout no longer crashes the REPL with a stack trace: it prints a red 🔌 line and **fails closed** (nothing is executed).
+
 ## [0.8.1] - 2026-10-08 🎬 Rujev: Ruby × JEV guardrails for Google Antigravity
 ### Changes
 * 🛰️ **Rebrand to Rujev** (Ru(by) + Jev): banner now reads "Rujev — Ruby × JEV guardrails for Google Antigravity", REPL prompt is `rujev>`. `bin/jevity` stays as an alias; internals (`Antigravity::Jev`, `config/jevity.yml`) unchanged.

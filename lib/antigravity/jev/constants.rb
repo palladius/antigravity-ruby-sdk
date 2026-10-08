@@ -44,7 +44,7 @@ module Antigravity
           ENV['GEMINI_SMART_MODEL'] ||
           loaded_yaml_config['smart_model'] ||
           loaded_yaml_config['models']&.dig('smart') ||
-          'gemini-3.7-flash-low'
+          'gemini-3.8-flash-high' # complex prompts deserve HIGH thinking (thoughts stream from ~2.4s)
       end
 
       # Used when the routed model fails (404 / 503 high demand / timeout).
@@ -64,6 +64,12 @@ module Antigravity
       # are never cut. A silent (overloaded) model is abandoned quickly.
       def first_byte_timeout
         (ENV['JEV_FIRST_BYTE_TIMEOUT'] || loaded_yaml_config['first_byte_timeout'] || 6).to_i
+      end
+
+      # medium/high thinking: max seconds before the first chunk AND between chunks.
+      # A thinking model can legitimately stay quiet for a while; don't kill it at 6s.
+      def thinking_timeout
+        (ENV['JEV_THINKING_TIMEOUT'] || loaded_yaml_config['thinking_timeout'] || 30).to_i
       end
 
       def allow_threshold

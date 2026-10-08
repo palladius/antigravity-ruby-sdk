@@ -5,11 +5,12 @@ set dotenv-load
 # (see .env.dist), and `rujev --model X` wins over everything.
 # Not sure which is fastest today? -> `just benchmark-gemini-testspeed`
 export JEV_FAST_MODEL         := env_var_or_default('JEV_FAST_MODEL', 'gemini-3.5-flash-lite')
-export JEV_SMART_MODEL        := env_var_or_default('JEV_SMART_MODEL', 'gemini-3.7-flash-low')
+export JEV_SMART_MODEL        := env_var_or_default('JEV_SMART_MODEL', 'gemini-3.8-flash-high')
 export JEV_FALLBACK_MODEL     := env_var_or_default('JEV_FALLBACK_MODEL', 'gemini-3.1-flash-lite,gemini-2.5-flash-lite')
 export JEV_FIRST_BYTE_TIMEOUT := env_var_or_default('JEV_FIRST_BYTE_TIMEOUT', '6')
 export JEV_GEMINI_TIMEOUT     := env_var_or_default('JEV_GEMINI_TIMEOUT', '10')
-export JEV_BENCH_MODELS       := env_var_or_default('JEV_BENCH_MODELS', 'gemini-3.8-flash-low,gemini-3.7-flash-low,gemini-3.6-flash-low,gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-flash-latest,gemini-2.5-flash-lite')
+export JEV_THINKING_TIMEOUT   := env_var_or_default('JEV_THINKING_TIMEOUT', '30')
+export JEV_BENCH_MODELS       := env_var_or_default('JEV_BENCH_MODELS', 'gemini-3.8-flash-high,gemini-3.5-flash-high,gemini-3.8-flash-low,gemini-3.7-flash-low,gemini-3.6-flash-low,gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-flash-latest,gemini-2.5-flash-lite')
 export JEV_BENCH_ROUNDS       := env_var_or_default('JEV_BENCH_ROUNDS', '3')
 # ══════════════════════════════════════════════════════════════════════════════
 

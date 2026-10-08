@@ -36,6 +36,16 @@ RSpec.describe Antigravity::Jev::Renderer do
       renderer.warning('Gemini HTTP 503')
       expect(output.string).to eq("⚠️  \e[33mGemini HTTP 503\e[0m\n")
     end
+
+    it 'renders network errors with 🔌 in red' do
+      renderer.network_error('JEV unreachable')
+      expect(output.string).to eq("🔌 \e[31mJEV unreachable\e[0m\n")
+    end
+
+    it 'routes connectivity warnings (Net::ReadTimeout & co) to the red 🔌 style' do
+      renderer.warning('gemini-3.7-flash: no answer within 6s (Net::ReadTimeout)')
+      expect(output.string).to start_with("🔌 \e[31m")
+    end
   end
 
   context 'with color disabled (pipes / non-TTY)' do

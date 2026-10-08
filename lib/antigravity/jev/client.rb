@@ -3,6 +3,7 @@
 require 'net/http'
 require 'json'
 require 'uri'
+require_relative 'errors'
 require_relative 'key_finder'
 
 module Antigravity
@@ -73,7 +74,11 @@ module Antigravity
         }
         req.body = JSON.generate(payload)
 
-        res = http.request(req)
+        begin
+          res = http.request(req)
+        rescue *NETWORK_ERRORS => e
+          raise NetworkError, "JEV (System One) unreachable: #{e.class} (timeout #{@timeout}s)"
+        end
         t1 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         latency = ((t1 - t0) * 1000.0).round(2)
 

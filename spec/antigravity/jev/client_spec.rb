@@ -160,4 +160,22 @@ RSpec.describe Antigravity::Jev::Client do
       expect(conf).to eq(0.91)
     end
   end
+
+  describe 'network errors 🔌' do
+    let(:client) { described_class.new(api_key: dummy_api_key) }
+
+    it 'catches Net::ReadTimeout explicitly and raises a NetworkError (an ApiError)' do
+      allow_any_instance_of(Net::HTTP).to receive(:request).and_raise(Net::ReadTimeout)
+
+      expect { client.systemone(state: 'ls', questions: {}) }
+        .to raise_error(Antigravity::Jev::NetworkError, /JEV.*unreachable.*Net::ReadTimeout/)
+      expect(Antigravity::Jev::NetworkError.ancestors).to include(Antigravity::Jev::ApiError)
+    end
+
+    it 'treats connection refused / DNS failures the same way' do
+      allow_any_instance_of(Net::HTTP).to receive(:request).and_raise(SocketError, 'getaddrinfo')
+
+      expect { client.systemone(state: 'ls', questions: {}) }.to raise_error(Antigravity::Jev::NetworkError)
+    end
+  end
 end

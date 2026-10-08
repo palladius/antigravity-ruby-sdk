@@ -20,6 +20,7 @@ module Antigravity
     #   never silently: every failure is reported (warnings / yielded / raised).
     class Gemini
       BASE_URL    = 'https://generativelanguage.googleapis.com/v1beta/models'
+      THINKING_LEVELS = %w[medium high].freeze
       LEVEL_RE    = /\A(?<model>.+?)-(?<level>minimal|low|medium|high)\z/
       CODE_RE     = /```(?:bash|sh|shell)?(?<final>[ \t]+final)?[ \t]*\n(?<cmd>.*?)\n```/m
       THOUGHT_RE  = %r{<thought>(.*?)</thought>}m
@@ -85,7 +86,7 @@ module Antigravity
           return success(candidate, body, user_turn, warnings, streamed: !on_part.nil?) if code == 200
 
           @degraded |= [candidate]
-          msg = "Gemini HTTP #{code} on #{candidate}: #{error_message(body)}"
+          msg = code.zero? ? "#{candidate}: #{body}" : "Gemini HTTP #{code} on #{candidate}: #{error_message(body)}"
           warnings << msg
           on_part&.call(:warning, msg)
         end
@@ -98,12 +99,27 @@ module Antigravity
         @degraded.clear
       end
 
+      # [first_byte, between_chunks] seconds. medium/high thinking can stay
+      # silent for a while before the first token, so it gets JEV_THINKING_TIMEOUT.
+      def timeouts_for(level)
+        return [Jev.thinking_timeout, Jev.thinking_timeout] if THINKING_LEVELS.include?(level.to_s)
+
+        [@first_byte_timeout, @timeout]
+      end
+
       private
 
       def attempt(candidate, payload, &on_part)
         on_part ? stream(candidate, payload, &on_part) : post(candidate, payload)
+      rescue *NETWORK_ERRORS => e
+        # 🔌 explicit: the model never answered (rendered in red by Renderer)
+        [0, "no answer within #{timeouts_for(level_of(payload)).first}s (#{e.class})"]
       rescue StandardError => e
         [0, "#{e.class}: #{e.message}"]
+      end
+
+      def level_of(payload)
+        payload.dig(:generationConfig, :thinkingConfig, :thinkingLevel)
       end
 
       def success(candidate, body, user_turn, warnings, streamed:)
@@ -145,7 +161,8 @@ module Antigravity
       # Returns [status_code, body]. The key travels in a header, never in the URL.
       def post(model, payload)
         uri = URI("#{BASE_URL}/#{model}:generateContent")
-        res = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 8, read_timeout: @timeout) do |http|
+        read_timeout = timeouts_for(level_of(payload)).last
+        res = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 8, read_timeout: read_timeout) do |http|
           http.request(request_for(uri, payload))
         end
         [res.code.to_i, res.body]
@@ -153,18 +170,20 @@ module Antigravity
 
       # SSE streaming. Yields (:thought|:text, delta) live and returns
       # [200, merged_parts] or [status, error_body].
-      # Short timeout until the first chunk, then @timeout between chunks.
+      # Short timeout until the first chunk, then a longer one between chunks
+      # (both longer for medium/high thinking, see #timeouts_for).
       def stream(model, payload, &on_part)
         uri = URI("#{BASE_URL}/#{model}:streamGenerateContent?alt=sse")
         acc = { thought: +'', text: +'' }
         parser = SseParser.new { |event| stream_event(event, acc, &on_part) }
 
-        Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 8, read_timeout: @first_byte_timeout) do |http|
+        first_byte, between = timeouts_for(level_of(payload))
+        Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 8, read_timeout: first_byte) do |http|
           http.request(request_for(uri, payload)) do |res|
             return [res.code.to_i, res.read_body] unless res.code == '200'
 
             res.read_body do |chunk|
-              http.read_timeout = @timeout
+              http.read_timeout = between
               parser.feed(chunk)
             end
           end

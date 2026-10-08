@@ -42,6 +42,10 @@ module Antigravity
         return guarded(text, yolo).merge(route: route_res) if direct_command?(text)
 
         agent_loop(text, route_res, yolo)
+      rescue NetworkError => e
+        # 🔌 JEV (router/guardrail) unreachable: fail closed, nothing is executed.
+        @renderer.network_error(e.message)
+        { executed: false, status: :network_error, error: e.message }
       end
 
       # Used by `jevity ask`: show thinking/answer, return the proposed command (not executed).

@@ -173,4 +173,17 @@ RSpec.describe Antigravity::Jev::Harness do
     h = described_class.new(client: client, router: router, guardrail: guardrail, output: output, input: input)
     expect(h.gemini).to be_a(Antigravity::Jev::Gemini::Offline)
   end
+
+  describe 'network errors 🔌' do
+    it 'prints a red 🔌 line and executes nothing when JEV is unreachable (fails closed)' do
+      allow(router).to receive(:route).and_raise(Antigravity::Jev::NetworkError, 'JEV (System One) unreachable: Net::ReadTimeout')
+      expect(harness).not_to receive(:run_system_command)
+
+      res = harness.process('rm -rf /tmp/x')
+
+      expect(res[:status]).to eq(:network_error)
+      expect(output.string).to include('🔌')
+      expect(output.string).to include('Net::ReadTimeout')
+    end
+  end
 end

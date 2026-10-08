@@ -190,9 +190,40 @@ RSpec.describe Antigravity::Jev::Gemini do
       expect(seen.last).to eq([:text, 'ok'])
     end
 
+    it 'catches Net::ReadTimeout explicitly with a readable connectivity message' do
+      allow(gemini).to receive(:stream) do |model, _payload, &blk|
+        raise Net::ReadTimeout if model == 'gemini-3.8-flash'
+
+        blk.call(:text, 'ok')
+        [200, [{ 'text' => 'ok' }]]
+      end
+      seen = []
+
+      reply = gemini.ask('x', model: 'gemini-3.8-flash-low') { |kind, text| seen << [kind, text] }
+
+      expect(seen.first[1]).to match(/gemini-3.8-flash: no answer within \d+s \(Net::ReadTimeout\)/)
+      expect(reply.model).to eq('gemini-3.7-flash')
+    end
+
     it 'has a short first-byte timeout (JEV_FIRST_BYTE_TIMEOUT)' do
       expect(gemini.first_byte_timeout).to eq(Antigravity::Jev.first_byte_timeout)
       expect(Antigravity::Jev.first_byte_timeout).to be < Antigravity::Jev.gemini_timeout
+    end
+  end
+
+  describe 'HIGH thinking for complex prompts 🧠' do
+    it 'defaults the smart (complex) model to a -high thinking tier' do
+      allow(ENV).to receive(:[]).and_call_original
+      %w[JEV_SMART_MODEL GEMINI_SMART_MODEL].each { |k| allow(ENV).to receive(:[]).with(k).and_return(nil) }
+      expect(Antigravity::Jev.smart_model).to end_with('-high')
+    end
+
+    it 'gives medium/high thinking a longer budget (JEV_THINKING_TIMEOUT) for first byte and between chunks' do
+      expect(Antigravity::Jev.thinking_timeout).to eq(30)
+      expect(gemini.timeouts_for('high')).to eq([30, 30])
+      expect(gemini.timeouts_for('medium')).to eq([30, 30])
+      expect(gemini.timeouts_for('low')).to eq([gemini.first_byte_timeout, gemini.timeout])
+      expect(gemini.timeouts_for(nil)).to eq([gemini.first_byte_timeout, gemini.timeout])
     end
   end
 
