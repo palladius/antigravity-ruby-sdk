@@ -284,20 +284,47 @@ See [`lib/antigravity/policy.rb`](lib/antigravity/policy.rb) and [`lib/antigravi
 
 ## 🚦 *Rujev* — Ruby × JEV guardrails for Google Antigravity
 
-`rujev` (alias `bin/jevity`) is a terminal assistant: **Gemini answers, JEV (System One) guards every shell command** before it runs. JEV also picks the model (fast vs smart) in ~250ms.
+`rujev` (alias `bin/jevity`, since **v0.7.0**) is a terminal assistant built on this SDK. **JEV (System One)** makes fast decisions (~200–300ms each); **Gemini** does the talking:
+
+1. 🚀 **Route**: JEV classifies your prompt as *simple* → fast model (`gemini-3.5-flash-lite`, ~0.8s) or *complex* → HIGH-thinking model (`gemini-3.8-flash-high`).
+2. 🤖 **Answer**: Gemini streams 🤔 thinking and 🤖 answer live; if it needs a shell command, it proposes one.
+3. 🛡️ **Guard**: JEV scores every command before it runs: ✅ ≥80% runs, 🚫 <40% blocked, ⚠️ in between asks you `[y/N]`.
 
 ![Rujev demo](demos/jevity/jevity_demo.gif)
 
+> 🎬 Full-quality video: [`demos/jevity/jevity_demo.mp4`](demos/jevity/jevity_demo.mp4) — re-record it with `just demo-jevity` (needs `vhs` + `ttyd` + `ffmpeg`; runs in a `/tmp` sandbox with a fake `.env`).
+
+### Quickstart
+
 ```bash
-rujev                                  # interactive REPL (multi-turn, /reset)
-rujev 'what is in here?'               # one-shot
-rujev -M gemini-3.7-flash-low '...'    # force a model, skip JEV routing
-rujev guard 'rm -rf /'                 # safety verdict only, never executes
-just benchmark-gemini-testspeed        # re-pick the fastest Gemini models
-just demo-jevity                       # re-record the demo above (vhs + ttyd)
+export GEMINI_API_KEY=...        # Gemini (answers)
+export JEV_API_KEY_RUJEV=...     # JEV System One (routing + guardrail)
+
+bin/rujev                                   # interactive REPL (multi-turn, /reset clears memory)
+bin/rujev 'what is in here?'                # one-shot
+bin/rujev --folder ~/git/myrepo 'git status' # run in another folder
+bin/rujev -M gemini-3.8-flash-high '...'    # force a model, skip JEV routing
+bin/rujev guard 'rm -rf /'                  # safety verdict only, never executes
+bin/rujev --yolo '...'                      # auto-approve the ⚠️ "unsure" zone (🚫 still blocks)
 ```
 
-Needs `JEV_API_KEY_RUJEV` and `GEMINI_API_KEY`. Models are configured at the top of the `justfile` / in `.env.dist`.
+### ⚙️ Configuration
+
+No code changes needed: edit the **config block at the top of the [`justfile`](justfile)**, or set env vars / `.env` (documented in [`.env.dist`](.env.dist)). Precedence: `--model` > ENV / `.env` / justfile > [`config/jevity.yml`](config/jevity.yml) > code default.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `JEV_API_KEY_RUJEV` | *(required)* | JEV key. Looked up in ENV, then `$GIC/.env`, then `./.env` |
+| `GEMINI_API_KEY` | *(required)* | Gemini key (sent as a header, never in the URL) |
+| `JEV_FAST_MODEL` | `gemini-3.5-flash-lite` | Model for *simple* prompts |
+| `JEV_SMART_MODEL` | `gemini-3.8-flash-high` | Model for *complex* prompts (`-low/-medium/-high` suffix = thinking level) |
+| `JEV_FALLBACK_MODEL` | `gemini-3.1-flash-lite,gemini-2.5-flash-lite` | Failover chain; a failed model is skipped for the rest of the session |
+| `JEV_FIRST_BYTE_TIMEOUT` | `6` | Seconds to wait for the first streamed token before failing over |
+| `JEV_GEMINI_TIMEOUT` | `10` | Max seconds between streamed chunks |
+| `JEV_THINKING_TIMEOUT` | `30` | Same, for medium/high thinking models (thinking chunks count as activity) |
+| `JEV_ALLOW_THRESHOLD` / `JEV_DENY_THRESHOLD` | `0.80` / `0.40` | Guardrail zones: auto-run / auto-block |
+
+Not sure which Gemini model is fastest today? `just benchmark-gemini-testspeed` measures 1st token / total per model and tells you what to put in `JEV_FAST_MODEL`. Network trouble shows up as a red 🔌 line; if JEV itself is unreachable, nothing is executed (fails closed).
 
 ---
 

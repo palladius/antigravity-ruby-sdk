@@ -10,6 +10,8 @@ All notable changes to this project will be documented in this file.
 * ⏱️ **`JEV_THINKING_TIMEOUT`** (default 30s): medium/high thinking models get a longer first-byte and between-chunk timeout, so they are no longer killed at 6s.
 ### Fixes
 * 🔌 **Explicit `Net::ReadTimeout` & co handling** (`Antigravity::Jev::NetworkError < ApiError`, `NETWORK_ERRORS`): Gemini timeouts print `🔌 gemini-x: no answer within 6s (Net::ReadTimeout)` **in red** before the fallback; a JEV timeout no longer crashes the REPL with a stack trace: it prints a red 🔌 line and **fails closed** (nothing is executed).
+### Docs
+* 📖 README: full **Rujev** section (how routing + guard work, demo GIF/MP4, quickstart, configuration table).
 
 ## [0.8.1] - 2026-10-08 🎬 Rujev: Ruby × JEV guardrails for Google Antigravity
 ### Changes
