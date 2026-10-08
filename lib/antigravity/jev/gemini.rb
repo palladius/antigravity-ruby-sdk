@@ -5,6 +5,7 @@ require 'json'
 require 'uri'
 require_relative 'errors'
 require_relative 'key_finder'
+require_relative 'sse_parser'
 
 module Antigravity
   module Jev
@@ -13,18 +14,20 @@ module Antigravity
     # - Tier names like "gemini-3.8-flash-low" map to model + thinkingLevel.
     # - Native thoughts (includeThoughts) are returned separately from the answer.
     # - Keeps multi-turn history so the REPL remembers previous turns.
-    # - Falls back to `fallback_model` on any HTTP/network failure, but never
-    #   silently: every failure is reported in Reply#warnings or raised.
+    # - Pass a block to #ask to STREAM (SSE): it yields (:thought|:text|:warning, delta)
+    #   as soon as tokens arrive, with a short first-byte timeout.
+    # - Falls back along the `fallback_model` chain on any HTTP/network failure,
+    #   never silently: every failure is reported (warnings / yielded / raised).
     class Gemini
       BASE_URL    = 'https://generativelanguage.googleapis.com/v1beta/models'
       LEVEL_RE    = /\A(?<model>.+?)-(?<level>minimal|low|medium|high)\z/
-      CODE_RE     = /```(?:bash|sh|shell)?[ \t]*\n(.*?)\n```/m
+      CODE_RE     = /```(?:bash|sh|shell)?(?<final>[ \t]+final)?[ \t]*\n(?<cmd>.*?)\n```/m
       THOUGHT_RE  = %r{<thought>(.*?)</thought>}m
       MAX_HISTORY = 20
 
-      Reply = Struct.new(:thinking, :answer, :command, :model, :warnings, keyword_init: true)
+      Reply = Struct.new(:thinking, :answer, :command, :final, :model, :warnings, keyword_init: true)
 
-      attr_reader :history
+      attr_reader :history, :timeout, :first_byte_timeout, :degraded
 
       def self.resolve_api_key
         KeyFinder.lookup('GEMINI_API_KEY')
@@ -37,7 +40,10 @@ module Antigravity
       end
 
       def self.parse_response(body)
-        parts = body.dig('candidates', 0, 'content', 'parts') || []
+        parse_parts(body.dig('candidates', 0, 'content', 'parts') || [])
+      end
+
+      def self.parse_parts(parts)
         thoughts, texts = parts.partition { |p| p['thought'] }
         thinking = thoughts.map { |p| p['text'] }.join("\n").strip
         answer = texts.map { |p| p['text'] }.join.strip
@@ -48,25 +54,25 @@ module Antigravity
           answer = answer.sub(THOUGHT_RE, '').strip
         end
 
+        code = CODE_RE.match(answer)
         Reply.new(thinking: thinking.empty? ? nil : thinking, answer: answer,
-                  command: answer[CODE_RE, 1]&.strip, warnings: [])
+                  command: code && code[:cmd].strip, final: !code&.[](:final).nil?, warnings: [])
       end
 
-      def initialize(api_key: nil, fallback_model: nil, timeout: nil)
+      def initialize(api_key: nil, fallback_model: nil, timeout: nil, first_byte_timeout: nil)
         @api_key = api_key || self.class.resolve_api_key
         @fallbacks = (fallback_model || Jev.fallback_model).to_s.split(',').map(&:strip).reject(&:empty?)
         @timeout = timeout || Jev.gemini_timeout
+        @first_byte_timeout = first_byte_timeout || Jev.first_byte_timeout
         @history = []
         @degraded = []
       end
-
-      attr_reader :timeout, :degraded
 
       def fallback_model
         @fallbacks.first
       end
 
-      def ask(prompt, model:, system_instruction: nil)
+      def ask(prompt, model:, system_instruction: nil, &on_part)
         raise ApiError, 'GEMINI_API_KEY not found (ENV, $GIC/.env or ./.env)' if @api_key.to_s.empty?
 
         base, level = self.class.parse_model(model)
@@ -75,17 +81,13 @@ module Antigravity
         warnings = []
 
         candidates(base).each do |candidate|
-          code, body = safe_post(candidate, payload)
-          if code == 200
-            @degraded.delete(candidate)
-            reply = self.class.parse_response(JSON.parse(body))
-            remember(user_turn, reply.answer)
-            reply.model = candidate
-            reply.warnings = warnings
-            return reply
-          end
+          code, body = attempt(candidate, payload, &on_part)
+          return success(candidate, body, user_turn, warnings, streamed: !on_part.nil?) if code == 200
+
           @degraded |= [candidate]
-          warnings << "Gemini HTTP #{code} on #{candidate}: #{error_message(body)}"
+          msg = "Gemini HTTP #{code} on #{candidate}: #{error_message(body)}"
+          warnings << msg
+          on_part&.call(:warning, msg)
         end
 
         raise ApiError, warnings.join(' | ')
@@ -97,6 +99,21 @@ module Antigravity
       end
 
       private
+
+      def attempt(candidate, payload, &on_part)
+        on_part ? stream(candidate, payload, &on_part) : post(candidate, payload)
+      rescue StandardError => e
+        [0, "#{e.class}: #{e.message}"]
+      end
+
+      def success(candidate, body, user_turn, warnings, streamed:)
+        @degraded.delete(candidate)
+        reply = streamed ? self.class.parse_parts(body) : self.class.parse_response(JSON.parse(body))
+        remember(user_turn, reply.answer)
+        reply.model = candidate
+        reply.warnings = warnings
+        reply
+      end
 
       # Healthy models first (routed, then fallback chain); models that already
       # failed this session go last, as a last resort.
@@ -119,21 +136,50 @@ module Antigravity
         @history.shift(@history.size - MAX_HISTORY) if @history.size > MAX_HISTORY
       end
 
-      def safe_post(model, payload)
-        post(model, payload)
-      rescue StandardError => e
-        [0, "#{e.class}: #{e.message}"]
+      def request_for(uri, payload)
+        req = Net::HTTP::Post.new(uri, 'Content-Type' => 'application/json', 'x-goog-api-key' => @api_key)
+        req.body = JSON.generate(payload)
+        req
       end
 
       # Returns [status_code, body]. The key travels in a header, never in the URL.
       def post(model, payload)
         uri = URI("#{BASE_URL}/#{model}:generateContent")
-        req = Net::HTTP::Post.new(uri, 'Content-Type' => 'application/json', 'x-goog-api-key' => @api_key)
-        req.body = JSON.generate(payload)
         res = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 8, read_timeout: @timeout) do |http|
-          http.request(req)
+          http.request(request_for(uri, payload))
         end
         [res.code.to_i, res.body]
+      end
+
+      # SSE streaming. Yields (:thought|:text, delta) live and returns
+      # [200, merged_parts] or [status, error_body].
+      # Short timeout until the first chunk, then @timeout between chunks.
+      def stream(model, payload, &on_part)
+        uri = URI("#{BASE_URL}/#{model}:streamGenerateContent?alt=sse")
+        acc = { thought: +'', text: +'' }
+        parser = SseParser.new { |event| stream_event(event, acc, &on_part) }
+
+        Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 8, read_timeout: @first_byte_timeout) do |http|
+          http.request(request_for(uri, payload)) do |res|
+            return [res.code.to_i, res.read_body] unless res.code == '200'
+
+            res.read_body do |chunk|
+              http.read_timeout = @timeout
+              parser.feed(chunk)
+            end
+          end
+        end
+        [200, [{ 'thought' => true, 'text' => acc[:thought] }, { 'text' => acc[:text] }]]
+      end
+
+      def stream_event(event, acc, &on_part)
+        (event.dig('candidates', 0, 'content', 'parts') || []).each do |part|
+          next unless part['text']
+
+          kind = part['thought'] ? :thought : :text
+          acc[kind] << part['text']
+          on_part.call(kind, part['text'])
+        end
       end
 
       def error_message(body)
@@ -160,7 +206,18 @@ module Antigravity
           @history = []
         end
 
-        def ask(prompt, model:, system_instruction: nil) # rubocop:disable Lint/UnusedMethodArgument
+        def ask(prompt, model:, system_instruction: nil, &on_part) # rubocop:disable Lint/UnusedMethodArgument
+          reply = offline_reply(prompt)
+          on_part&.call(:thought, "#{reply.thinking}\n") if reply.thinking
+          on_part&.call(:text, reply.answer)
+          reply
+        end
+
+        def reset!; end
+
+        private
+
+        def offline_reply(prompt)
           return Reply.new(answer: '(mock) done.', model: 'offline', warnings: []) if prompt.start_with?(Harness::FOLLOWUP_MARK)
 
           cmd = RULES.find { |re, _| prompt.match?(re) }&.last
@@ -168,8 +225,6 @@ module Antigravity
                     answer: cmd ? "```bash\n#{cmd}\n```" : '(mock) no command for this prompt.',
                     command: cmd, model: 'offline', warnings: [])
         end
-
-        def reset!; end
       end
     end
   end

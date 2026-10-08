@@ -49,4 +49,11 @@ RSpec.describe 'CLI bin/jevity and bin/rujev' do
     expect(status.success?).to be true
     expect(out).not_to include('Execute this command?')
   end
+
+  it 'accepts --model to force a model and skip JEV routing' do
+    out, status = Open3.capture2e(bin_path, '--mock', '--model', 'gemini-3.6-flash', 'ciao come stai')
+    expect(status.success?).to be true
+    expect(out).to include('MODEL: gemini-3.6-flash (forced')
+    expect(out).not_to include('ROUTED')
+  end
 end

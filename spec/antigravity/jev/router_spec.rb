@@ -17,7 +17,7 @@ RSpec.describe Antigravity::Jev::Router do
       end
 
       result = router.route('Show me the list of this folder')
-      expect(result.model).to eq('gemini-3.8-flash-low')
+      expect(result.model).to eq(Antigravity::Jev.fast_model)
       expect(result.complexity).to eq('simple')
       expect(result.confidence).to eq(0.96)
       expect(result.latency_ms).to be_a(Numeric)
@@ -31,7 +31,7 @@ RSpec.describe Antigravity::Jev::Router do
       end
 
       result = router.route('Refactor this whole architecture to distributed event-driven microservices')
-      expect(result.model).to eq('gemini-3.8-flash-high')
+      expect(result.model).to eq(Antigravity::Jev.smart_model)
       expect(result.complexity).to eq('complex')
       expect(result.confidence).to eq(0.91)
     end

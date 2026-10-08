@@ -1,15 +1,18 @@
 # Jevity Configuration
 # Easy place to configure model routing and safety thresholds
 
-# Models routed by JEV System One:
-fast_model: "gemini-3.8-flash-low"      # Fast, lightweight model for simple queries
-smart_model: "gemini-3.8-flash-high"    # Reasoning model for complex queries
+# Models routed by JEV System One.
+# Precedence: `rujev --model X` > ENV (.env / top of justfile) > this file > code default.
+# Defaults come from `just benchmark-gemini-testspeed`; uncomment only to pin them here.
+# fast_model: "gemini-3.5-flash-lite"   # Fast, lightweight model for simple queries
+# smart_model: "gemini-3.7-flash-low"   # Reasoning model for complex queries
 # A trailing -minimal/-low/-medium/-high is sent to Gemini as thinkingLevel
-# (e.g. "gemini-3.8-flash-low" => model gemini-3.8-flash, thinkingLevel low).
+# (e.g. "gemini-3.7-flash-low" => model gemini-3.7-flash, thinkingLevel low).
 
 # Used automatically if the routed model fails (404, 503 high demand, timeout):
-fallback_model: "gemini-3.7-flash,gemini-3.5-flash" # comma-separated chain; failed models are skipped for the session
-gemini_timeout: 10 # seconds before failing over to the next model (env: JEV_GEMINI_TIMEOUT)
+# fallback_model: "gemini-3.1-flash-lite,gemini-2.5-flash-lite" # chain; failed models skipped for the session
+gemini_timeout: 10     # seconds between chunks / non-streaming (env: JEV_GEMINI_TIMEOUT)
+first_byte_timeout: 6  # streaming: give up on a silent model after N s (env: JEV_FIRST_BYTE_TIMEOUT)
 
 # Guardrail thresholds:
 # Probability >= allow_threshold -> Auto-approve (Green)

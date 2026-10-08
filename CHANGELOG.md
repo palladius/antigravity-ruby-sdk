@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-08 🌊 Jevity: streaming, benchmarked models, ~1.5s answers
+Same prompt went from ~34s (v0.7.2) to ~1.4s.
+### Features
+* 🌊 **SSE streaming** (`streamGenerateContent?alt=sse`): 🤔/🤖 lines print as they arrive. Short **first-byte timeout** (`JEV_FIRST_BYTE_TIMEOUT`, 6s) drops silent/overloaded models fast without truncating long answers.
+* 🏁 **`just benchmark-gemini-testspeed`** (`bin/gemini-benchmark`): repeatable benchmark (1st token, 1st answer token, total; median of N rounds) using the same client as rujev.
+* ⚡ **New defaults from the benchmark**: fast `gemini-3.5-flash-lite` (~0.8s), smart `gemini-3.7-flash-low` (~2.4s), fallback `gemini-3.1-flash-lite,gemini-2.5-flash-lite`. `gemini-3.8-flash` measured 5–13s.
+* 🎯 **`--model` / `-M`**: force a model and skip the JEV routing round-trip.
+* ⏭️ **```bash final**: when the user just wants raw output (e.g. "list the files"), the model marks the command `final` and the second Gemini call is skipped.
+* ⚙️ Model config at the **top of the justfile** and in **`.env.dist`** (precedence: `--model` > ENV/.env/justfile > `config/jevity.yml` > code default). Models removed from `jevity.yml` (single source of truth).
+* 🧩 `Antigravity::Jev::SseParser`: zero-dependency, binary-safe incremental SSE parser.
+
 ## [0.7.2] - 2026-10-07 ⚡ Jevity: much less waiting
 ### Performance
 * ⏱️ **Gemini timeout 30s → 10s** (configurable: `JEV_GEMINI_TIMEOUT` / `gemini_timeout` in `jevity.yml`).

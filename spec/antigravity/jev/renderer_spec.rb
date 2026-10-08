@@ -79,4 +79,51 @@ RSpec.describe Antigravity::Jev::Renderer do
       expect(output.string).to eq('')
     end
   end
+
+  describe '#stream 🌊' do
+    let(:renderer) { described_class.new(output: output, color: false) }
+
+    it 'prints deltas line by line with 🤔 / 🤖 prefixes and indented continuations' do
+      s = renderer.stream('x')
+      s.write(:thought, "Pen")
+      s.write(:thought, "so\nancora\n")
+      s.write(:text, "Ecco il\nrepo")
+      expect(output.string).to eq("🤔 Penso\n  ancora\n🤖 Ecco il\n")
+      s.finish
+      expect(output.string).to eq("🤔 Penso\n  ancora\n🤖 Ecco il\n  repo\n")
+      expect(s.emitted?).to be true
+    end
+
+    it 'hides ```bash fenced blocks (including ```bash final)' do
+      s = renderer.stream('x')
+      s.write(:text, "Listo:\n```bash final\nls -la\n```\nFatto")
+      s.finish
+      expect(output.string).to eq("🤖 Listo:\n  Fatto\n")
+    end
+
+    it 'prints warnings on their own line and restarts the next section with its emoji' do
+      s = renderer.stream('x')
+      s.write(:text, "mezza")
+      s.write(:warning, 'HTTP 503')
+      s.write(:text, "nuova\n")
+      s.finish
+      expect(output.string).to eq("🤖 mezza\n⚠️  HTTP 503\n🤖 nuova\n")
+    end
+
+    it 'reports nothing emitted when no deltas arrived' do
+      s = renderer.stream('x')
+      s.finish
+      expect(s.emitted?).to be false
+      expect(output.string).to eq('')
+    end
+
+    it 'shows ⏳ until the first line arrives (TTY), then erases it' do
+      tty = described_class.new(output: output, color: true)
+      s = tty.stream('gemini-3.7-flash')
+      expect(output.string).to start_with("\r⏳ ")
+      s.write(:text, "ciao\n")
+      expect(output.string).to include("\r\e[K🤖 ")
+      s.finish
+    end
+  end
 end

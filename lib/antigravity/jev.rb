@@ -10,6 +10,7 @@ require_relative 'jev/router'
 require_relative 'jev/guardrail'
 require_relative 'jev/agent_guard'
 require_relative 'jev/renderer'
+require_relative 'jev/sse_parser'
 require_relative 'jev/gemini'
 require_relative 'jev/harness'
 

@@ -156,6 +156,61 @@ RSpec.describe Antigravity::Jev::Gemini do
     end
   end
 
+  describe 'streaming 🌊 (SSE, fast first)' do
+    it 'uses the stream seam when a block is given and yields thought/text parts live' do
+      allow(gemini).to receive(:stream) do |model, _payload, &blk|
+        expect(model).to eq('gemini-3.7-flash')
+        blk.call(:thought, "Penso...\n")
+        blk.call(:text, "Ecco:\n```bash\nls\n```")
+        [200, [{ 'thought' => true, 'text' => "Penso...\n" }, { 'text' => "Ecco:\n```bash\nls\n```" }]]
+      end
+      seen = []
+
+      reply = gemini.ask('x', model: 'gemini-3.7-flash') { |kind, text| seen << [kind, text] }
+
+      expect(seen.map(&:first)).to eq(%i[thought text])
+      expect(reply.thinking).to eq('Penso...')
+      expect(reply.command).to eq('ls')
+      expect(gemini.history.last[:parts].first[:text]).to include('Ecco')
+    end
+
+    it 'yields failover warnings live (so they print before the fallback output)' do
+      allow(gemini).to receive(:stream) do |model, _payload, &blk|
+        next [0, 'Net::ReadTimeout'] if model == 'gemini-3.8-flash'
+
+        blk.call(:text, 'ok')
+        [200, [{ 'text' => 'ok' }]]
+      end
+      seen = []
+
+      gemini.ask('x', model: 'gemini-3.8-flash-low') { |kind, text| seen << [kind, text] }
+
+      expect(seen.first[0]).to eq(:warning)
+      expect(seen.first[1]).to include('gemini-3.8-flash')
+      expect(seen.last).to eq([:text, 'ok'])
+    end
+
+    it 'has a short first-byte timeout (JEV_FIRST_BYTE_TIMEOUT)' do
+      expect(gemini.first_byte_timeout).to eq(Antigravity::Jev.first_byte_timeout)
+      expect(Antigravity::Jev.first_byte_timeout).to be < Antigravity::Jev.gemini_timeout
+    end
+  end
+
+  describe '```bash final marker' do
+    it 'flags commands whose output alone answers the request' do
+      body = JSON.parse(ok_body([{ text: "Ecco:\n```bash final\nls -la\n```" }]))
+      reply = described_class.parse_response(body)
+
+      expect(reply.command).to eq('ls -la')
+      expect(reply.final).to be true
+    end
+
+    it 'is not final by default' do
+      reply = described_class.parse_response(JSON.parse(ok_body([{ text: "```bash\nls\n```" }])))
+      expect(reply.final).to be_falsey
+    end
+  end
+
   describe '.resolve_api_key' do
     it 'prefers ENV GEMINI_API_KEY' do
       allow(ENV).to receive(:[]).and_call_original

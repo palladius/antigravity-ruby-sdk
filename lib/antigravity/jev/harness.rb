@@ -34,11 +34,11 @@ module Antigravity
         @renderer = renderer || Renderer.new(output: output)
       end
 
-      def process(user_input, yolo: false)
+      def process(user_input, yolo: false, model: nil)
         text = user_input.to_s.strip
         return { error: 'Empty input', status: :error } if text.empty?
 
-        route_res = route(text)
+        route_res = model ? forced_route(model) : route(text)
         return guarded(text, yolo).merge(route: route_res) if direct_command?(text)
 
         agent_loop(text, route_res, yolo)
@@ -64,6 +64,12 @@ module Antigravity
         res
       end
 
+      # --model: no JEV routing call at all (saves a round-trip).
+      def forced_route(model)
+        @output.puts "🎯 MODEL: #{model} (forced, routing skipped)"
+        Router::RouteResult.new(model: model, complexity: 'forced', confidence: 1.0, latency_ms: 0.0)
+      end
+
       def agent_loop(text, route_res, yolo)
         prompt = text
         executed = false
@@ -79,23 +85,35 @@ module Antigravity
           return res.merge(command: last, route: route_res) unless res[:executed]
 
           executed = true
+          # ```bash final: the output IS the answer, no second model call.
+          return { executed: true, status: :answered, command: last, route: route_res, reply: reply } if reply.final
+
           prompt = followup_prompt(last, res[:output])
         end
 
         { executed: executed, status: :max_steps, command: last, route: route_res }
       end
 
+      # Streams thinking/answer live; falls back to block rendering if the
+      # Gemini implementation did not stream anything.
       def ask_model(prompt, model)
-        reply = @renderer.waiting("thinking with #{model}") do
-          @gemini.ask(prompt, model: model, system_instruction: system_instruction)
+        live = @renderer.stream("thinking with #{model}")
+        reply = @gemini.ask(prompt, model: model, system_instruction: system_instruction) do |kind, delta|
+          live.write(kind, delta)
         end
-        reply.warnings.to_a.each { |w| @renderer.warning(w) }
-        @renderer.thinking(reply.thinking)
-        @renderer.answer(reply.answer)
+        live.finish
+        render_reply(reply, warnings: !live.warned?) unless live.emitted?
         reply
       rescue ApiError => e
+        live&.finish
         @renderer.warning("Gemini error: #{e.message}")
         nil
+      end
+
+      def render_reply(reply, warnings: true)
+        reply.warnings.to_a.each { |w| @renderer.warning(w) } if warnings
+        @renderer.thinking(reply.thinking)
+        @renderer.answer(reply.answer)
       end
 
       def guarded(cmd, yolo)
@@ -115,9 +133,15 @@ module Antigravity
           You are Jevity, a concise AI assistant in the developer's terminal.
           Workspace: #{Dir.pwd}
           Top-level entries: #{files}
-          Answer in the user's language. If running ONE shell command would help answer or
-          fulfil the request, include it in a ```bash fenced block; JEV will safety-check it
-          before it runs and you will receive its output. Never wrap prose in <thought> tags.
+          Answer in the user's language. If the workspace entries above already answer, just
+          answer, without running anything. If running ONE shell command would help, include it
+          in a ```bash fenced block; JEV will safety-check it before it runs and you will receive
+          its output to write your answer.
+          Use ```bash final ONLY when the user explicitly asked to SEE raw output (e.g. "list
+          the files", "show me X", "run Y"): then the output is shown and you are NOT called
+          again. If the user asked a question, a summary, an explanation, a count or a format
+          (e.g. "in 3 lines"), NEVER use final.
+          Never wrap prose in <thought> tags.
         PROMPT
       rescue SystemCallError
         'You are Jevity, a concise AI assistant in the developer terminal.'

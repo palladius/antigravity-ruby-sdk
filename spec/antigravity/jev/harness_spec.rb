@@ -44,7 +44,7 @@ RSpec.describe Antigravity::Jev::Harness do
 
       expect(result[:executed]).to be true
       expect(result[:status]).to eq(:answered)
-      expect(output.string).to include('ROUTED: gemini-3.8-flash-low')
+      expect(output.string).to include("ROUTED: #{Antigravity::Jev.fast_model}")
       expect(output.string).to include('APPROVED: ls')
       expect(output.string).to include('🤖 Ci sono due file.')
       expect(gemini).to have_received(:ask).with(a_string_including('file1.txt'), any_args)
@@ -126,6 +126,46 @@ RSpec.describe Antigravity::Jev::Harness do
       allow(harness).to receive(:run_system_command).with('git status').and_return('clean')
 
       expect(harness.process('git status')[:executed]).to be true
+    end
+
+    it 'skips the follow-up model call when the command is marked ```bash final' do
+      jev_says(0.98)
+      final = reply(answer: "```bash final\nls\n```", command: 'ls')
+      final.final = true
+      allow(gemini).to receive(:ask).and_return(final)
+      allow(harness).to receive(:run_system_command).with('ls').and_return("a\nb")
+
+      result = harness.process('Show me the list of this folder')
+
+      expect(gemini).to have_received(:ask).once
+      expect(result[:executed]).to be true
+      expect(result[:status]).to eq(:answered)
+    end
+
+    it 'with model: forced, skips JEV routing and uses that model' do
+      jev_says(0.9)
+      expect(router).not_to receive(:route)
+      allow(gemini).to receive(:ask).and_return(reply(answer: 'ok'))
+
+      result = harness.process('ciao', model: 'gemini-3.6-flash')
+
+      expect(gemini).to have_received(:ask).with('ciao', hash_including(model: 'gemini-3.6-flash'))
+      expect(result[:route].model).to eq('gemini-3.6-flash')
+      expect(output.string).to include('gemini-3.6-flash')
+    end
+
+    it 'prints streamed deltas live and does not re-print the final reply' do
+      jev_says(0.9)
+      allow(gemini).to receive(:ask) do |*_args, &blk|
+        blk.call(:thought, "Analizzo\n")
+        blk.call(:text, "Streaming!\n")
+        reply(thinking: 'Analizzo', answer: 'Streaming!')
+      end
+
+      harness.process('ciao')
+
+      expect(output.string.scan('🤖 Streaming!').size).to eq(1)
+      expect(output.string).to include('🤔 Analizzo')
     end
   end
 

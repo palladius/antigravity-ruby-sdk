@@ -29,12 +29,14 @@ module Antigravity
         end
       end
 
+      # Defaults picked with `just benchmark-gemini-testspeed` (2026-10-08):
+      # flash-lite ~0.8s total vs gemini-3.8-flash 5-13s. Re-run it when in doubt.
       def fast_model
         ENV['JEV_FAST_MODEL'] ||
           ENV['GEMINI_FAST_MODEL'] ||
           loaded_yaml_config['fast_model'] ||
           loaded_yaml_config['models']&.dig('fast') ||
-          'gemini-3.8-flash-low'
+          'gemini-3.5-flash-lite'
       end
 
       def smart_model
@@ -42,19 +44,26 @@ module Antigravity
           ENV['GEMINI_SMART_MODEL'] ||
           loaded_yaml_config['smart_model'] ||
           loaded_yaml_config['models']&.dig('smart') ||
-          'gemini-3.8-flash-high'
+          'gemini-3.7-flash-low'
       end
 
       # Used when the routed model fails (404 / 503 high demand / timeout).
-      # May be a comma-separated chain, e.g. "gemini-3.7-flash,gemini-3.5-flash".
+      # May be a comma-separated chain, e.g. "gemini-3.1-flash-lite,gemini-2.5-flash-lite".
       def fallback_model
-        ENV['JEV_FALLBACK_MODEL'] || loaded_yaml_config['fallback_model'] || 'gemini-3.7-flash,gemini-3.5-flash'
+        ENV['JEV_FALLBACK_MODEL'] || loaded_yaml_config['fallback_model'] || 'gemini-3.1-flash-lite,gemini-2.5-flash-lite'
       end
 
       # Seconds to wait for a Gemini answer before failing over. Short on purpose:
       # an overloaded model that hangs is worse than a quick fallback.
       def gemini_timeout
         (ENV['JEV_GEMINI_TIMEOUT'] || loaded_yaml_config['gemini_timeout'] || 10).to_i
+      end
+
+      # Streaming only: max seconds to wait for the FIRST chunk. Once the model
+      # starts talking, gemini_timeout applies between chunks, so long answers
+      # are never cut. A silent (overloaded) model is abandoned quickly.
+      def first_byte_timeout
+        (ENV['JEV_FIRST_BYTE_TIMEOUT'] || loaded_yaml_config['first_byte_timeout'] || 6).to_i
       end
 
       def allow_threshold

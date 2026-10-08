@@ -1,0 +1,72 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# 🏁 Gemini speed benchmark for Jevity (zero-dependency, same streaming client as rujev).
+#
+#   just benchmark-gemini-testspeed            # models from JEV_BENCH_MODELS (justfile / .env)
+#   bin/gemini-benchmark gemini-3.7-flash-low gemini-3.6-flash   # explicit models
+#
+# Env: JEV_BENCH_MODELS (comma list), JEV_BENCH_ROUNDS (default 3), JEV_BENCH_PROMPT.
+# Measures, per model: first token (any, incl. thinking), first ANSWER token, total.
+
+$LOAD_PATH.unshift File.expand_path('../lib', __dir__)
+require 'antigravity/jev'
+
+DEFAULT_MODELS = 'gemini-3.8-flash-low,gemini-3.7-flash-low,gemini-3.6-flash-low,gemini-3.5-flash,' \
+                 'gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-flash-latest,gemini-2.5-flash-lite'
+models = ARGV.empty? ? (ENV['JEV_BENCH_MODELS'] || DEFAULT_MODELS).split(',').map(&:strip).reject(&:empty?) : ARGV
+rounds = (ENV['JEV_BENCH_ROUNDS'] || 3).to_i
+prompt = ENV['JEV_BENCH_PROMPT'] || 'Cosa contiene tipicamente un Gemfile? Rispondi in 2 righe, in italiano.'
+
+def now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+def measure(model, prompt)
+  gemini = Antigravity::Jev::Gemini.new(fallback_model: '', first_byte_timeout: 20, timeout: 30)
+  t0 = now
+  first_any = first_text = nil
+  reply = gemini.ask(prompt, model: model) do |kind, _delta|
+    next if kind == :warning
+
+    first_any ||= now - t0
+    first_text ||= now - t0 if kind == :text
+  end
+  { ok: true, first_any: first_any, first_text: first_text, total: now - t0, version: reply.model }
+rescue Antigravity::Jev::ApiError => e
+  { ok: false, error: e.message[/HTTP \d+/] || e.message[0, 40], total: now - t0 }
+end
+
+def median(values)
+  v = values.compact.sort
+  v.empty? ? nil : v[v.size / 2]
+end
+
+def fmt(sec) = sec ? format('%.2fs', sec) : '-'
+
+puts "🏁 Gemini benchmark: #{models.size} models × #{rounds} rounds (streaming, same client as rujev)"
+puts "💬 #{prompt}"
+results = Hash.new { |h, k| h[k] = [] }
+rounds.times do |r|
+  warn "⏳ round #{r + 1}/#{rounds}..."
+  models.map { |m| Thread.new { results[m] << measure(m, prompt) } }.each(&:join)
+end
+
+rows = models.map do |m|
+  ok = results[m].select { |r| r[:ok] }
+  errors = results[m].reject { |r| r[:ok] }.map { |r| r[:error] }.tally.map { |e, n| "#{e}×#{n}" }.join(' ')
+  { model: m, ok: ok.size, first_any: median(ok.map { |r| r[:first_any] }),
+    first_text: median(ok.map { |r| r[:first_text] }), total: median(ok.map { |r| r[:total] }), errors: errors }
+end
+rows.sort_by! { |r| [-r[:ok], r[:total] || Float::INFINITY] }
+
+puts
+puts format('%-24s %5s %11s %12s %9s  %s', 'model', 'ok', '1st token', '1st answer', 'total', 'errors')
+puts '─' * 80
+rows.each do |r|
+  puts format('%-24s %2d/%-2d %11s %12s %9s  %s', r[:model], r[:ok], rounds, fmt(r[:first_any]),
+              fmt(r[:first_text]), fmt(r[:total]), r[:errors])
+end
+
+best = rows.find { |r| r[:ok] == rounds } || rows.find { |r| r[:ok].positive? }
+abort "\n❌ No model answered. Check GEMINI_API_KEY / quota." unless best
+puts "\n🏆 Fastest reliable: #{best[:model]} (median total #{fmt(best[:total])})"
+puts "👉 To use it: export JEV_FAST_MODEL=#{best[:model]}   (or edit the top of the justfile / .env)"
